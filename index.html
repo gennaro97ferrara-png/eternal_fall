@@ -1406,12 +1406,12 @@ const CineShader={
       vec2 off=d*r2*r2*0.020*uAberr;                                   // aberrazione cromatica concentrata ai bordi
       vec3 col=vec3(texture2D(tDiffuse,uv+off).r,texture2D(tDiffuse,uv).g,texture2D(tDiffuse,uv-off).b);
       float ga=uGradeAmt*4.0;
-      vec3 lift=(uGrade-0.5)*0.12*ga;                                  // split-tone: ombre verso la tinta regione
-      col=col*(1.0+lift)+lift*0.6;
+      vec3 lift=(uGrade-0.5)*0.08*ga;                                  // split-tone tenue: ombre verso la tinta regione
+      col=col*(1.0+lift)+lift*0.35;
       float L=dot(col,vec3(0.2126,0.7152,0.0722));
-      float satHi=1.0-smoothstep(0.6,1.4,L)*0.45;                      // alte luci desaturate (i core bloomati restano luce)
-      col=mix(vec3(L),col,mix(1.0,1.12,ga)*satHi);
-      col=(col-0.5)*(1.0+0.10*ga)+0.5;                                 // contrasto morbido
+      float satHi=1.0-smoothstep(0.6,1.4,L)*0.4;                       // alte luci desaturate (i core bloomati restano luce)
+      col=mix(vec3(L),col,mix(1.0,1.06,ga)*satHi);                     // saturazione contenuta
+      col*=0.94;                                                       // deep-space: meno acceso, meno contrastato
       col=max(col,0.0);
       float vig=smoothstep(1.05,0.2,r2*2.3);
       vec3 edgeTint=mix(uGrade,vec3(1.0),0.55);
@@ -1423,7 +1423,7 @@ const CineShader={
 
 function applyDirector(){
   const c=director.cur;
-  if(sky) sky.material.color.setScalar(c.skyBright);
+  if(sky) sky.material.color.setScalar(c.skyBright*0.86);   // Via Lattea di sfondo un po' meno accesa
   if(keyLight){ keyLight.color.copy(_white).lerp(director.key,0.5); keyLight.intensity=c.kInt; }   // tinta regione attenuata
   if(cinePass) cinePass.uniforms.uGrade.value.copy(director.grade);
 }
@@ -1503,7 +1503,7 @@ function animate(){
 
   // esposizione adattiva (morbida)
   exposureCur += (director.cur.exposure - exposureCur)*Math.min(1,dt*0.6);
-  renderer.toneMappingExposure=exposureCur;
+  renderer.toneMappingExposure=exposureCur*0.95;   // esposizione leggermente più bassa → immagine più profonda
 
   sky.rotation.y+=dt*0.0016; sky.rotation.x=Math.sin(shaderTime*0.004)*0.05;
   // campo stellare volumetrico: ogni strato scorre a velocità diversa (parallasse) e ricicla senza pop
@@ -1624,7 +1624,7 @@ function animate(){
   camera.fov=baseFov+Math.sin(camPhase*0.045)*1.6 + director.surge*3.5 + slingE*7.0; camera.updateProjectionMatrix();   // FOV si allarga durante la fionda
 
   cinePass.uniforms.uTime.value=shaderTime;
-  bloomPass.strength=0.62+director.cur.aB*0.5+director.surge*0.28;
+  bloomPass.strength=0.5+director.cur.aB*0.38+director.surge*0.24;   // bloom più contenuto (meno "acceso")
 
   composer.render();
   telUpdate(dt);
