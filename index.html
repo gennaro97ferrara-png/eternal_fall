@@ -446,18 +446,13 @@ let shower=null, showerT=0, shownShowerLog='';
 let nebBoost=0, galaxies, godray;
 const _white=new THREE.Color(0xffffff), _nebCol=new THREE.Color(), _warm=new THREE.Color(0xfff0d8);
 const manFloatTime={value:0}, manFloatAmt={value:1}, manArmOpen={value:0}, manArmBack={value:0};
-// MOOD POSES: 6 vettori di displacement additivi (0..1), che si fondono dolcemente nel tempo (caduta libera)
-const manPSpread={value:0}, manPTuck={value:0}, manPReach={value:0}, manPStream={value:0}, manPArchL={value:0}, manPArchR={value:0};
 // VISORE / TUTA: uniform condivisi (look + flash da reazione urto). uHit lo pilota l'area "reazione urto" (0..1, niente accumulatore → 24/7 ok).
 const uHit={value:0};                                 // 0=nessun urto, sale a ~1 sull'impatto, decade dolcemente nel loop
 const manGrade={value:new THREE.Color(0x223a6b)};     // tinta regione (= director.grade) per il rim della tuta
 const manKey={value:new THREE.Color(0xfff1de)};       // luce chiave regione (= director.key) per bagliore/riflesso del visore
 const manEnvDir={value:new THREE.Vector3(0,0,1)};     // direzione "finestra" del riflesso sul visore (verso camera)
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
-// SISTEMA "MOOD" di caduta libera: l'uomo deriva lentamente tra pose distinte
-const MOODS=6;                                  // 0 neutro 1 spread 2 tuck 3 reach 4 stream 5 arch
-let moodCur=0, moodNext=1, moodMix=1, moodHold=14, moodDur=18;   // moodMix 0..1 = fusione cur->next; moodHold>0 = pausa sulla posa
-const moodW=[manPSpread,manPTuck,manPReach,manPStream,manPArchL,manPArchR];   // indici 1..5 → questi pesi (0=neutro: tutti a 0)
+// VARIETÀ DI MOVIMENTO a livello di corpo (rotazioni/derive: NON deformano la mesh)
 let barrelTarget=0, barrelCur=0, barrelAxis=0, barrelHold=40;  // capriola lenta su asse alternato (0=Z roll, 1=X tumble); barrelHold=cooldown
 let spinRateCur=0.06, spinRateTarget=0.06, spinRetargetT=22;   // velocità di rotazione Y variabile e dolce
 let sling=0, bhClose=false;    // fionda gravitazionale: spinta dopo un buco nero
@@ -561,9 +556,8 @@ function build(){
     // animazione "caduta libera": gli arti (estremità) ondeggiano lentamente — vertex displacement che preserva il PBR
     o.geometry.computeBoundingBox(); const bb=o.geometry.boundingBox;
     o.material.onBeforeCompile=(sh)=>{ sh.uniforms.uTime=manFloatTime; sh.uniforms.uFloatAmt=manFloatAmt; sh.uniforms.uArmOpen=manArmOpen; sh.uniforms.uArmBack=manArmBack; sh.uniforms.uBMin={value:bb.min.clone()}; sh.uniforms.uBMax={value:bb.max.clone()};
-      sh.uniforms.uPSpread=manPSpread; sh.uniforms.uPTuck=manPTuck; sh.uniforms.uPReach=manPReach; sh.uniforms.uPStream=manPStream; sh.uniforms.uPArchL=manPArchL; sh.uniforms.uPArchR=manPArchR;   // MOOD poses
       sh.uniforms.uHit=uHit; sh.uniforms.uManGrade=manGrade; sh.uniforms.uManKey=manKey; sh.uniforms.uEnvDir=manEnvDir;   // VISORE/TUTA: rim, riflesso, bagliore
-      sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform float uArmBack;uniform float uPSpread,uPTuck,uPReach,uPStream,uPArchL,uPArchR;uniform vec3 uBMin,uBMax;\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.vertexShader.replace('#include <begin_vertex>',
+      sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform float uArmBack;uniform vec3 uBMin,uBMax;\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.vertexShader.replace('#include <begin_vertex>',
         `#include <begin_vertex>
          vec3 _nr=(position-uBMin)/max(uBMax-uBMin,vec3(1e-4));
          float _h=(uBMax.y-uBMin.y); float _ax=_nr.x-0.5; float _side=_ax>=0.0?1.0:-1.0;
@@ -580,28 +574,6 @@ function build(){
          transformed.x += _h*0.10*_leg*_side*uArmOpen;            // gambe un po' aperte
          transformed.z += _h*0.24*_arm*uArmBack;                  // FIONDA: braccia scaraventate all'indietro
          transformed.z += _h*0.15*_leg*uArmBack;                  // gambe trascinate dalla spinta
-         // --- MOOD POSES (additive, valgono anche con clip Mixamo: NON moltiplicate per uFloatAmt) ---
-         float _up=_nr.y-0.5;                                  // -0.5 piedi .. +0.5 testa
-         // SPREAD-EAGLE: arti spalancati, leggero arco all'indietro (posa rilassata, aperta)
-         transformed.x += _h*0.20*_arm*_side*uPSpread;
-         transformed.x += _h*0.09*_leg*_side*uPSpread;
-         transformed.z += _h*0.05*_arm*uPSpread - _h*0.04*_leg*uPSpread;
-         // FETAL TUCK: arti raccolti verso il centro/petto, corpo che si chiude
-         transformed.x -= _h*0.16*_arm*_side*uPTuck;
-         transformed.x -= _h*0.10*_leg*_side*uPTuck;
-         transformed.y += _h*0.13*_leg*uPTuck;                 // ginocchia su
-         transformed.z += _h*0.10*_arm*uPTuck + _h*0.10*_leg*uPTuck;   // arti raccolti davanti
-         // REACH: un braccio (lato +x) si protende avanti/in alto, l'altro segue indietro (allungarsi verso qualcosa)
-         transformed.z -= _h*0.22*_arm*smoothstep(0.0,0.5,_ax)*uPReach;
-         transformed.y += _h*0.16*_arm*smoothstep(0.0,0.5,_ax)*uPReach;
-         transformed.z += _h*0.10*_arm*smoothstep(0.0,0.5,-_ax)*uPReach;
-         // STREAMLINE: arti raccolti all'indietro, corpo affusolato (caduta a freccia)
-         transformed.x -= _h*0.10*_arm*_side*uPStream;
-         transformed.x -= _h*0.07*_leg*_side*uPStream;
-         transformed.z += _h*0.18*_arm*uPStream + _h*0.12*_leg*uPStream;
-         // ARCH: inarcamento dolce (testa indietro vs in avanti) — due varianti per non ripetersi
-         transformed.z -= _h*0.10*smoothstep(0.0,0.5,_up)*uPArchL - _h*0.06*smoothstep(0.0,0.5,-_up)*uPArchL;
-         transformed.z += _h*0.10*smoothstep(0.0,0.5,_up)*uPArchR - _h*0.06*smoothstep(0.0,0.5,-_up)*uPArchR;
          vManNrm=_nr;                                            // coord 0..1 del box → maschera visore nel fragment
          vManNormV=normalize(normalMatrix*objectNormal);`);
       // --- FRAGMENT: rim fresnel sulla tuta (tinta regione) + visore scuro/specchiante con bagliore tenue (flash da urto) ---
@@ -1771,19 +1743,6 @@ function animate(){
   const _flipping=(flipTarget-flipCur)>0.05;
   manArmOpen.value += ((_flipping?1:0)-manArmOpen.value)*Math.min(1,dt*4.0);   // braccia si aprono/chiudono dolcemente
   manArmBack.value += ((sling>0?1:0)-manArmBack.value)*Math.min(1,dt*5.0);     // FIONDA: braccia/gambe scaraventate indietro
-  // --- MOOD: deriva lenta tra pose di caduta libera (timer lungo e variato) ---
-  if(moodHold>0){ moodHold-=dt*timeScale; }                                  // resta sulla posa raggiunta
-  else { moodMix=Math.min(1,moodMix+dt*timeScale*0.07);                      // transizione ~14s da una posa all'altra
-    if(moodMix>=1){ moodCur=moodNext;                                        // arrivati: scegli la prossima posa
-      let bias=(nearScore>0.18)?3:-1;                                        // pianeta vicino → tende a "reach" (indice 3)
-      moodNext=(bias>=0&&Math.random()<0.5)?bias:(1+((moodCur+(Math.random()*4|0))%(MOODS-1)));
-      if(moodNext===moodCur) moodNext=moodCur>=MOODS-1?1:moodCur+1;
-      moodMix=0; moodHold=10+Math.random()*22; moodDur=14+Math.random()*16; } }
-  // pesi obiettivo: la posa corrente sfuma, la prossima cresce (fusione morbida, smoothstep)
-  { const e=moodMix*moodMix*(3-2*moodMix);
-    for(let i=0;i<moodW.length;i++){ const idx=i+1; let tgt=0;
-      if(idx===moodCur) tgt+=(1-e); if(idx===moodNext) tgt+=e;
-      moodW[i].value += (tgt-moodW[i].value)*Math.min(1,dt*timeScale*3.0); } }
   if(flipCur>=6.28318 && flipTarget>=6.28318){ flipCur-=6.28318; flipTarget-=6.28318; }  // tieni gli angoli piccoli (24/7)
   // velocità di rotazione Y che varia dolcemente nel tempo (a volte quasi ferma, a volte un giro più deciso)
   spinRetargetT-=dt*timeScale; if(spinRetargetT<=0){ spinRetargetT=20+Math.random()*30; spinRateTarget=0.018+Math.random()*0.085; }
