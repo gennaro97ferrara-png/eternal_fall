@@ -445,8 +445,9 @@ let signal, spores, magnetar, dyson, aurora, duststorm;
 let shower=null, showerT=0, shownShowerLog='';
 let nebBoost=0, galaxies;
 const _white=new THREE.Color(0xffffff), _nebCol=new THREE.Color(), _warm=new THREE.Color(0xfff0d8);
-const manFloatTime={value:0}, manFloatAmt={value:1}, manArmOpen={value:0};
+const manFloatTime={value:0}, manFloatAmt={value:1}, manArmOpen={value:0}, manArmBack={value:0};
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
+let sling=0, bhClose=false;    // fionda gravitazionale: spinta dopo un buco nero
 let manMixer=null;
 let built=false, exposureCur=1.0;
 
@@ -532,8 +533,8 @@ function build(){
   man.traverse(o=>{ if(o.isMesh&&o.material){ o.material.color=new THREE.Color(0xffffff); o.material.metalness=0.1; o.material.roughness=0.85; o.material.envMapIntensity=0.6;
     // animazione "caduta libera": gli arti (estremità) ondeggiano lentamente — vertex displacement che preserva il PBR
     o.geometry.computeBoundingBox(); const bb=o.geometry.boundingBox;
-    o.material.onBeforeCompile=(sh)=>{ sh.uniforms.uTime=manFloatTime; sh.uniforms.uFloatAmt=manFloatAmt; sh.uniforms.uArmOpen=manArmOpen; sh.uniforms.uBMin={value:bb.min.clone()}; sh.uniforms.uBMax={value:bb.max.clone()};
-      sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform vec3 uBMin,uBMax;\n'+sh.vertexShader.replace('#include <begin_vertex>',
+    o.material.onBeforeCompile=(sh)=>{ sh.uniforms.uTime=manFloatTime; sh.uniforms.uFloatAmt=manFloatAmt; sh.uniforms.uArmOpen=manArmOpen; sh.uniforms.uArmBack=manArmBack; sh.uniforms.uBMin={value:bb.min.clone()}; sh.uniforms.uBMax={value:bb.max.clone()};
+      sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform float uArmBack;uniform vec3 uBMin,uBMax;\n'+sh.vertexShader.replace('#include <begin_vertex>',
         `#include <begin_vertex>
          vec3 _nr=(position-uBMin)/max(uBMax-uBMin,vec3(1e-4));
          float _h=(uBMax.y-uBMin.y); float _ax=_nr.x-0.5; float _side=_ax>=0.0?1.0:-1.0;
@@ -547,7 +548,9 @@ function build(){
          transformed.x += sin(_t*0.5 + _nr.y*3.0)*_h*0.014*uFloatAmt;
          transformed.x += _h*0.24*_arm*_side*uArmOpen;            // CELEBRAZIONE: braccia spalancate (posa a stella)
          transformed.y += _h*0.05*_arm*uArmOpen;                  // braccia leggermente alzate
-         transformed.x += _h*0.10*_leg*_side*uArmOpen;            // gambe un po' aperte`); };
+         transformed.x += _h*0.10*_leg*_side*uArmOpen;            // gambe un po' aperte
+         transformed.z += _h*0.24*_arm*uArmBack;                  // FIONDA: braccia scaraventate all'indietro
+         transformed.z += _h*0.15*_leg*uArmBack;                  // gambe trascinate dalla spinta`); };
     o.material.needsUpdate=true; o.frustumCulled=false; } });  // tuta opaca + arti animati
   manRig=new THREE.Group(); manRig.add(man); scene.add(manRig);
   // (la scritta "I FALL" ora è quella del modello stesso; il decal bianco è stato rimosso)
@@ -1468,15 +1471,21 @@ function animate(){
   director.step(dt); applyDirector();
   // DILATAZIONE TEMPORALE vicino ai buchi neri: il mondo rallenta, l'orologio "sfasa"
   // (il GIORNO resta ancorato al tempo reale → perennità intatta; è un effetto narrativo/visivo).
-  let timeScale=1;
+  let timeScale=1, bhNear=0;
   if(blackhole && blackhole.active){
     const d=camera.position.distanceTo(blackhole.group.position);
-    const near=THREE.MathUtils.clamp(1-(d-blackhole.group.scale.x*1.6)/300,0,1);
-    timeScale=1-near*0.72;
-    if(near>0.35){ if($t.clk) $t.clk.classList.add('dilate'); if(!dilLogged){ dilLogged=true; $t.log.textContent='— TIME DILATION. The clocks no longer agree.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } }
+    bhNear=THREE.MathUtils.clamp(1-(d-blackhole.group.scale.x*1.6)/300,0,1);
+    timeScale=1-bhNear*0.72;
+    if(bhNear>0.55) bhClose=true;   // siamo entrati nel pozzo gravitazionale
+    if(bhNear>0.35){ if($t.clk) $t.clk.classList.add('dilate'); if(!dilLogged){ dilLogged=true; $t.log.textContent='— TIME DILATION. The clocks no longer agree.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } }
     else { if($t.clk) $t.clk.classList.remove('dilate'); dilLogged=false; }
   } else { if($t.clk) $t.clk.classList.remove('dilate'); dilLogged=false; }
-  const speed=director.cur.speed*director.speedMul*timeScale;
+  // FIONDA GRAVITAZIONALE: eravamo vicini al buco nero e ora ne siamo sfuggiti → spinta di ~5s
+  if(bhClose && bhNear<0.18){ bhClose=false; sling=5.0;
+    $t.log.textContent='— slingshot. The hole flings us into the deep.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),10000); }
+  if(sling>0) sling=Math.max(0,sling-dt);
+  const _se=sling*0.2, slingE=_se*_se;                          // kick forte all'inizio, decadimento in ~5s
+  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4);
 
   TEL.velKmS=speed*KMS_FACTOR; TEL.km += TEL.velKmS*dt;
   persistT+=dt; if(persistT>5){ persistT=0; telSave(); }
@@ -1510,7 +1519,7 @@ function animate(){
 
   // polvere (+ stiramento in raffica)
   dustMat.uniforms.uTime.value=shaderTime; dustMat.uniforms.uAmt.value=director.cur.dust;
-  dustMat.uniforms.uStretch.value=1+director.surge*1.6;
+  dustMat.uniforms.uStretch.value=1+director.surge*1.6+slingE*3.2;   // scie lunghe durante la fionda
   dustMat.uniforms.uColor.value.copy(director.grade).lerp(_white,0.6);
   const dz=speed*dt*1.6;
   for(let i=0;i<DUST_N;i++){ dustPos[i*3+2]+=dz; if(dustPos[i*3+2]>DZN) dust.userData.re(i,DZF); }
@@ -1593,13 +1602,15 @@ function animate(){
   flipCur += (flipTarget-flipCur)*Math.min(1,dt*timeScale*2.4);
   const _flipping=(flipTarget-flipCur)>0.05;
   manArmOpen.value += ((_flipping?1:0)-manArmOpen.value)*Math.min(1,dt*4.0);   // braccia si aprono/chiudono dolcemente
+  manArmBack.value += ((sling>0?1:0)-manArmBack.value)*Math.min(1,dt*5.0);     // FIONDA: braccia/gambe scaraventate indietro
   if(flipCur>=6.28318 && flipTarget>=6.28318){ flipCur-=6.28318; flipTarget-=6.28318; }  // tieni gli angoli piccoli (24/7)
   manSpin=(manSpin+dt*timeScale*0.06)%6.28318;                        // rotazione continua su se stesso (~1.7 min/giro)
   manRig.rotation.y = manSpin + Math.sin(mt*0.05)*0.18;               // giro + oscillazione
-  manRig.rotation.x = -0.06 + Math.sin(mt*0.045)*0.22 + flipCur;     // inclinazione + tumble + capriola di celebrazione
-  manRig.rotation.z = Math.sin(mt*0.035+1.0)*0.20;
+  manRig.rotation.x = -0.06 + Math.sin(mt*0.045)*0.22 + flipCur + slingE*0.55 + Math.sin(mt*4.0)*slingE*0.12;  // + tuffo in avanti e tremito da spinta
+  manRig.rotation.z = Math.sin(mt*0.035+1.0)*0.20 + Math.sin(mt*5.3)*slingE*0.10;
   manRig.position.y = Math.sin(mt*0.05)*0.14;
   manRig.position.x = Math.sin(mt*0.04+0.5)*0.12;
+  manRig.position.z = -slingE*1.6;                                    // scaraventato in avanti, nel profondo
 
   // --- CAMERA: fissa dietro l'uomo, respiro lievissimo di quota/distanza ---
   const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*2.0;
@@ -1610,7 +1621,7 @@ function animate(){
   if(nearestPlanet){ const inf=THREE.MathUtils.clamp(nearScore*1.4,0,0.5); planetFocus.copy(nearestPlanet.mesh.position); lx+=THREE.MathUtils.clamp(planetFocus.x*0.02,-1.2,1.2)*inf; ly2+=THREE.MathUtils.clamp(planetFocus.y*0.02,-0.6,0.6)*inf; }
   tmpLook.set(lx,ly2,0); camera.lookAt(tmpLook);
   camera.rotation.z+=Math.sin(camPhase*0.03)*0.012;
-  camera.fov=baseFov+Math.sin(camPhase*0.045)*1.6 + director.surge*3.5; camera.updateProjectionMatrix();
+  camera.fov=baseFov+Math.sin(camPhase*0.045)*1.6 + director.surge*3.5 + slingE*7.0; camera.updateProjectionMatrix();   // FOV si allarga durante la fionda
 
   cinePass.uniforms.uTime.value=shaderTime;
   bloomPass.strength=0.62+director.cur.aB*0.5+director.surge*0.28;
