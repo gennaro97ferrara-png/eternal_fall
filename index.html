@@ -328,7 +328,9 @@ loadGLB(5);   // bump ?v= quando rigeneri il modello (anti-cache)
 const enterBtn=document.getElementById('enter');
 mgr.onProgress=(u,d,t)=>{ if(!built) enterBtn.textContent='Loading… '+Math.round(d/t*100)+'%'; };
 mgr.onError=(u)=>console.warn('asset KO (riprovo in background):',u);   // NON bloccante
-function tryBuild(){ if(built || !mwReady || !glbReady) return; build(); enterBtn.disabled=false; enterBtn.textContent='Enter'; }
+function tryBuild(){ if(built || !mwReady || !glbReady) return; build(); enterBtn.disabled=false; enterBtn.textContent='Enter';
+  // avvio automatico per la live: dentro OBS (window.obsstudio) o con ?live=1 → niente click su "Enter"
+  if(window.obsstudio || /[?&]live=1/.test(location.search)) setTimeout(()=>{ try{ begin(); }catch(_){} }, 200); }
 
 /* ---------------- canvas textures (glow, etichette) ---------------- */
 function glowTexture(){
