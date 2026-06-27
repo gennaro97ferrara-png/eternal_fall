@@ -1,0 +1,6 @@
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+# backup del modello vecchio: non serve online
+assets/astronaut.backup.glb
