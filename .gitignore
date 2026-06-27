@@ -2,5 +2,8 @@
 Thumbs.db
 *.log
 node_modules/
+# segreti del bridge YouTube: MAI committare
+.env
+.claude/launch.json
 # backup del modello vecchio: non serve online
 assets/astronaut.backup.glb
