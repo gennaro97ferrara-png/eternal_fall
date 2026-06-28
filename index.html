@@ -1531,6 +1531,7 @@ function applyDirector(){
 const clock=new THREE.Clock();
 let shaderTime=0; const SWRAP=100000;
 let camPhase=0,camDist=10,started=false,camOrbit=0,manSpin=0;
+let camLookX=0, camLookY=0.15;   // bersaglio lookAt smussato → niente stacchi d'inquadratura quando cambia il pianeta a fuoco
 let planetTimer=6,wispTimer=4,starTimer=2,mysteryTimer=80,parallelTimer=120,bhTimer=200;
 let cometTimer=40,clusterTimer=120,derelictTimer=150;
 let pulsarTimer=110,redgiantTimer=170,binaryTimer=200,remnantTimer=240;
@@ -1767,7 +1768,10 @@ function animate(){
   camera.position.set(Math.sin(_az)*camDist, _el, Math.cos(_az)*camDist);
   let lx=manRig.position.x*0.4, ly2=manRig.position.y*0.5+0.15;
   if(nearestPlanet){ const inf=THREE.MathUtils.clamp(nearScore*1.4,0,0.5); planetFocus.copy(nearestPlanet.mesh.position); lx+=THREE.MathUtils.clamp(planetFocus.x*0.02,-1.2,1.2)*inf; ly2+=THREE.MathUtils.clamp(planetFocus.y*0.02,-0.6,0.6)*inf; }
-  tmpLook.set(lx,ly2,0); camera.lookAt(tmpLook);
+  // il bersaglio insegue dolcemente → niente STACCHI quando il "pianeta più vicino" entra/esce o cambia (panoramica morbida)
+  camLookX += (lx-camLookX)*Math.min(1,dt*2.2);
+  camLookY += (ly2-camLookY)*Math.min(1,dt*2.2);
+  tmpLook.set(camLookX,camLookY,0); camera.lookAt(tmpLook);
   camera.rotation.z+=Math.sin(camPhase*0.03)*0.012;
   camera.fov=baseFov+Math.sin(camPhase*0.045)*1.6 + director.surge*3.5 + slingE*7.0; camera.updateProjectionMatrix();   // FOV si allarga durante la fionda
 
@@ -1834,21 +1838,46 @@ class AmbientEngine{
   _f(m){ return 440*Math.pow(2,(m-69)/12); }
   _imp(dur,decay){ const ctx=this.ctx,rate=ctx.sampleRate,len=(rate*dur)|0,buf=ctx.createBuffer(2,len,rate);
     for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay); } return buf; }
-  _chord(){ const ctx=this.ctx,t=ctx.currentTime,deg=this.scale[(Math.random()*this.scale.length)|0]; this.root=38+deg;
+  _chord(){ const ctx=this.ctx,t=ctx.currentTime,o=[0,0,0,3,5,7,-5],d=o[(Math.random()*o.length)|0]; this.root=this.rootBase+d;   // bass si muove di 4ª/5ª attorno al root del movimento
     for(const v of this.voices) v.o.frequency.setTargetAtTime(this._f(this.root+v.semi),t,4.0); this.sub.frequency.setTargetAtTime(this._f(this.root-12),t,4.0); }
+  _arpStep(){ const ctx=this.ctx,t=ctx.currentTime,tn=this.chordV,n=tn.length;   // arpeggio ascendente/discendente sui toni dell'accordo (stile Interstellar/organo)
+    this._arpI+=this._arpDir; if(this._arpI>=n){ this._arpI=n-2; this._arpDir=-1; } else if(this._arpI<0){ this._arpI=1; this._arpDir=1; }
+    this.arpOsc.frequency.setTargetAtTime(this._f(this.root+tn[this._arpI]+12),t,0.05);
+    const e=this.arpEnv.gain; e.cancelScheduledValues(t); e.setValueAtTime(Math.max(e.value,0.0001),t);
+    e.exponentialRampToValueAtTime(0.085,t+0.28); e.exponentialRampToValueAtTime(0.0001,t+this.arpEvery*0.96); }
+  _leadStep(){ const ctx=this.ctx,t=ctx.currentTime;   // lead lento con bend e vibrato (stile Marooned / Gilmour)
+    if(Math.random()<0.22){ this.leadEnv.gain.setTargetAtTime(0.0001,t,1.2); this.leadEvery=4+Math.random()*4; return; }   // ogni tanto una pausa: lascia respirare
+    const sc=this.scale,n=sc.length,step=(Math.random()<0.6?(Math.random()<0.5?1:-1):(Math.random()<0.5?2:-2));
+    this._leadDeg+=step; if(this._leadDeg<0) this._leadDeg+=n; if(this._leadDeg>=n*2) this._leadDeg-=n;
+    const oct=Math.floor(this._leadDeg/n),idx=((this._leadDeg%n)+n)%n,note=this.root+19+sc[idx]+oct*12,bend=0.5+Math.random()*1.8;
+    this.leadOsc.frequency.setTargetAtTime(this._f(note),t,bend);   // il bend lento verso la nota
+    const e=this.leadEnv.gain; e.cancelScheduledValues(t); e.setValueAtTime(Math.max(e.value,0.0001),t);
+    e.exponentialRampToValueAtTime(0.095,t+1.1); e.setTargetAtTime(0.045,t+1.1,2.5); this.leadEvery=4.5+Math.random()*4.5; }
+  _applyMovement(i,glide){ const mv=this.movs[i],ctx=this.ctx,t=ctx.currentTime; this.movIdx=i;   // deriva graduale verso una nuova tavolozza armonica
+    this.scale=mv.scale; this.rootBase=mv.root; this.chordV=mv.chord; this.root=mv.root;
+    this.tgt.filtBase=mv.filtBase; this.tgt.filtRange=mv.filtRange; this.tgt.wetBase=mv.wetBase; this.tgt.padBase=mv.padBase;
+    for(let k=0;k<this.voices.length;k++){ const v=this.voices[k]; v.semi=mv.chord[k]; v.o.frequency.setTargetAtTime(this._f(this.root+v.semi),t,glide); v.o.detune.setTargetAtTime((Math.random()*2-1)*mv.det,t,glide); }
+    this.sub.frequency.setTargetAtTime(this._f(this.root-12),t,glide);
+    this.arpMix.gain.setTargetAtTime(mv.arp,t,8); this.leadMix.gain.setTargetAtTime(mv.lead,t,8);
+    this.leadVib.frequency.setTargetAtTime(mv.vib||4.5,t,6); this.lfo.frequency.setTargetAtTime(mv.lfo,t,6); this.trem.frequency.setTargetAtTime(mv.trem,t,6); }
   _shim(){ const ctx=this.ctx,t=ctx.currentTime,deg=this.scale[(Math.random()*this.scale.length)|0],note=this.root+24+deg+(Math.random()<0.5?12:0);
     const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=this._f(note); const g=ctx.createGain(); g.gain.value=0.0001; o.connect(g).connect(this.filter); o.start(t);
     const peak=0.06+Math.random()*0.06; g.gain.exponentialRampToValueAtTime(peak,t+2.5); g.gain.exponentialRampToValueAtTime(0.0001,t+9); o.stop(t+9.5); o.onended=()=>{try{o.disconnect();g.disconnect();}catch(e){}}; }
   update(dt,dir,mood){ if(!this.ready||this.ctx.state!=='running') return; const t=this.ctx.currentTime;
-    const m=mood||{planet:0,dread:0,nova:0};
-    // musica reattiva: pianeta → più caldo/pieno; buco nero → cupo e basso; nebulosa → più luminosa
-    this.filter.frequency.setTargetAtTime(300+dir.cur.aB*1700 + m.planet*500 - m.dread*1000, t, 1.5);
-    this.padGain.gain.setTargetAtTime(0.32+dir.cur.aD*0.4 + m.planet*0.22 - m.dread*0.12, t, 1.5);
-    this.wet.gain.setTargetAtTime(0.4+(1-dir.cur.aB)*0.4 + m.dread*0.3, t, 2.0);
+    const m=mood||{planet:0,dread:0,nova:0},c=this.cur,k=Math.min(1,dt/12);   // lerp lento (~12s) dei parametri del movimento → cambi impercettibili
+    c.filtBase+=(this.tgt.filtBase-c.filtBase)*k; c.filtRange+=(this.tgt.filtRange-c.filtRange)*k; c.wetBase+=(this.tgt.wetBase-c.wetBase)*k; c.padBase+=(this.tgt.padBase-c.padBase)*k;
+    // musica reattiva (su base "movimento"): pianeta → più caldo/pieno; buco nero → cupo e basso; nebulosa → più luminosa
+    this.filter.frequency.setTargetAtTime(c.filtBase + dir.cur.aB*c.filtRange + m.planet*500 - m.dread*1000, t, 1.5);
+    this.padGain.gain.setTargetAtTime(c.padBase + dir.cur.aD*0.34 + m.planet*0.20 - m.dread*0.12, t, 1.5);
+    this.wet.gain.setTargetAtTime(c.wetBase + (1-dir.cur.aB)*0.3 + m.dread*0.3, t, 2.0);
     this.dreadG.gain.setTargetAtTime(m.dread*0.5, t, 1.2);
     if(m.nova && !this._novaFx){ this._novaFx=true; this._shim(); this._shim(); setTimeout(()=>{this._novaFx=false;},3500); }
     this.changeT+=dt; if(this.changeT>=this.changeEvery){ this.changeT=0; this.changeEvery=22+Math.random()*18; this._chord(); }
-    this.shimT+=dt; if(this.shimT>=this.shimEvery){ this.shimT=0; this.shimEvery=8+Math.random()*12; if(dir.cur.aB>0.3 && m.dread<0.3) this._shim(); } }
+    this.shimT+=dt; if(this.shimT>=this.shimEvery){ this.shimT=0; this.shimEvery=8+Math.random()*12; if(dir.cur.aB>0.3 && m.dread<0.3) this._shim(); }
+    const mv=this.movs[this.movIdx];
+    if(mv.arp>0){ this.arpT+=dt; if(this.arpT>=this.arpEvery){ this.arpT=0; this.arpEvery=1.1+Math.random()*0.5; this._arpStep(); } }
+    if(mv.lead>0){ this.leadT+=dt; if(this.leadT>=this.leadEvery){ this.leadT=0; this._leadStep(); } }
+    this.movT+=dt; if(this.movT>=this.movEvery){ this.movT=0; this.movEvery=150+Math.random()*120; let n=this.movIdx; while(n===this.movIdx) n=(Math.random()*this.movs.length)|0; this._applyMovement(n,12+Math.random()*6); } }   // ogni ~2.5-4 min: deriva verso un nuovo movimento
 }
 const audio=new AmbientEngine();
 
