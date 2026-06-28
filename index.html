@@ -626,7 +626,9 @@ function build(){
       gl_FragColor=vec4(c,a*vF*tw*uAmt*0.6*vary);}`});
   dust=new THREE.Points(dustGeo,dustMat); dust.frustumCulled=false; dust.userData.re=dre; scene.add(dust);
 
-  for(let i=0;i<5;i++) planets.push(new Planet());
+  for(let i=0;i<(IS_MOBILE?5:7);i++) planets.push(new Planet());
+  // pre-popola: alcuni pianeti già in volo a profondità diverse → l'universo non è vuoto all'avvio (i ≥2 sono mondi lontani defilati)
+  for(let i=0;i<Math.min(4,planets.length);i++){ planets[i].spawn(false,null,i>=2); planets[i].mesh.position.z=-300-Math.random()*1700; }
   for(let i=0;i<46;i++) nearStars.push(new NearStar());
   // debug: forza un pianeta/sole ravvicinato (utile per test; innocuo in produzione)
   window.cadutaDebugPlanet=(sun,idx)=>{ const fp=planets.find(p=>!p.active)||planets[0]; fp.spawn(!!sun,idx); fp.mesh.position.set(sun?70:38,6,-240); return 'ok'; };
@@ -828,19 +830,20 @@ class Planet{
     this.moons=[]; for(let i=0;i<2;i++){ const mm=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),new THREE.MeshStandardMaterial({map:ASSETS.pt[MOON_IDX],roughness:1,metalness:0,envMapIntensity:0.2,transparent:true,opacity:1})); mm.visible=false; this.mesh.add(mm); this.moons.push({mesh:mm,orb:0,rad:0,sp:0,ph:0}); }
     this.active=false; this.spin=0; this.isSun=false; this.nMoons=0; this.counted=false; this._graze=false;
   }
-  spawn(forceSun,forceIdx){
+  spawn(forceSun,forceIdx,distant){
     this.active=true; this.counted=false;
     let idx; if(forceIdx!=null) idx=forceIdx; else if(forceSun) idx=SUN_IDX; else if(Math.random()<0.08) idx=SUN_IDX; else { do{ idx=(Math.random()*PMETA.length)|0; }while(idx===SUN_IDX); }
     const meta=PMETA[idx]; this.isSun=!!meta.sun;
-    const r=this.isSun?(64+Math.random()*36):(22+Math.random()*40); this.mesh.scale.setScalar(r);
+    const _distant=!!distant && !this.isSun;                          // MONDO LONTANO: piccolo, defilato, spoglio (economico) → riempie il cielo senza affollare il centro
+    const r=this.isSun?(64+Math.random()*36):(_distant?(9+Math.random()*15):(22+Math.random()*40)); this.mesh.scale.setScalar(r);
     const ang=Math.random()*Math.PI*2;
     // passaggio ravvicinato NATURALE e raro (armato da grazeNext): riempie il quadro ma sfiora SOLO l'alta atmosfera.
     // garanzia: superficie solida a (dist-r), tetto atmosfera a r*1.025; con dist=r*1.18+14+rand*8 → clearance 0.155*r+14 > 0 SEMPRE.
-    const _flyby=grazeNext && !this.isSun && !forceSun && forceIdx==null;
-    let dist=_flyby?(r*1.18+14+Math.random()*8):(r*1.45+65+Math.random()*100);   // visibili ma non invadenti (flyby: sfioramento d'alta quota)
+    const _flyby=grazeNext && !this.isSun && !forceSun && forceIdx==null && !_distant;
+    let dist=_flyby?(r*1.18+14+Math.random()*8):(_distant?(r*1.45+150+Math.random()*340):(r*1.45+65+Math.random()*100));   // i lontani: offset laterale ampio → sparsi, defilati
     this._graze=_flyby;
-    const _yJit=_flyby?(Math.random()*2-1)*Math.min(r*0.5,30):(Math.random()*2-1)*40;
-    this.mesh.position.set(Math.cos(ang)*dist,_yJit,SPAWN_Z-Math.random()*(_flyby?260:400));
+    const _yJit=_flyby?(Math.random()*2-1)*Math.min(r*0.5,30):(_distant?(Math.random()*2-1)*100:(Math.random()*2-1)*40);   // i lontani spaziano più in alto/basso
+    this.mesh.position.set(Math.cos(ang)*dist,_yJit,SPAWN_Z-Math.random()*(_flyby?260:(_distant?700:400)));
     if(_flyby){ this.atmoMat.uniforms.uOp.value=1; }   // l'atmosfera deve leggersi piena durante lo sfioramento
     this.mesh.rotation.set(Math.random()*0.5-0.25,Math.random()*Math.PI*2,Math.random()*0.3-0.15);
     this.spin=(Math.random()*2-1)*0.007;
@@ -851,15 +854,15 @@ class Planet{
     pu.uHasAtmo.value=(this.isSun||meta.gray)?0:1; pu.uBump.value=this.isSun?0:(meta.bump!=null?meta.bump:3.0);
     pu.uRim.value.setHSL(meta.hue,0.6,0.62);
     const _im=ASSETS.pt[idx]&&ASSETS.pt[idx].image; if(_im&&_im.width&&_im.height) pu.uTexel.value.set(1/_im.width,1/_im.height); else pu.uTexel.value.set(1/2048,1/1024);  // passo del rilievo = texel reale della texture
-    this.atmo.visible=!this.isSun;
+    this.atmo.visible=!this.isSun && !_distant;
     // varietà cromatica: la saturazione/luce dello strato d'aria oscilla per spawn, il colore-2 segue la regione
     const _atmS=0.42+Math.random()*0.32, _atmL=0.54+Math.random()*0.12;
     this.atmoMat.uniforms.uColor.value.setHSL(meta.hue,_atmS,_atmL);
     this.atmoMat.uniforms.uColor2.value.copy(director.grade).lerp(_white,0.45).lerp(this.atmoMat.uniforms.uColor.value,0.35); // cielo coerente con la regione
-    this.clouds.visible=!!meta.earth;
-    const ring=!this.isSun&&(meta.ring||Math.random()<0.3); this.ring.visible=ring;
+    this.clouds.visible=!!meta.earth && !_distant;
+    const ring=!this.isSun&&!_distant&&(meta.ring||Math.random()<0.3); this.ring.visible=ring;
     if(ring) this.ring.rotation.set(Math.PI/2+(Math.random()*0.5-0.25),0,Math.random()*0.3-0.15);
-    this.nMoons=this.isSun?0:((Math.random()*3)|0);
+    this.nMoons=(this.isSun||_distant)?0:((Math.random()*3)|0);
     for(let i=0;i<this.moons.length;i++){ const mo=this.moons[i]; if(i<this.nMoons){ mo.mesh.visible=true; mo.rad=1.4+Math.random()*0.8; mo.sp=(0.3+Math.random()*0.5)*(Math.random()<0.5?1:-1); mo.ph=Math.random()*6.28; mo.mesh.scale.setScalar(0.12+Math.random()*0.12);} else mo.mesh.visible=false; }
     if(this.isSun && lensflare){ this.mesh.add(lensflare); lensflare.visible=true; }
     this.mesh.visible=true;
@@ -1635,7 +1638,7 @@ function animate(){
     fastDust.geometry.attributes.position.needsUpdate=true; }
 
   // pianeti
-  planetTimer-=dt; if(planetTimer<=0){ planetTimer=4+Math.random()*5; const fp=planets.find(p=>!p.active); if(fp&&Math.random()<director.cur.planet*1.4+0.05){ grazeNext=(Math.random()<0.06); fp.spawn(); grazeNext=false; } }   // più frequenti + base minima; ~6% un raro flyby ravvicinato
+  planetTimer-=dt; if(planetTimer<=0){ planetTimer=3.5+Math.random()*4; const fp=planets.find(p=>!p.active); if(fp&&Math.random()<director.cur.planet*1.4+0.14){ grazeNext=(Math.random()<0.05); fp.spawn(false,null,Math.random()<0.45); grazeNext=false; } }   // più pianeti + base più alta (niente vuoto); ~45% mondi lontani defilati; ~5% flyby
   let nearestPlanet=null,nearScore=0,nearSun=null,nearSunK=0;
   for(const p of planets){ p.update(dt,speed); if(!p.active) continue; const z=p.mesh.position.z;
     if(p.isSun){ if(z>-1400&&z<90){ const k=p.mesh.scale.x/Math.max(70,-z+160); if(k>nearSunK){nearSunK=k;nearSun=p;} } }
