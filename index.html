@@ -455,6 +455,7 @@ let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia ape
 // VARIETÀ DI MOVIMENTO a livello di corpo (rotazioni/derive: NON deformano la mesh)
 let barrelTarget=0, barrelCur=0, barrelAxis=0, barrelHold=40;  // capriola lenta su asse alternato (0=Z roll, 1=X tumble); barrelHold=cooldown
 let spinRateCur=0.06, spinRateTarget=0.06, spinRetargetT=22;   // velocità di rotazione Y variabile e dolce
+let manTumble=0, tumbleRateCur=0.08, tumbleRateTarget=0.08, tumbleRetargetT=16;   // CAPOVOLTA continua sull'asse X: il corpo ruzzola a 360° (caduta libera reale, lento e variabile)
 let sling=0, bhClose=false;    // fionda gravitazionale: spinta dopo un buco nero
 // --- REAZIONE SOBRIA al colpo/sfioramento (solo passaggi NATURALI ravvicinati) ---
 let hitFlash=0, hitTremor=0, hitTumble=0;          // scalari decadenti del colpo meteora (one-shot)
@@ -560,17 +561,17 @@ function build(){
          vec3 _nr=(position-uBMin)/max(uBMax-uBMin,vec3(1e-4));
          float _h=(uBMax.y-uBMin.y); float _ax=_nr.x-0.5; float _side=_ax>=0.0?1.0:-1.0;
          float _arm=smoothstep(0.42,1.0,abs(_ax)*2.0); float _leg=smoothstep(0.5,0.02,_nr.y); float _t=uTime*0.95;
-         transformed.y += sin(_t + _side*0.4)*_h*0.13*_arm*uFloatAmt;             // braccia su/giù (più ampie)
-         transformed.z += sin(_t*0.85 + 1.2)*_h*0.11*_arm*uFloatAmt;              // braccia avanti/dietro
-         transformed.x += sin(_t*0.9)*_h*0.05*_arm*_side*uFloatAmt;               // braccia apri/chiudi
+         transformed.y += sin(_t + _side*0.4)*_h*0.055*_arm*uFloatAmt;            // braccia su/giù (ridotte: meno stiramento)
+         transformed.z += sin(_t*0.85 + 1.2)*_h*0.05*_arm*uFloatAmt;              // braccia avanti/dietro
+         transformed.x += sin(_t*0.9)*_h*0.025*_arm*_side*uFloatAmt;              // braccia apri/chiudi
          transformed.z += sin(_t*0.8 + _side*3.14159)*_h*0.12*_leg*uFloatAmt;     // gambe a forbice
          transformed.x += sin(_t*0.7)*_h*0.06*_leg*_side*uFloatAmt;
          transformed.y += sin(_t*0.6 + _side*3.14159)*_h*0.05*_leg*uFloatAmt;
          transformed.x += sin(_t*0.5 + _nr.y*3.0)*_h*0.014*uFloatAmt;
-         transformed.x += _h*0.24*_arm*_side*uArmOpen;            // CELEBRAZIONE: braccia spalancate (posa a stella)
-         transformed.y += _h*0.05*_arm*uArmOpen;                  // braccia leggermente alzate
+         transformed.x += _h*0.09*_arm*_side*uArmOpen;            // CELEBRAZIONE: braccia aperte (ridotta, niente più stiramento)
+         transformed.y += _h*0.03*_arm*uArmOpen;                  // braccia leggermente alzate
          transformed.x += _h*0.10*_leg*_side*uArmOpen;            // gambe un po' aperte
-         transformed.z += _h*0.24*_arm*uArmBack;                  // FIONDA: braccia scaraventate all'indietro
+         transformed.z += _h*0.10*_arm*uArmBack;                  // FIONDA: braccia indietro (ridotta)
          transformed.z += _h*0.15*_leg*uArmBack;                  // gambe trascinate dalla spinta
          vManNrm=_nr;                                            // coord 0..1 del box → maschera visore nel fragment
          vManNormV=normalize(normalMatrix*objectNormal);`);
@@ -1743,17 +1744,21 @@ function animate(){
   manArmBack.value += ((sling>0?1:0)-manArmBack.value)*Math.min(1,dt*5.0);     // FIONDA: braccia/gambe scaraventate indietro
   if(flipCur>=6.28318 && flipTarget>=6.28318){ flipCur-=6.28318; flipTarget-=6.28318; }  // tieni gli angoli piccoli (24/7)
   // velocità di rotazione Y che varia dolcemente nel tempo (a volte quasi ferma, a volte un giro più deciso)
-  spinRetargetT-=dt*timeScale; if(spinRetargetT<=0){ spinRetargetT=20+Math.random()*30; spinRateTarget=0.018+Math.random()*0.085; }
+  spinRetargetT-=dt*timeScale; if(spinRetargetT<=0){ spinRetargetT=20+Math.random()*30; spinRateTarget=0.04+Math.random()*0.10; }
   spinRateCur += (spinRateTarget-spinRateCur)*Math.min(1,dt*0.25);
   manSpin=(manSpin+dt*timeScale*spinRateCur)%6.28318;                 // rotazione continua su se stesso, ritmo variabile
+  // CAPOVOLTA continua sull'asse X: la caduta libera fa ruzzolare il corpo a 360° (lento, ritmo variabile)
+  tumbleRetargetT-=dt*timeScale; if(tumbleRetargetT<=0){ tumbleRetargetT=16+Math.random()*24; tumbleRateTarget=0.05+Math.random()*0.10; }
+  tumbleRateCur += (tumbleRateTarget-tumbleRateCur)*Math.min(1,dt*0.25);
+  manTumble=(manTumble+dt*timeScale*tumbleRateCur)%6.28318;
   // CAPRIOLA LENTA occasionale su asse alternato (barrel roll completo, dolce, non un giro brusco)
   if(barrelTarget<=barrelCur+0.01 && barrelHold<=0){ if(Math.random()<dt*0.012){ barrelCur%=6.28318; barrelTarget=barrelCur+6.28318; barrelAxis=Math.random()<0.5?0:1; barrelHold=30+Math.random()*60; } }   // wrap a inizio giro → barrelCur resta limitato (24/7, niente drift di precisione)
   else barrelHold-=dt*timeScale;
   barrelCur += (barrelTarget-barrelCur)*Math.min(1,dt*timeScale*0.10);   // ~10s per un giro completo
   const _trem=hitTremor + planetBuffet*0.05;                          // tremore comune (colpo meteora + buffeting pianeta)
   manRig.rotation.y = manSpin + Math.sin(mt*0.05)*0.18;               // giro + oscillazione
-  manRig.rotation.x = -0.06 + Math.sin(mt*0.045)*0.22 + flipCur + (barrelAxis===1?barrelCur:0) + slingE*0.55 + Math.sin(mt*4.0)*slingE*0.12
-                    + hitTumble*0.9 + Math.sin(mt*23.0)*_trem*0.5;     // + tumble lento + tuffo/tremito + micro-capriola da colpo
+  manRig.rotation.x = manTumble + Math.sin(mt*0.045)*0.18 + flipCur + (barrelAxis===1?barrelCur:0) + slingE*0.55 + Math.sin(mt*4.0)*slingE*0.12
+                    + hitTumble*0.9 + Math.sin(mt*23.0)*_trem*0.5;     // capovolta continua 360° + oscillazione + tuffo/tremito + micro-capriola da colpo
   manRig.rotation.z = Math.sin(mt*0.035+1.0)*0.20 + (barrelAxis===0?barrelCur:0) + Math.sin(mt*5.3)*slingE*0.10
                     + Math.sin(mt*19.0+1.7)*_trem*0.6;                 // + barrel roll lento su Z + tremito (asse diverso → naturale)
   const _bDriftX=Math.sin(mt*1.3)*planetBuffet*0.10, _bDriftY=Math.sin(mt*1.07+2.1)*planetBuffet*0.08;   // ondulazione lenta da atmosfera
@@ -1796,8 +1801,9 @@ class AmbientEngine{
   start(){ if(this.ready) return; const Ctx=window.AudioContext||window.webkitAudioContext; this.ctx=new Ctx(); const ctx=this.ctx;
     this.master=ctx.createGain(); this.master.gain.value=0.0001;
     this.comp=ctx.createDynamicsCompressor(); this.comp.threshold.value=-18; this.comp.ratio.value=4; this.comp.attack.value=0.05; this.comp.release.value=0.4;
-    this.verb=ctx.createConvolver(); this.verb.buffer=this._imp(4.2,3.0); this.wet=ctx.createGain(); this.wet.gain.value=0.55; this.dry=ctx.createGain(); this.dry.gain.value=0.6;
-    this.master.connect(this.dry).connect(this.comp); this.master.connect(this.verb).connect(this.wet).connect(this.comp); this.comp.connect(ctx.destination);
+    this.verb=ctx.createConvolver(); this.verb.buffer=this._imp(6.2,2.5); this.wet=ctx.createGain(); this.wet.gain.value=0.58; this.dry=ctx.createGain(); this.dry.gain.value=0.6;
+    this.verbHP=ctx.createBiquadFilter(); this.verbHP.type='highpass'; this.verbHP.frequency.value=95;   // tiene pulita la coda lunga del riverbero (niente fango dal sub) → spazio "vasto"
+    this.master.connect(this.dry).connect(this.comp); this.master.connect(this.verbHP).connect(this.verb).connect(this.wet).connect(this.comp); this.comp.connect(ctx.destination);
     this.filter=ctx.createBiquadFilter(); this.filter.type='lowpass'; this.filter.frequency.value=600; this.filter.Q.value=0.7;
     this.padGain=ctx.createGain(); this.padGain.gain.value=0.5; this.filter.connect(this.padGain).connect(this.master);
     this.lfo=ctx.createOscillator(); this.lfo.frequency.value=0.04; this.lfoGain=ctx.createGain(); this.lfoGain.gain.value=280; this.lfo.connect(this.lfoGain).connect(this.filter.frequency); this.lfo.start();
@@ -1811,40 +1817,52 @@ class AmbientEngine{
     this.dread2=ctx.createOscillator(); this.dread2.type='sine'; this.dread2.frequency.value=30.7; // battimento
     this.dread.connect(this.dreadG).connect(this.master); this.dread2.connect(this.dreadG); this.dread.start(); this.dread2.start();
     this._novaFx=false;
-    // --- strati melodici (creati una volta, riusati 24/7): arpeggio "interstellar" + lead "marooned" ---
+    // --- colore "nastro": wow & flutter, un lievissimo drift d'intonazione condiviso (cent) → calore analogico nostalgico ---
+    this.wow=ctx.createOscillator(); this.wow.type='sine'; this.wow.frequency.value=0.07; this.wowG=ctx.createGain(); this.wowG.gain.value=6.0; this.wow.connect(this.wowG); this.wow.start();
+    this.flut=ctx.createOscillator(); this.flut.type='sine'; this.flut.frequency.value=0.33; this.flutG=ctx.createGain(); this.flutG.gain.value=2.5; this.flut.connect(this.flutG); this.flut.start();
+    for(const v of this.voices){ this.wowG.connect(v.o.detune); this.flutG.connect(v.o.detune); }
+    // --- eco/delay con feedback addolcito → scia ipnotica da sequencer (Treza / Tangerine Dream) ---
+    this.echo=ctx.createDelay(2.0); this.echo.delayTime.value=0.6; this.echoFb=ctx.createGain(); this.echoFb.gain.value=0.40;
+    this.echoTone=ctx.createBiquadFilter(); this.echoTone.type='lowpass'; this.echoTone.frequency.value=1700;
+    this.echo.connect(this.echoTone).connect(this.echoFb).connect(this.echo); this.echoMix=ctx.createGain(); this.echoMix.gain.value=0.5; this.echoTone.connect(this.echoMix).connect(this.master);
+    // --- arpeggio: sequencer ipnotico (motivo ad anello sui toni dell'accordo) con auto-pan stereo + eco ---
     this.arpFilt=ctx.createBiquadFilter(); this.arpFilt.type='lowpass'; this.arpFilt.frequency.value=2300; this.arpFilt.Q.value=0.3;
-    this.arpOsc=ctx.createOscillator(); this.arpOsc.type='triangle'; this.arpOsc.frequency.value=this._f(this.root+12);
-    this.arpEnv=ctx.createGain(); this.arpEnv.gain.value=0.0001; this.arpMix=ctx.createGain(); this.arpMix.gain.value=0.0001;
-    this.arpOsc.connect(this.arpFilt).connect(this.arpEnv).connect(this.arpMix).connect(this.master); this.arpOsc.start();
+    this.arpOsc=ctx.createOscillator(); this.arpOsc.type='triangle'; this.arpOsc.frequency.value=this._f(this.root+12); this.wowG.connect(this.arpOsc.detune);
+    this.arpEnv=ctx.createGain(); this.arpEnv.gain.value=0.0001; this.arpPan=ctx.createStereoPanner(); this.arpMix=ctx.createGain(); this.arpMix.gain.value=0.0001;
+    this.arpOsc.connect(this.arpFilt).connect(this.arpEnv).connect(this.arpPan).connect(this.arpMix).connect(this.master); this.arpMix.connect(this.echo); this.arpOsc.start();
+    this.panLfo=ctx.createOscillator(); this.panLfo.type='sine'; this.panLfo.frequency.value=0.05; this.panLfoG=ctx.createGain(); this.panLfoG.gain.value=0.65; this.panLfo.connect(this.panLfoG).connect(this.arpPan.pan); this.panLfo.start();
+    this.arpPat=[0,2,1,3, 2,4,3,1, 0,2,3,4]; this._arpP=0;
+    // --- lead: note lunghe con bend + vibrato (Marooned / Gilmour), mandato all'eco ---
     this.leadFilt=ctx.createBiquadFilter(); this.leadFilt.type='lowpass'; this.leadFilt.frequency.value=2400; this.leadFilt.Q.value=0.5;
     this.leadOsc=ctx.createOscillator(); this.leadOsc.type='sine'; this.leadOsc.frequency.value=this._f(this.root+19);
     this.leadEnv=ctx.createGain(); this.leadEnv.gain.value=0.0001; this.leadMix=ctx.createGain(); this.leadMix.gain.value=0.0001;
-    this.leadVib=ctx.createOscillator(); this.leadVib.type='sine'; this.leadVib.frequency.value=5.0; this.leadVibG=ctx.createGain(); this.leadVibG.gain.value=5.0; this.leadVib.connect(this.leadVibG).connect(this.leadOsc.detune); this.leadVib.start();
-    this.leadOsc.connect(this.leadFilt).connect(this.leadEnv).connect(this.leadMix).connect(this.master); this.leadOsc.start();
-    // --- "movimenti": tavolozze armoniche tra cui la colonna sonora deriva lentamente (ogni ~2.5-4 min) ---
+    this.leadVib=ctx.createOscillator(); this.leadVib.type='sine'; this.leadVib.frequency.value=5.0; this.leadVibG=ctx.createGain(); this.leadVibG.gain.value=5.0; this.leadVib.connect(this.leadVibG).connect(this.leadOsc.detune); this.leadVib.start(); this.wowG.connect(this.leadOsc.detune);
+    this.leadOsc.connect(this.leadFilt).connect(this.leadEnv).connect(this.leadMix).connect(this.master); this.leadMix.connect(this.echo); this.leadOsc.start();
+    // --- "movimenti": tavolozze armoniche con progressione di accordi ad anello e tempo dell'arpeggio propri ---
     this.movs=[
-      {name:'aeolian',      root:38, scale:[0,2,3,5,7,8,10], chord:[0,7,12,15,19], filtBase:320, filtRange:1500, wetBase:0.42, padBase:0.34, det:6,  lfo:0.040, trem:0.050, vib:0,   arp:0,    lead:0   },
-      {name:'interstellar', root:36, scale:[0,2,3,5,7,8,11], chord:[0,7,12,19,24], filtBase:380, filtRange:1900, wetBase:0.40, padBase:0.32, det:5,  lfo:0.050, trem:0.050, vib:0,   arp:0.85, lead:0   },
-      {name:'marooned',     root:33, scale:[0,3,5,7,10],     chord:[0,7,10,15,19], filtBase:300, filtRange:1300, wetBase:0.58, padBase:0.34, det:8,  lfo:0.038, trem:0.042, vib:5.0, arp:0,    lead:0.8 },
-      {name:'phrygian',     root:34, scale:[0,1,3,5,7,8,10], chord:[0,7,12,17,20], filtBase:260, filtRange:1200, wetBase:0.55, padBase:0.30, det:12, lfo:0.045, trem:0.045, vib:4.0, arp:0,    lead:0.35},
-      {name:'dorian',       root:40, scale:[0,2,3,5,7,9,10], chord:[0,7,12,16,21], filtBase:360, filtRange:1700, wetBase:0.46, padBase:0.32, det:7,  lfo:0.048, trem:0.050, vib:4.2, arp:0.5,  lead:0.4 },
+      {name:'aeolian',      root:38, scale:[0,2,3,5,7,8,10], chord:[0,7,12,15,19], prog:[0,-4,-2,-5], tempo:1.40, filtBase:320, filtRange:1500, wetBase:0.46, padBase:0.34, lfo:0.040, trem:0.045, vib:0,   arp:0.40, lead:0    },
+      {name:'interstellar', root:36, scale:[0,2,3,5,7,8,11], chord:[0,7,12,19,24], prog:[0, 3,-2, 0], tempo:1.05, filtBase:380, filtRange:1900, wetBase:0.44, padBase:0.32, lfo:0.050, trem:0.045, vib:0,   arp:0.85, lead:0    },
+      {name:'marooned',     root:33, scale:[0,3,5,7,10],     chord:[0,7,10,15,19], prog:[0,-5,-2,-5], tempo:1.60, filtBase:300, filtRange:1300, wetBase:0.58, padBase:0.34, lfo:0.038, trem:0.040, vib:5.0, arp:0.28, lead:0.80 },
+      {name:'phrygian',     root:34, scale:[0,1,3,5,7,8,10], chord:[0,7,12,17,20], prog:[0, 1,-4, 0], tempo:1.50, filtBase:260, filtRange:1200, wetBase:0.56, padBase:0.30, lfo:0.045, trem:0.045, vib:4.0, arp:0.30, lead:0.40 },
+      {name:'dorian',       root:40, scale:[0,2,3,5,7,9,10], chord:[0,7,12,16,21], prog:[0, 5,-2, 3], tempo:1.20, filtBase:360, filtRange:1700, wetBase:0.48, padBase:0.32, lfo:0.048, trem:0.048, vib:4.2, arp:0.55, lead:0.45 },
     ];
-    this.movIdx=0; this.cur={filtBase:320,filtRange:1500,wetBase:0.42,padBase:0.34}; this.tgt={filtBase:320,filtRange:1500,wetBase:0.42,padBase:0.34};
+    this.movIdx=0; this.cur={filtBase:320,filtRange:1500,wetBase:0.46,padBase:0.34}; this.tgt={filtBase:320,filtRange:1500,wetBase:0.46,padBase:0.34};
     this.scale=this.movs[0].scale; this.rootBase=this.movs[0].root; this.chordV=this.movs[0].chord; this.root=this.rootBase;
-    this.arpT=0; this.arpEvery=1.2; this._arpDir=1; this._arpI=0; this.leadT=0; this.leadEvery=4; this._leadDeg=0;
+    this.arpBase=this.movs[0].arp; this.arpCur=0; this.leadBase=this.movs[0].lead; this.leadCur=0; this._progI=0;
+    this.arpT=0; this.arpEvery=this.movs[0].tempo; this.leadT=0; this.leadEvery=4; this._leadDeg=0;
+    this.breathPh=0; this.breathLen=80+Math.random()*45;   // respiro lento (crescendo/diminuendo) per onde immersive
     this.movT=0; this.movEvery=150+Math.random()*120;
-    this.changeT=0; this.changeEvery=24+Math.random()*16; this.shimT=0; this.shimEvery=9+Math.random()*10;
-    this.master.gain.setValueAtTime(0.0001,ctx.currentTime); this.master.gain.exponentialRampToValueAtTime(0.5,ctx.currentTime+6); this.ready=true; }
+    this.changeT=0; this.changeEvery=11+Math.random()*5; this.shimT=0; this.shimEvery=9+Math.random()*10;
+    this.master.gain.setValueAtTime(0.0001,ctx.currentTime); this.master.gain.exponentialRampToValueAtTime(0.44,ctx.currentTime+6); this.ready=true; }
   _f(m){ return 440*Math.pow(2,(m-69)/12); }
   _imp(dur,decay){ const ctx=this.ctx,rate=ctx.sampleRate,len=(rate*dur)|0,buf=ctx.createBuffer(2,len,rate);
     for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay); } return buf; }
-  _chord(){ const ctx=this.ctx,t=ctx.currentTime,o=[0,0,0,3,5,7,-5],d=o[(Math.random()*o.length)|0]; this.root=this.rootBase+d;   // bass si muove di 4ª/5ª attorno al root del movimento
-    for(const v of this.voices) v.o.frequency.setTargetAtTime(this._f(this.root+v.semi),t,4.0); this.sub.frequency.setTargetAtTime(this._f(this.root-12),t,4.0); }
-  _arpStep(){ const ctx=this.ctx,t=ctx.currentTime,tn=this.chordV,n=tn.length;   // arpeggio ascendente/discendente sui toni dell'accordo (stile Interstellar/organo)
-    this._arpI+=this._arpDir; if(this._arpI>=n){ this._arpI=n-2; this._arpDir=-1; } else if(this._arpI<0){ this._arpI=1; this._arpDir=1; }
-    this.arpOsc.frequency.setTargetAtTime(this._f(this.root+tn[this._arpI]+12),t,0.05);
-    const e=this.arpEnv.gain; e.cancelScheduledValues(t); e.setValueAtTime(Math.max(e.value,0.0001),t);
-    e.exponentialRampToValueAtTime(0.085,t+0.28); e.exponentialRampToValueAtTime(0.0001,t+this.arpEvery*0.96); }
+  _chord(){ const ctx=this.ctx,t=ctx.currentTime,pr=this.movs[this.movIdx].prog; this._progI=(this._progI+1)%pr.length; this.root=this.rootBase+pr[this._progI];   // progressione ad anello → cadenza nostalgica diretta (no random)
+    for(const v of this.voices) v.o.frequency.setTargetAtTime(this._f(this.root+v.semi),t,4.5); this.sub.frequency.setTargetAtTime(this._f(this.root-12),t,4.5); }
+  _arpStep(){ const ctx=this.ctx,t=ctx.currentTime,cv=this.chordV,pat=this.arpPat,idx=pat[this._arpP%pat.length],oc=((this._arpP%(pat.length*2))<pat.length?0:12); this._arpP++;   // motivo ad anello che ogni due giri sale d'ottava → mutazione lenta
+    this.arpOsc.frequency.setTargetAtTime(this._f(this.root+cv[idx%cv.length]+12+oc),t,0.04);
+    const e=this.arpEnv.gain,dur=this.arpEvery; e.cancelScheduledValues(t); e.setValueAtTime(Math.max(e.value,0.0001),t);
+    e.exponentialRampToValueAtTime(0.072,t+0.05); e.exponentialRampToValueAtTime(0.0001,t+dur*0.92); }
   _leadStep(){ const ctx=this.ctx,t=ctx.currentTime;   // lead lento con bend e vibrato (stile Marooned / Gilmour)
     if(Math.random()<0.22){ this.leadEnv.gain.setTargetAtTime(0.0001,t,1.2); this.leadEvery=4+Math.random()*4; return; }   // ogni tanto una pausa: lascia respirare
     const sc=this.scale,n=sc.length,step=(Math.random()<0.6?(Math.random()<0.5?1:-1):(Math.random()<0.5?2:-2));
@@ -1856,9 +1874,9 @@ class AmbientEngine{
   _applyMovement(i,glide){ const mv=this.movs[i],ctx=this.ctx,t=ctx.currentTime; this.movIdx=i;   // deriva graduale verso una nuova tavolozza armonica
     this.scale=mv.scale; this.rootBase=mv.root; this.chordV=mv.chord; this.root=mv.root;
     this.tgt.filtBase=mv.filtBase; this.tgt.filtRange=mv.filtRange; this.tgt.wetBase=mv.wetBase; this.tgt.padBase=mv.padBase;
-    for(let k=0;k<this.voices.length;k++){ const v=this.voices[k]; v.semi=mv.chord[k]; v.o.frequency.setTargetAtTime(this._f(this.root+v.semi),t,glide); v.o.detune.setTargetAtTime((Math.random()*2-1)*mv.det,t,glide); }
+    for(let k=0;k<this.voices.length;k++){ const v=this.voices[k]; v.semi=mv.chord[k]; v.o.frequency.setTargetAtTime(this._f(this.root+v.semi),t,glide); }
     this.sub.frequency.setTargetAtTime(this._f(this.root-12),t,glide);
-    this.arpMix.gain.setTargetAtTime(mv.arp,t,8); this.leadMix.gain.setTargetAtTime(mv.lead,t,8);
+    this.arpBase=mv.arp; this.leadBase=mv.lead; this.arpEvery=mv.tempo; this.echo.delayTime.setTargetAtTime(mv.tempo*0.5,t,glide);   // l'eco si aggancia al tempo dell'arpeggio
     this.leadVib.frequency.setTargetAtTime(mv.vib||4.5,t,6); this.lfo.frequency.setTargetAtTime(mv.lfo,t,6); this.trem.frequency.setTargetAtTime(mv.trem,t,6); }
   _shim(){ const ctx=this.ctx,t=ctx.currentTime,deg=this.scale[(Math.random()*this.scale.length)|0],note=this.root+24+deg+(Math.random()<0.5?12:0);
     const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=this._f(note); const g=ctx.createGain(); g.gain.value=0.0001; o.connect(g).connect(this.filter); o.start(t);
@@ -1866,17 +1884,23 @@ class AmbientEngine{
   update(dt,dir,mood){ if(!this.ready||this.ctx.state!=='running') return; const t=this.ctx.currentTime;
     const m=mood||{planet:0,dread:0,nova:0},c=this.cur,k=Math.min(1,dt/12);   // lerp lento (~12s) dei parametri del movimento → cambi impercettibili
     c.filtBase+=(this.tgt.filtBase-c.filtBase)*k; c.filtRange+=(this.tgt.filtRange-c.filtRange)*k; c.wetBase+=(this.tgt.wetBase-c.wetBase)*k; c.padBase+=(this.tgt.padBase-c.padBase)*k;
-    // musica reattiva (su base "movimento"): pianeta → più caldo/pieno; buco nero → cupo e basso; nebulosa → più luminosa
-    this.filter.frequency.setTargetAtTime(c.filtBase + dir.cur.aB*c.filtRange + m.planet*500 - m.dread*1000, t, 1.5);
-    this.padGain.gain.setTargetAtTime(c.padBase + dir.cur.aD*0.34 + m.planet*0.20 - m.dread*0.12, t, 1.5);
-    this.wet.gain.setTargetAtTime(c.wetBase + (1-dir.cur.aB)*0.3 + m.dread*0.3, t, 2.0);
+    // respiro lento (~80-125s): onde di crescendo/diminuendo → immersione "interstellar"
+    this.breathPh+=dt/this.breathLen; if(this.breathPh>=1){ this.breathPh-=1; this.breathLen=80+Math.random()*45; }
+    const sw=0.5-0.5*Math.cos(this.breathPh*6.28318);   // 0→1→0 dolce
+    // musica reattiva (su base "movimento") + respiro: pianeta → più caldo/pieno; buco nero → cupo e basso; nebulosa → più luminosa
+    this.filter.frequency.setTargetAtTime(c.filtBase + sw*760 + dir.cur.aB*c.filtRange + m.planet*500 - m.dread*1000, t, 1.5);
+    this.padGain.gain.setTargetAtTime(c.padBase + sw*0.06 + dir.cur.aD*0.30 + m.planet*0.20 - m.dread*0.12, t, 1.5);
+    this.wet.gain.setTargetAtTime(c.wetBase + sw*0.06 + (1-dir.cur.aB)*0.28 + m.dread*0.3, t, 2.0);
     this.dreadG.gain.setTargetAtTime(m.dread*0.5, t, 1.2);
+    // presenza arpeggio/lead: dissolvenza lenta del movimento (~8s) modulata dal respiro
+    this.arpCur+=(this.arpBase-this.arpCur)*Math.min(1,dt/8); this.leadCur+=(this.leadBase-this.leadCur)*Math.min(1,dt/8);
+    this.arpMix.gain.setTargetAtTime(this.arpCur*(0.55+0.45*sw)*(1-m.dread*0.5), t, 0.9);
+    this.leadMix.gain.setTargetAtTime(this.leadCur*(0.60+0.40*sw), t, 0.9);
     if(m.nova && !this._novaFx){ this._novaFx=true; this._shim(); this._shim(); setTimeout(()=>{this._novaFx=false;},3500); }
-    this.changeT+=dt; if(this.changeT>=this.changeEvery){ this.changeT=0; this.changeEvery=22+Math.random()*18; this._chord(); }
+    this.changeT+=dt; if(this.changeT>=this.changeEvery){ this.changeT=0; this.changeEvery=11+Math.random()*5; this._chord(); }
     this.shimT+=dt; if(this.shimT>=this.shimEvery){ this.shimT=0; this.shimEvery=8+Math.random()*12; if(dir.cur.aB>0.3 && m.dread<0.3) this._shim(); }
-    const mv=this.movs[this.movIdx];
-    if(mv.arp>0){ this.arpT+=dt; if(this.arpT>=this.arpEvery){ this.arpT=0; this.arpEvery=1.1+Math.random()*0.5; this._arpStep(); } }
-    if(mv.lead>0){ this.leadT+=dt; if(this.leadT>=this.leadEvery){ this.leadT=0; this._leadStep(); } }
+    if(this.arpBase>0||this.arpCur>0.01){ this.arpT+=dt; if(this.arpT>=this.arpEvery){ this.arpT=0; this._arpStep(); } }   // tempo fisso per movimento → pulsazione ipnotica agganciata all'eco
+    if(this.leadBase>0||this.leadCur>0.01){ this.leadT+=dt; if(this.leadT>=this.leadEvery){ this.leadT=0; this._leadStep(); } }
     this.movT+=dt; if(this.movT>=this.movEvery){ this.movT=0; this.movEvery=150+Math.random()*120; let n=this.movIdx; while(n===this.movIdx) n=(Math.random()*this.movs.length)|0; this._applyMovement(n,12+Math.random()*6); } }   // ogni ~2.5-4 min: deriva verso un nuovo movimento
 }
 const audio=new AmbientEngine();
