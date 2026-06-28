@@ -511,7 +511,7 @@ function build(){
   ];
   // lastre di nebulosa a profondità sfalsate: strati di foschia che scorrono → volume attraversato
   nebSheets=[];
-  const NEB_SHEETS=IS_MOBILE?5:7;   // 2 lastre extra più profonde (solo desktop) per foschia più stratificata
+  const NEB_SHEETS=5;   // tornato a 5 lastre (il 4° strato di stelle dà già più profondità; 7 lastre fbm = troppo fill-rate)
   for(let i=0;i<NEB_SHEETS;i++){
     const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
       uniforms:{uTime:{value:Math.random()*100},uColor:{value:new THREE.Color(0x4a5a8c)},uSeed:{value:Math.random()*10},uOp:{value:0}},
@@ -519,9 +519,7 @@ function build(){
       fragmentShader:NOISE_GLSL+`varying vec2 vUv;uniform float uTime,uSeed,uOp;uniform vec3 uColor;
         void main(){ vec2 p=vUv-0.5; float r=length(p);
           float n=fbm(vec3(vUv*3.0+uSeed,uTime*0.02));
-          float n2=fbm(vec3(vUv*7.0-uSeed,uTime*0.015));   // seconda ottava: filamenti più fini → profondità
-          float dens=0.22+0.5*n+0.18*n2;
-          float a=smoothstep(0.5,0.02,r)*dens; gl_FragColor=vec4(uColor*(0.28+0.45*n+0.12*n2), a*uOp); }`});
+          float a=smoothstep(0.5,0.02,r)*(0.25+0.6*n); gl_FragColor=vec4(uColor*(0.3+0.5*n), a*uOp); }`});
     const m=new THREE.Mesh(new THREE.PlaneGeometry(1,1),mat); m.frustumCulled=false; m.renderOrder=-11;
     const sz=700+Math.random()*700; m.scale.set(sz,sz,1);
     m.position.set((Math.random()*2-1)*900,(Math.random()*2-1)*500, -6000+i*960+Math.random()*400);
@@ -678,9 +676,7 @@ function build(){
       vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:NOISE_GLSL+`varying vec2 vUv;uniform float uTime,uSeed,uOpacity;uniform vec3 uColor;
         void main(){vec2 p=vUv-0.5;float r=length(p);float n=fbm(vec3(vUv*4.0+uSeed,uTime*0.05));
-        float n2=fbm(vec3(vUv*9.0-uSeed,uTime*0.03));
-        float core=smoothstep(0.5,0.0,r);float depth=mix(0.7,1.0,n2);   // nucleo più denso → senso di volume
-        float a=core*(0.4+0.6*n)*depth;gl_FragColor=vec4(uColor*(0.55+0.55*n+0.12*n2),a*uOpacity);}`});
+        float a=smoothstep(0.5,0.0,r)*(0.4+0.6*n);gl_FragColor=vec4(uColor*(0.6+n),a*uOpacity);}`});
     const m=new THREE.Mesh(new THREE.PlaneGeometry(1,1),mat); m.visible=false; m.frustumCulled=false; scene.add(m);
     wisps.push({mesh:m,mat,active:false,spin:0});
   }
@@ -1543,11 +1539,12 @@ let lastDay=Math.floor((Date.now()-TEL.launch)/86400000), persistT=0, dilLogged=
 const tmpLook=new THREE.Vector3(), planetFocus=new THREE.Vector3(), _bhProj=new THREE.Vector3();
 
 // auto-scaler
-let fpsAcc=0,fpsN=0,fpsTimer=0,tier=0;
+let fpsAcc=0,fpsN=0,fpsTimer=0,tier=0,tierCooldown=0;
 function autoscale(dt,fps){
   fpsTimer+=dt; if(fpsTimer<2) return; fpsTimer=0;
-  if(fps<50 && tier<2){ tier++; applyTier(); }
-  else if(fps>58 && tier>0){ tier--; applyTier(); }
+  if(tierCooldown>0){ tierCooldown-=2; return; }                 // dopo un cambio aspetta ~8s → niente flip-flop (i micro-hitch venivano dalla realloc dei target ad ogni cambio)
+  if(fps<48 && tier<2){ tier++; applyTier(); tierCooldown=8; }    // banda più larga (48–60) → cambi più rari
+  else if(fps>60 && tier>0){ tier--; applyTier(); tierCooldown=8; }
 }
 function applyTier(){
   if(tier===0) PIX=Math.min(window.devicePixelRatio||1,PIX_HI);
@@ -1749,10 +1746,9 @@ function animate(){
   spinRateCur += (spinRateTarget-spinRateCur)*Math.min(1,dt*0.25);
   manSpin=(manSpin+dt*timeScale*spinRateCur)%6.28318;                 // rotazione continua su se stesso, ritmo variabile
   // CAPRIOLA LENTA occasionale su asse alternato (barrel roll completo, dolce, non un giro brusco)
-  if(barrelTarget<=barrelCur+0.01 && barrelHold<=0){ if(Math.random()<dt*0.012){ barrelTarget=barrelCur+6.28318; barrelAxis=Math.random()<0.5?0:1; barrelHold=30+Math.random()*60; } }
+  if(barrelTarget<=barrelCur+0.01 && barrelHold<=0){ if(Math.random()<dt*0.012){ barrelCur%=6.28318; barrelTarget=barrelCur+6.28318; barrelAxis=Math.random()<0.5?0:1; barrelHold=30+Math.random()*60; } }   // wrap a inizio giro → barrelCur resta limitato (24/7, niente drift di precisione)
   else barrelHold-=dt*timeScale;
   barrelCur += (barrelTarget-barrelCur)*Math.min(1,dt*timeScale*0.10);   // ~10s per un giro completo
-  if(barrelCur>6.28318 && barrelTarget>6.28318){ barrelCur-=6.28318; barrelTarget-=6.28318; }  // angoli piccoli (24/7)
   const _trem=hitTremor + planetBuffet*0.05;                          // tremore comune (colpo meteora + buffeting pianeta)
   manRig.rotation.y = manSpin + Math.sin(mt*0.05)*0.18;               // giro + oscillazione
   manRig.rotation.x = -0.06 + Math.sin(mt*0.045)*0.22 + flipCur + (barrelAxis===1?barrelCur:0) + slingE*0.55 + Math.sin(mt*4.0)*slingE*0.12
@@ -1811,6 +1807,28 @@ class AmbientEngine{
     this.dread2=ctx.createOscillator(); this.dread2.type='sine'; this.dread2.frequency.value=30.7; // battimento
     this.dread.connect(this.dreadG).connect(this.master); this.dread2.connect(this.dreadG); this.dread.start(); this.dread2.start();
     this._novaFx=false;
+    // --- strati melodici (creati una volta, riusati 24/7): arpeggio "interstellar" + lead "marooned" ---
+    this.arpFilt=ctx.createBiquadFilter(); this.arpFilt.type='lowpass'; this.arpFilt.frequency.value=2300; this.arpFilt.Q.value=0.3;
+    this.arpOsc=ctx.createOscillator(); this.arpOsc.type='triangle'; this.arpOsc.frequency.value=this._f(this.root+12);
+    this.arpEnv=ctx.createGain(); this.arpEnv.gain.value=0.0001; this.arpMix=ctx.createGain(); this.arpMix.gain.value=0.0001;
+    this.arpOsc.connect(this.arpFilt).connect(this.arpEnv).connect(this.arpMix).connect(this.master); this.arpOsc.start();
+    this.leadFilt=ctx.createBiquadFilter(); this.leadFilt.type='lowpass'; this.leadFilt.frequency.value=2400; this.leadFilt.Q.value=0.5;
+    this.leadOsc=ctx.createOscillator(); this.leadOsc.type='sine'; this.leadOsc.frequency.value=this._f(this.root+19);
+    this.leadEnv=ctx.createGain(); this.leadEnv.gain.value=0.0001; this.leadMix=ctx.createGain(); this.leadMix.gain.value=0.0001;
+    this.leadVib=ctx.createOscillator(); this.leadVib.type='sine'; this.leadVib.frequency.value=5.0; this.leadVibG=ctx.createGain(); this.leadVibG.gain.value=5.0; this.leadVib.connect(this.leadVibG).connect(this.leadOsc.detune); this.leadVib.start();
+    this.leadOsc.connect(this.leadFilt).connect(this.leadEnv).connect(this.leadMix).connect(this.master); this.leadOsc.start();
+    // --- "movimenti": tavolozze armoniche tra cui la colonna sonora deriva lentamente (ogni ~2.5-4 min) ---
+    this.movs=[
+      {name:'aeolian',      root:38, scale:[0,2,3,5,7,8,10], chord:[0,7,12,15,19], filtBase:320, filtRange:1500, wetBase:0.42, padBase:0.34, det:6,  lfo:0.040, trem:0.050, vib:0,   arp:0,    lead:0   },
+      {name:'interstellar', root:36, scale:[0,2,3,5,7,8,11], chord:[0,7,12,19,24], filtBase:380, filtRange:1900, wetBase:0.40, padBase:0.32, det:5,  lfo:0.050, trem:0.050, vib:0,   arp:0.85, lead:0   },
+      {name:'marooned',     root:33, scale:[0,3,5,7,10],     chord:[0,7,10,15,19], filtBase:300, filtRange:1300, wetBase:0.58, padBase:0.34, det:8,  lfo:0.038, trem:0.042, vib:5.0, arp:0,    lead:0.8 },
+      {name:'phrygian',     root:34, scale:[0,1,3,5,7,8,10], chord:[0,7,12,17,20], filtBase:260, filtRange:1200, wetBase:0.55, padBase:0.30, det:12, lfo:0.045, trem:0.045, vib:4.0, arp:0,    lead:0.35},
+      {name:'dorian',       root:40, scale:[0,2,3,5,7,9,10], chord:[0,7,12,16,21], filtBase:360, filtRange:1700, wetBase:0.46, padBase:0.32, det:7,  lfo:0.048, trem:0.050, vib:4.2, arp:0.5,  lead:0.4 },
+    ];
+    this.movIdx=0; this.cur={filtBase:320,filtRange:1500,wetBase:0.42,padBase:0.34}; this.tgt={filtBase:320,filtRange:1500,wetBase:0.42,padBase:0.34};
+    this.scale=this.movs[0].scale; this.rootBase=this.movs[0].root; this.chordV=this.movs[0].chord; this.root=this.rootBase;
+    this.arpT=0; this.arpEvery=1.2; this._arpDir=1; this._arpI=0; this.leadT=0; this.leadEvery=4; this._leadDeg=0;
+    this.movT=0; this.movEvery=150+Math.random()*120;
     this.changeT=0; this.changeEvery=24+Math.random()*16; this.shimT=0; this.shimEvery=9+Math.random()*10;
     this.master.gain.setValueAtTime(0.0001,ctx.currentTime); this.master.gain.exponentialRampToValueAtTime(0.5,ctx.currentTime+6); this.ready=true; }
   _f(m){ return 440*Math.pow(2,(m-69)/12); }
