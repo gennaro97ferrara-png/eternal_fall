@@ -464,6 +464,7 @@ let astHitCD=0;                                     // cooldown anti doppio-trig
 const _hitImp=new THREE.Vector3();                  // impulso direzionale RIUSATO (mai allocato nel loop)
 let planetBuffet=0;                                 // buffeting continuo dalla ghiera d'atmosfera del pianeta (0..1)
 let grazeNext=false;                               // il PROSSIMO spawn di pianeta sarà un raro flyby ravvicinato
+let hitFlip=0, hitFlipTarget=0, grazeFired=false;  // BURST all'impatto: 3-4 capriole verticali veloci su se stesso, poi atterra dritto
 let manMixer=null;
 let built=false, exposureCur=1.0;
 
@@ -926,6 +927,7 @@ function seedCompanions(){
 }
 // Fase B: window.cadutaAddStar(name) accende subito una stella del pubblico
 window.cadutaAddStar=(name)=>{ if(!name) return; companionPool.push(String(name).slice(0,40)); TEL.companions++; flipTarget+=6.28318; };  // arriva qualcuno → l'uomo fa una capriola verticale a braccia aperte
+window.cadutaDebugHit=(n)=>{ hitFlipTarget+=6.28318*(n||4); hitFlash=Math.max(hitFlash,0.6); return 'BURST x'+(n||4); };  // test: capriole verticali da impatto (console)
 
 /* ---------------- asteroidi ---------------- */
 const _m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_e=new THREE.Euler(),_s=new THREE.Vector3(),_p=new THREE.Vector3();
@@ -1657,7 +1659,9 @@ function animate(){
     const shellTop=r*1.025+10, shellBot=r*1.025;                  // ghiera: dal bordo atmosfera fino a 10 unità sopra
     planetBuffet=THREE.MathUtils.clamp((shellTop-_d)/(shellTop-shellBot),0,1);  // 0 fuori, →1 vicino al bordo atmosfera (mai dentro la sfera)
     planetBuffet=planetBuffet*planetBuffet*(3-2*planetBuffet);    // smoothstep: ingresso/uscita morbidi (niente pop)
+    if(planetBuffet>0.2 && !grazeFired){ grazeFired=true; hitFlipTarget += 6.28318*(3+(Math.random()*2|0)); hitFlash=Math.max(hitFlash,0.4); }  // TOCCATO il pianeta → BURST di capriole
   }
+  if(planetBuffet<0.05) grazeFired=false;                          // riarma il trigger per il prossimo sfioramento
 
   // stelle vicine (anche del pubblico)
   starTimer-=dt; if(starTimer<=0){ starTimer=0.8+Math.random()*1.6; const fs=nearStars.find(s=>!s.active);
@@ -1682,6 +1686,7 @@ function animate(){
           hitFlash =Math.max(hitFlash ,0.5*_ks);                   // bagliore sul visore
           hitTremor=Math.max(hitTremor,0.06*_ks);                  // ampiezza del tremito
           hitTumble=Math.max(hitTumble,0.10*_ks);                  // micro-capriola extra
+          hitFlipTarget += 6.28318*(3+(Math.random()*2|0));        // BURST: 3-4 capriole verticali veloci su se stesso
         } }
       if(a.z>80) astRe(i,-700-Math.random()*500);
       _e.set(a.rx,a.ry,a.rz);_q.setFromEuler(_e);_p.set(a.x,a.y,a.z);_s.setScalar(a.s);_m.compose(_p,_q,_s);asteroids.setMatrixAt(i,_m); }
@@ -1751,13 +1756,15 @@ function animate(){
   tumbleRetargetT-=dt*timeScale; if(tumbleRetargetT<=0){ tumbleRetargetT=16+Math.random()*24; tumbleRateTarget=0.05+Math.random()*0.10; }
   tumbleRateCur += (tumbleRateTarget-tumbleRateCur)*Math.min(1,dt*0.25);
   manTumble=(manTumble+dt*timeScale*tumbleRateCur)%6.28318;
+  // BURST capriole all'impatto: gira veloce sull'asse X (3-4 giri), decelera e atterra DRITTO (target = multiplo di 2π → reset invisibile)
+  if(hitFlipTarget>0){ const _rem=hitFlipTarget-hitFlip; hitFlip += dt*timeScale*Math.max(3.0,Math.min(8.0,_rem*3.0)); if(hitFlip>=hitFlipTarget-0.02){ hitFlip=0; hitFlipTarget=0; } }
   // CAPRIOLA LENTA occasionale su asse alternato (barrel roll completo, dolce, non un giro brusco)
   if(barrelTarget<=barrelCur+0.01 && barrelHold<=0){ if(Math.random()<dt*0.012){ barrelCur%=6.28318; barrelTarget=barrelCur+6.28318; barrelAxis=Math.random()<0.5?0:1; barrelHold=30+Math.random()*60; } }   // wrap a inizio giro → barrelCur resta limitato (24/7, niente drift di precisione)
   else barrelHold-=dt*timeScale;
   barrelCur += (barrelTarget-barrelCur)*Math.min(1,dt*timeScale*0.10);   // ~10s per un giro completo
   const _trem=hitTremor + planetBuffet*0.05;                          // tremore comune (colpo meteora + buffeting pianeta)
   manRig.rotation.y = manSpin + Math.sin(mt*0.05)*0.18;               // giro + oscillazione
-  manRig.rotation.x = manTumble + Math.sin(mt*0.045)*0.18 + flipCur + (barrelAxis===1?barrelCur:0) + slingE*0.55 + Math.sin(mt*4.0)*slingE*0.12
+  manRig.rotation.x = manTumble + hitFlip + Math.sin(mt*0.045)*0.18 + flipCur + (barrelAxis===1?barrelCur:0) + slingE*0.55 + Math.sin(mt*4.0)*slingE*0.12
                     + hitTumble*0.9 + Math.sin(mt*23.0)*_trem*0.5;     // capovolta continua 360° + oscillazione + tuffo/tremito + micro-capriola da colpo
   manRig.rotation.z = Math.sin(mt*0.035+1.0)*0.20 + (barrelAxis===0?barrelCur:0) + Math.sin(mt*5.3)*slingE*0.10
                     + Math.sin(mt*19.0+1.7)*_trem*0.6;                 // + barrel roll lento su Z + tremito (asse diverso → naturale)
