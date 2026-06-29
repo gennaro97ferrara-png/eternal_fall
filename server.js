@@ -67,6 +67,46 @@ function addStar(name, key) {
   return true;
 }
 
+/* ---------- comandi dalla chat ---------- */
+const commands = [];                     // {cmd, arg, user, ts}
+const cmdCooldown = new Map();           // channelId -> lastTs
+const CMD_USER_CD = 60000;               // 60s per utente
+const CMD_FREE = new Set(['star', 'light', 'message', 'comet', 'wish', 'whales', 'aurora', 'help']);
+const CMD_SUB  = new Set(['world', 'nebula', 'blackhole']);   // riservati a iscritti/membri/mod
+const CMD_ADMIN = new Set(['musicnext', 'musicpause', 'musicplay']);   // solo pannello regia, mai dalla chat
+const BADWORDS = (process.env.STAR_BADWORDS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+function cleanArg(s) { return String(s || '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/https?:\/\/\S+/gi, '').replace(/\s+/g, ' ').trim().slice(0, 40); }
+function isBad(s) { const t = String(s).toLowerCase(); return BADWORDS.some(w => t.includes(w)); }
+function parseCommand(text, author) {
+  const m = /^!\s*([a-z]+)\b\s*([\s\S]*)$/i.exec(text || ''); if (!m) return;
+  const cmd = m[1].toLowerCase(); const arg = cleanArg(m[2]);
+  if (!CMD_FREE.has(cmd) && !CMD_SUB.has(cmd)) return;               // comando sconosciuto
+  const isSub = !!(author.isChatSponsor || author.isChatModerator || author.isChatOwner);
+  if (CMD_SUB.has(cmd) && !isSub) return;                           // riservato agli iscritti
+  if (arg && isBad(arg)) return;                                    // moderazione
+  const cid = author.channelId || author.displayName || '?';
+  const now = Date.now();
+  if (now - (cmdCooldown.get(cid) || 0) < CMD_USER_CD) return;      // cooldown per utente
+  cmdCooldown.set(cid, now);
+  commands.push({ cmd, arg, user: String(author.displayName || '').slice(0, 40), ts: now });
+  if (commands.length > 500) commands.splice(0, commands.length - 500);
+  log('▸ comando:', cmd, arg || '');
+}
+
+/* ---------- PERMANENTI (acquisti: stelle / pianeti, persistiti su disco) ---------- */
+const PERM_FILE = path.join(__dirname, 'permanent.json');
+let permanent = [];                       // {id,type:'star'|'planet',name,logo,skin,tint,tier,status,until,createdAt}
+function loadPerm() { try { if (fs.existsSync(PERM_FILE)) permanent = JSON.parse(fs.readFileSync(PERM_FILE, 'utf8')) || []; } catch (e) { warn('permanent load', e.message); permanent = []; } }
+let _permSaveT = null;
+function savePerm() { clearTimeout(_permSaveT); _permSaveT = setTimeout(() => { try { fs.writeFileSync(PERM_FILE, JSON.stringify(permanent, null, 2)); } catch (e) { warn('permanent save', e.message); } }, 300); }
+function permId() { return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function pruneExpired() { const now = Date.now(); let ch = false; for (const it of permanent) { if (it.until && it.until < now && it.status === 'approved') { it.status = 'expired'; ch = true; } } if (ch) savePerm(); }
+loadPerm();
+
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+function isAdmin(req, parsed) { const t = req.headers['x-admin-token'] || parsed.query.token || ''; return !!ADMIN_TOKEN && t === ADMIN_TOKEN; }
+function readBody(req) { return new Promise(resolve => { let b = ''; req.on('data', d => { b += d; if (b.length > 1e6) req.destroy(); }); req.on('end', () => { try { resolve(b ? JSON.parse(b) : {}); } catch (e) { resolve({}); } }); req.on('error', () => resolve({})); }); }
+
 /* ---------- HTTP: statico + /api/stars ---------- */
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -85,8 +125,11 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/stars') {
     const since = parseInt(parsed.query.since || '0', 10) || 0;
     const fresh = events.filter(e => e.ts > since).map(e => ({ name: e.name }));
-    const ts = events.length ? events[events.length - 1].ts : since;
-    return sendJSON(res, 200, { stars: fresh, total: companions, ts });
+    const cmds = commands.filter(c => c.ts > since).map(c => ({ cmd: c.cmd, arg: c.arg, user: c.user }));
+    const lastEv = events.length ? events[events.length - 1].ts : 0;
+    const lastCmd = commands.length ? commands[commands.length - 1].ts : 0;
+    const ts = Math.max(since, lastEv, lastCmd);
+    return sendJSON(res, 200, { stars: fresh, cmds, total: companions, ts });
   }
   if (pathname === '/api/health') {
     return sendJSON(res, 200, { ok: true, companions, chat: !!chatState.liveChatId, subs: CFG.SUBS && hasOAuth() });
@@ -96,6 +139,58 @@ const server = http.createServer((req, res) => {
     const ok = addStar(parsed.query.name, 'manual:' + (parsed.query.name || ''));
     return sendJSON(res, ok ? 200 : 429, { ok });
   }
+  // catalogo PERMANENTI approvati (il frontend lo semina all'avvio)
+  if (pathname === '/api/permanent') {
+    pruneExpired(); const now = Date.now();
+    const ok = permanent.filter(it => it.status === 'approved' && (!it.until || it.until > now));
+    const stars = ok.filter(it => it.type === 'star').map(it => ({ name: it.name }));
+    const planets = ok.filter(it => it.type === 'planet').map(it => ({ name: it.name, logo: it.logo || '', skin: it.skin || 0, tint: it.tint || '' }));
+    return sendJSON(res, 200, { stars, planets });
+  }
+  // --- ADMIN (token via header x-admin-token o ?token=) ---
+  if (pathname === '/api/admin/permanent' && req.method === 'GET') {
+    if (!isAdmin(req, parsed)) return sendJSON(res, 401, { error: 'unauthorized' });
+    return sendJSON(res, 200, { items: permanent });
+  }
+  if (pathname === '/api/admin/permanent' && req.method === 'POST') {
+    if (!isAdmin(req, parsed)) return sendJSON(res, 401, { error: 'unauthorized' });
+    readBody(req).then(b => {
+      const type = b.type === 'planet' ? 'planet' : 'star';
+      const name = String(b.name || '').slice(0, 40).trim();
+      if (!name) return sendJSON(res, 400, { error: 'name required' });
+      const days = parseInt(b.days, 10) || 0;
+      const it = { id: permId(), type, name, logo: String(b.logo || '').slice(0, 300), skin: parseInt(b.skin, 10) || 0,
+        tint: String(b.tint || '').slice(0, 16), tier: String(b.tier || 'basic').slice(0, 16),
+        status: (b.status === 'approved' || b.status === 'pending') ? b.status : 'pending',
+        until: days > 0 ? Date.now() + days * 86400000 : 0, createdAt: Date.now() };
+      permanent.push(it); savePerm(); log('✦ permanente:', type, name, it.status);
+      sendJSON(res, 200, { item: it });
+    });
+    return;
+  }
+  if (pathname === '/api/admin/permanent/action' && req.method === 'POST') {
+    if (!isAdmin(req, parsed)) return sendJSON(res, 401, { error: 'unauthorized' });
+    const id = parsed.query.id, action = parsed.query.action;
+    const it = permanent.find(x => x.id === id);
+    if (!it && action !== 'delete') return sendJSON(res, 404, { error: 'not found' });
+    if (action === 'approve') it.status = 'approved';
+    else if (action === 'reject') it.status = 'rejected';
+    else if (action === 'delete') permanent = permanent.filter(x => x.id !== id);
+    else return sendJSON(res, 400, { error: 'bad action' });
+    savePerm();
+    return sendJSON(res, 200, { ok: true });
+  }
+  // TEST comandi dall'admin: inietta un comando nella coda (la scena lo prende al prossimo polling ~10s)
+  if (pathname === '/api/admin/command' && req.method === 'POST') {
+    if (!isAdmin(req, parsed)) return sendJSON(res, 401, { error: 'unauthorized' });
+    const cmd = String(parsed.query.cmd || '').toLowerCase();
+    const arg = cleanArg(parsed.query.arg || '');
+    if (!CMD_FREE.has(cmd) && !CMD_SUB.has(cmd) && !CMD_ADMIN.has(cmd)) return sendJSON(res, 400, { error: 'comando sconosciuto' });
+    commands.push({ cmd, arg, user: 'admin', ts: Date.now() });
+    if (commands.length > 500) commands.splice(0, commands.length - 500);
+    log('▸ test comando (admin):', cmd, arg || '');
+    return sendJSON(res, 200, { ok: true, cmd, arg });
+  }
 
   // statico
   if (pathname === '/') pathname = '/index.html';
@@ -103,13 +198,26 @@ const server = http.createServer((req, res) => {
   const rel = path.relative(CFG.ROOT, filePath);
   // nega: traversal, qualsiasi dotfile (.env/.git/.gitignore/.claude…), e i file sensibili del progetto
   if (!filePath.startsWith(CFG.ROOT) || rel.split(path.sep).some(s => s.startsWith('.')) ||
-      /^(server|get-token|gen-[^\/]*)\.js$|^serve\.command$|^package(-lock)?\.json$/.test(rel)) {
+      /^(server|get-token|gen-[^\/]*)\.js$|^serve\.command$|^(package(-lock)?|permanent)\.json$/.test(rel)) {
     res.writeHead(403); return res.end('forbidden');
   }
-  fs.readFile(filePath, (err, data) => {
-    if (err) { res.writeHead(404, { 'content-type': 'text/plain' }); return res.end('not found'); }
-    res.writeHead(200, { 'content-type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream', 'cache-control': 'no-cache' });
-    res.end(data);
+  fs.stat(filePath, (err, stat) => {
+    if (err || !stat.isFile()) { res.writeHead(404, { 'content-type': 'text/plain' }); return res.end('not found'); }
+    const ext = path.extname(filePath).toLowerCase(), type = MIME[ext] || 'application/octet-stream';
+    const range = req.headers.range, streamable = /\.(mp3|wav|ogg|m4a|aac)$/i.test(ext);
+    if (range && streamable) {
+      const m = /^bytes=(\d*)-(\d*)$/.exec(range);
+      if (!m) { res.writeHead(416, { 'content-range': 'bytes */' + stat.size }); return res.end(); }
+      const start = m[1] ? parseInt(m[1], 10) : 0;
+      const end = m[2] ? Math.min(parseInt(m[2], 10), stat.size - 1) : stat.size - 1;
+      if (start > end || start >= stat.size) { res.writeHead(416, { 'content-range': 'bytes */' + stat.size }); return res.end(); }
+      res.writeHead(206, { 'content-type': type, 'cache-control': 'no-cache', 'accept-ranges': 'bytes',
+        'content-range': `bytes ${start}-${end}/${stat.size}`, 'content-length': end - start + 1 });
+      return fs.createReadStream(filePath, { start, end }).pipe(res);
+    }
+    res.writeHead(200, { 'content-type': type, 'cache-control': 'no-cache', 'content-length': stat.size,
+      ...(streamable ? { 'accept-ranges': 'bytes' } : {}) });
+    fs.createReadStream(filePath).pipe(res);
   });
 });
 
@@ -199,6 +307,8 @@ async function pollChat() {
         const key = 'chat:' + (a.channelId || name);
         // nuovi membri / super chat = stella speciale (stesso flusso, dedup separato)
         addStar(name, key);
+        const text = (m.snippet && m.snippet.displayMessage) || '';
+        if (text.charAt(0) === '!') parseCommand(text, a);   // comando dalla chat (es. !comet, !whales, !star <nome>)
       }
     }
   } catch (e) {

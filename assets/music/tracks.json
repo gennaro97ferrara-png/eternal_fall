@@ -1,0 +1,15 @@
+[
+  { "id": "peaceful-vacuum", "title": "Peaceful Vacuum", "file": "peaceful-vacuum.mp3", "moods": ["vuoto", "gelo", "galassia"], "energy": 0.12, "weight": 1.25 },
+  { "id": "the-space", "title": "The Space", "file": "the-space.mp3", "moods": ["galassia", "vuoto", "nebulosa"], "energy": 0.18, "weight": 1.15 },
+  { "id": "cosmic-432", "title": "432Hz Cosmic Journey", "file": "cosmic-432.mp3", "moods": ["galassia", "nebulosa", "gelo"], "energy": 0.22, "weight": 1.1 },
+  { "id": "cosmic-singularity", "title": "Cosmic Singularity", "file": "cosmic-singularity.mp3", "moods": ["abisso", "galassia", "brace"], "energy": 0.34, "weight": 1.15 },
+  { "id": "sci-fi-cinematic", "title": "Sci-Fi Cinematic", "file": "sci-fi-cinematic.mp3", "moods": ["pianeta", "galassia", "brace"], "energy": 0.55, "weight": 1.0 },
+  { "id": "nocturne-glass-steel", "title": "Nocturne in Glass and Steel", "file": "nocturne-glass-steel.mp3", "moods": ["gelo", "vuoto", "nebulosa"], "energy": 0.28, "weight": 1.05 },
+  { "id": "cosmic-drifter", "title": "Cosmic Drifter in D Minor", "file": "cosmic-drifter.mp3", "moods": ["pianeta", "galassia", "nebulosa"], "energy": 0.44, "weight": 1.0 },
+  { "id": "quantum-leap", "title": "Quantum Leap", "file": "quantum-leap.mp3", "moods": ["cintura", "brace", "galassia"], "energy": 0.76, "weight": 0.95 },
+  { "id": "neon-drive", "title": "Neon Drive", "file": "neon-drive.mp3", "moods": ["cintura", "brace"], "energy": 0.9, "weight": 0.9 },
+  { "id": "classic-synthwave", "title": "Classic Synthwave", "file": "classic-synthwave.mp3", "moods": ["cintura", "brace", "galassia"], "energy": 0.78, "weight": 0.95 },
+  { "id": "synthwave-7", "title": "Synthwave 7", "file": "synthwave-7.mp3", "moods": ["cintura", "brace"], "energy": 0.84, "weight": 0.9 },
+  { "id": "nostalgic-synthwave", "title": "Nostalgic Synthwave", "file": "nostalgic-synthwave.mp3", "moods": ["galassia", "nebulosa", "pianeta"], "energy": 0.62, "weight": 1.0 },
+  { "id": "psychedelic-rock-pop", "title": "Psychedelic Rock-Pop", "file": "psychedelic-rock-pop.mp3", "moods": ["brace", "cintura", "nebulosa"], "energy": 0.94, "weight": 0.55 }
+]

@@ -7,3 +7,12 @@ node_modules/
 .claude/launch.json
 # backup del modello vecchio: non serve online
 assets/astronaut.backup.glb
+
+# esportazioni originali acquistate + copie audio locali (licenza: non redistribuire)
+/*.wav
+/*.mp3
+/assets/music/*.mp3
+/assets/voice/*.mp3
+
+# runtime data (acquisti permanenti)
+permanent.json

@@ -8,20 +8,42 @@ loop, nessuno stacco: il cosmo è procedurale e non si ripete mai. Costo di gene
 
 ## Come avviarla
 
-I moduli ES e gli asset locali non si caricano da `file://` (blocco CORS): serve un mini
-server locale. Dalla cartella `caduta-eterna/`:
+I moduli ES e gli asset locali non si caricano da `file://` (blocco CORS): serve il bridge
+**`server.js`** (Node, zero dipendenze) che serve il sito **e** l'endpoint `/api/stars` per le
+stelle del pubblico. Dalla cartella `caduta-eterna/`:
 
 ```bash
-python3 -m http.server 8080        # oppure:  npx --yes serve -l 8080 .
+node server.js                     # sito + API su http://localhost:8099
 ```
 
-Apri **http://localhost:8080**, schermo intero con **F**, e premi **Entra** (il click attiva
-l'audio: lo richiede il browser). Scorciatoia macOS: doppio click su `serve.command`.
+Per la **diretta h24** usa invece il launcher robusto (tiene sveglio il Mac e riavvia il
+server se cade), che resta attivo anche chiudendo il terminale:
 
-> Three.js viene caricato da CDN (unpkg, versione fissata) al primo avvio e poi resta in
-> cache. Gli asset pesanti (Via Lattea, astronauta, pianeti) sono **in locale** in `assets/`,
-> quindi la live non dipende da una CDN per le immagini. Se vuoi azzerare ogni dipendenza di
-> rete a runtime posso vendorizzare anche Three.js in locale: chiedimelo.
+```bash
+nohup bash keep-live.sh >/tmp/eternal-fall.log 2>&1 &
+# per fermarlo:  pkill -f keep-live.sh
+```
+
+Apri **http://localhost:8099**, schermo intero con **F**, e premi **Entra** (il click attiva
+l'audio: lo richiede il browser). In OBS la pagina parte da sola (vedi sezione OBS più sotto).
+
+> Three.js è **vendorizzato in locale** in `assets/vendor/three/` (importmap → file locali):
+> la live non dipende da nessuna CDN a runtime, né per i moduli né per gli asset pesanti
+> (Via Lattea, astronauta, pianeti, tutti in `assets/`). Dipendenza di rete a runtime: zero.
+
+## Diretta dal cloud (connessione lenta)
+
+Se l'upload di casa è troppo lento per una live di qualità, sposta **tutta** la
+pipeline su un server con GPU: render, `server.js`, cattura e push RTMP girano nel
+datacenter; la tua linea serve solo per l'SSH. Kit chiavi-in-mano (un comando) in
+**[`cloud/`](cloud/README-cloud.md)**. Niente OBS: Chromium GPU + `ffmpeg` NVENC in container.
+Due strade: **[TensorDock](cloud/README-tensordock.md)** (~$90–120/mese, GPU A4000/A5000,
+economico) o **[Hetzner GEX44](cloud/README-cloud.md)** (~184 €/mese, dedicato e blindato).
+
+```bash
+# nel .env:  YT_STREAM_KEY=...   poi, dal tuo Mac:
+./cloud/deploy.sh user@IP [porta-ssh]
+```
 
 ## Asset (cartella `assets/`)
 
@@ -144,12 +166,28 @@ jitter → **non si ripete mai**. La Via Lattea reale ruota lentissima = senso d
 
 ## Setup per la live YouTube (OBS)
 
-1. **Sorgente → Browser**, URL `http://localhost:8080`, **1920×1080** (o 2560×1440), **60 FPS**.
-2. ✅ *Controlla la sorgente quando non è visibile*.
-3. **Interagisci** una volta nella finestra per far partire l'audio.
+1. **Sorgente → Browser**, URL `http://localhost:8099/?live=1`, **1920×1080** (o 2560×1440), **60 FPS**.
+2. ❌ *Aggiorna browser quando la scena diventa attiva*: **disattivala** (così il contatore
+   GIORNO N salvato in `localStorage` non si azzera ad ogni cambio scena).
+3. La scena **parte da sola** dentro OBS (autostart) e l'audio entra nel mix **senza click**.
 4. *Impostazioni → Avanzate → Sorgenti browser → Accelerazione hardware* attiva.
 
-L'audio (sintetizzato, sempre diverso) entra da solo nel mix di OBS.
+> Prima della diretta avvia il server col launcher robusto (`keep-live.sh`, vedi "Come avviarla"):
+> tiene il Mac sveglio e riavvia il server da solo se cade.
+
+### Musica ElevenLabs adattiva
+
+La live integra 13 brani acquistati, conservati solo in locale in `assets/music/`: le copie di
+riproduzione sono normalizzate e rallentate al 72%. Il mixer sceglie il brano in base alla
+regione visiva, modifica ancora dolcemente la velocità (restando sempre sotto l'originale),
+fa crossfade variabili e non ripete un brano prima di aver attraversato l'intero catalogo.
+Durante i brani il motore procedurale si abbassa ma continua a reagire a pianeti, supernovae
+e buchi neri; fra due cicli lascia un interludio interamente generativo.
+
+Controlli rapidi dalla console: `cadutaMusicNext()`, `cadutaMusicPause()`,
+`cadutaMusicPlay()` e `cadutaMusicStatus()`. Gli stessi controlli sono nel pannello admin.
+I file musicali sono esclusi da Git perché la licenza Marketplace non ne consente la
+redistribuzione separata dal progetto audiovisivo.
 
 ## Regolare (in `index.html`)
 

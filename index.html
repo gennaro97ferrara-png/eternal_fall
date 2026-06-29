@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Caduta Eterna</title>
 <style>
-  :root { color-scheme: dark; --ink:#cdd6f4; }
+  :root { color-scheme: dark; --ink:#cdd6f4; --ui:1.3; }   /* --ui = scala globale overlay: grande per chi guarda da cell il video 1920; la media query lo riporta a 1 sui browser stretti */
   html, body { margin:0; height:100%; background:#000; overflow:hidden; }
   #app { position:fixed; inset:0; }
   canvas { display:block; width:100%; height:100%; }
@@ -29,40 +29,50 @@
   #enter[disabled] { opacity:0.4; cursor:progress; }
   #gate.hidden { opacity:0; pointer-events:none; }
 
-  /* SHIP'S LOG — minimale e defilato; si fa da parte quando non succede nulla, si risveglia sugli eventi */
-  #tel { position:fixed; z-index:6;
+  /* telemetria (DAY · BIG BANG · COMPANIONS · messaggi) — minimale e defilata; resta visibile ma calma, si risveglia sugli eventi */
+  #tel { position:fixed; z-index:6; transform:scale(var(--ui)); transform-origin:top left;
     top:max(clamp(8px,2.4vw,16px), env(safe-area-inset-top)); left:max(clamp(8px,2.4vw,16px), env(safe-area-inset-left));
     font-family:ui-monospace,"SF Mono",Menlo,monospace; color:var(--ink);
     pointer-events:none; opacity:0; transition:opacity 1.6s ease;
-    padding:clamp(6px,1.4vw,9px) clamp(9px,1.8vw,12px); width:max-content; max-width:min(58vw,300px);
-    background:linear-gradient(180deg, rgba(8,11,24,0.30), rgba(6,9,20,0.16));
-    border:none; border-left:1px solid rgba(166,227,255,0.32);
-    border-radius:0 7px 7px 0; backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
-    box-shadow:none; text-shadow:0 1px 2px rgba(0,0,0,0.55);
+    padding:0; width:max-content; max-width:min(58vw,300px);
+    background:none; border:none; box-shadow:none;
+    text-shadow:0 1px 3px rgba(0,0,0,0.9), 0 0 7px rgba(0,0,0,0.55);
     font-variant-numeric:tabular-nums slashed-zero; font-feature-settings:'tnum' 1,'zero' 1; }
-  #tel.show { opacity:0.9; }
-  #tel.show.idle { opacity:0.22; }
-  #tel.show.surge { opacity:1; transition:opacity 0.5s ease; }
-  #tel .hdr { font-size:clamp(6.5px,1.5vw,8px); letter-spacing:0.34em; opacity:0.38; margin-bottom:3px; }
+  #tel.show { opacity:0.82; }
+  #tel.show.idle { opacity:0.46; }
+  #tel.show.surge { opacity:0.92; transition:opacity 0.5s ease; }
   #tel .day { font-size:clamp(12px,3.4vw,17px); font-weight:600; letter-spacing:0.05em; line-height:1.0; white-space:nowrap; }
   #tel .day .clk { opacity:0.42; font-weight:300; margin-left:5px; font-size:0.78em; }
   @keyframes dil { 0%{opacity:0.55} 25%{opacity:0.15} 45%{opacity:0.8} 65%{opacity:0.25} 85%{opacity:0.6} 100%{opacity:0.4} }
   #tel .day .clk.dilate { animation:dil 0.6s steps(4) infinite; color:#9fe0ff; }
-  #tel .row { font-size:clamp(9px,2.3vw,11px); margin-top:2px; white-space:nowrap; }
-  #tel .row .lab { opacity:0.4; letter-spacing:0.12em; text-transform:uppercase; }
-  #tel .row .val { font-weight:600; margin-left:8px; color:#dbe4ff; }
-  #tel .sep { height:1px; margin:5px 0; background:linear-gradient(90deg, rgba(180,200,255,0.14), rgba(180,200,255,0)); }
-  #tel .bodies { display:flex; flex-wrap:wrap; gap:2px 9px; font-size:clamp(9px,2.3vw,11px); }
-  #tel .b { display:inline-flex; align-items:center; gap:4px; }
-  #tel .b svg { width:1.0em; height:1.0em; opacity:0.68; flex:0 0 auto; }
-  #tel .b b { font-weight:600; color:#dbe4ff; }
+  @keyframes bangpulse { 0%,100%{ opacity:0.5 } 50%{ opacity:0.95 } }
+  #tel .bang { font-size:clamp(9.5px,2.5vw,11.5px); margin-top:3px; white-space:nowrap; display:flex; align-items:baseline; gap:8px; }
+  #tel .bang .lab { letter-spacing:0.16em; text-transform:uppercase; color:#ff9d5c; animation:bangpulse 3.4s ease-in-out infinite; }
+  #tel .bang .cd { font-weight:700; color:#ffd0a8; }
   #tel .comp { display:flex; align-items:center; gap:5px; margin-top:4px; font-size:clamp(9px,2.3vw,11px); }
   #tel .comp svg { width:1.05em; height:1.05em; opacity:0.7; }
   #tel .comp .lab { opacity:0.4; letter-spacing:0.12em; text-transform:uppercase; }
   #tel .comp .val { font-weight:700; color:#a6e3ff; }
+  #tel .comp { display:none; }   /* COMPANIONS nascosta temporaneamente — rimuovi questa riga per ripristinarla */
   #tel .log { margin-top:6px; font-size:clamp(8.5px,2.2vw,10.5px); opacity:0; max-width:30ch;
     font-style:italic; letter-spacing:0.01em; transition:opacity 2.5s ease; color:#bac2de; }
   #tel .log.on { opacity:0.62; }
+
+  /* COMMAND — stessa lingua visiva di SHIP'S LOG, ancorato a destra, sempre visibile ma calmo */
+  #cmds { position:fixed; z-index:6; transform:scale(var(--ui)); transform-origin:top right;
+    top:max(clamp(8px,2.4vw,16px), env(safe-area-inset-top)); right:max(clamp(8px,2.4vw,16px), env(safe-area-inset-right));
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; color:var(--ink);
+    pointer-events:none; opacity:0; transition:opacity 1.6s ease; text-align:right;
+    padding:0; width:max-content; max-width:min(56vw,300px);
+    background:none; border:none;
+    text-shadow:0 1px 3px rgba(0,0,0,0.9), 0 0 7px rgba(0,0,0,0.55); }
+  #cmds.show { opacity:0.6; }
+  #cmds .hdr { font-size:clamp(6.5px,1.5vw,8px); letter-spacing:0.34em; opacity:0.5; margin-bottom:4px; }
+  #cmds .c { font-size:clamp(9px,2.3vw,11px); white-space:nowrap; line-height:1.55; }
+  #cmds .c .k { font-weight:600; color:#a6e3ff; }
+  #cmds .c .d { opacity:0.5; margin-left:7px; }
+  #cmds .c.sub .k { color:#c9b6ff; }
+  #cmds .note { font-size:clamp(7px,1.7vw,8.5px); opacity:0.34; margin-top:5px; letter-spacing:0.1em; text-transform:uppercase; }
 
   #hud { position:fixed; left:max(16px, calc(env(safe-area-inset-left) + 10px)); bottom:max(14px, calc(env(safe-area-inset-bottom) + 8px)); z-index:5;
     color:rgba(205,214,244,0.2); font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.14em; pointer-events:none; transition:opacity 1.2s ease; }
@@ -70,8 +80,11 @@
   #credit { position:fixed; right:max(12px, calc(env(safe-area-inset-right) + 8px)); bottom:max(10px, calc(env(safe-area-inset-bottom) + 6px)); z-index:5;
     color:rgba(205,214,244,0.12); font-family:ui-sans-serif,system-ui; font-size:9px; letter-spacing:0.05em; max-width:46vw; text-align:right; pointer-events:none; }
   @media (max-width:560px), (orientation:portrait){
+    :root { --ui:1; }                        /* telefono che apre la pagina direttamente: overlay a misura, non scalato */
     #tel { max-width:64vw; }
     #tel .log { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60vw; }
+    #cmds { max-width:66vw; }
+    #cmds .c .d { display:none; }            /* schermo stretto: solo i comandi, niente descrizioni → meno affollato */
     #credit { max-width:54vw; line-height:1.35; }
   }
   #err { position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
@@ -83,20 +96,20 @@
 <div id="app"></div>
 
 <div id="tel">
-  <div class="hdr">SHIP'S LOG</div>
   <div class="day"><span id="t-day">DAY 0</span><span class="clk" id="t-clk">00:00:00</span></div>
-  <div class="row"><span class="lab">DISTANCE</span><span class="val" id="t-ly">0 km</span></div>
-  <div class="sep"></div>
-  <div class="bodies">
-    <span class="b" title="planets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11.5" cy="10.5" r="5.6"/><ellipse cx="12" cy="13" rx="11" ry="3.3" transform="rotate(-20 12 13)"/></svg><b id="t-pl">0</b></span>
-    <span class="b" title="stars"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 13.7 9.4 21 11 13.7 12.6 12 20 10.3 12.6 3 11 10.3 9.4Z"/></svg><b id="t-st">0</b></span>
-    <span class="b" title="meteors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="16.5" cy="7.5" r="3" fill="currentColor" stroke="none"/><path d="M14 10 4.5 19.5 M17.5 12 10 19.5 M11 8.5 5 14.5"/></svg><b id="t-me">0</b></span>
-    <span class="b" title="moons"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3a9 9 0 1 0 4.5 13.6A7 7 0 0 1 16.5 3Z"/></svg><b id="t-mo">0</b></span>
-    <span class="b" title="black holes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="12" rx="10.2" ry="3.1"/><circle cx="12" cy="12" r="4.3" fill="currentColor" stroke="none"/></svg><b id="t-bh">0</b></span>
-  </div>
-  <div class="sep"></div>
+  <div class="bang"><span class="lab">BIG BANG</span><span class="cd" id="t-bang">—</span></div>
   <div class="comp"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8.5" cy="8" r="3"/><circle cx="16" cy="9" r="2.3"/><path d="M2.5 19c0-3.2 2.7-5 6-5s6 1.8 6 5Z"/><path d="M14.8 19c.1-2.1 1.2-3.6 3.2-4 1.9.3 3.5 1.7 3.5 4Z"/></svg><span class="lab">COMPANIONS</span><span class="val" id="t-co">0</span></div>
   <div class="log" id="t-log"></div>
+</div>
+
+<div id="cmds">
+  <div class="hdr">COMMAND</div>
+  <div class="c"><span class="k">!star ‹name›</span><span class="d">your star</span></div>
+  <div class="c"><span class="k">!light ‹name›</span><span class="d">a candle</span></div>
+  <div class="c"><span class="k">!message ‹text›</span><span class="d">a message</span></div>
+  <div class="c"><span class="k">!comet · !wish · !whales · !aurora</span></div>
+  <div class="c sub"><span class="k">!world · !nebula · !blackhole</span><span class="d">members</span></div>
+  <div class="note">type in the live chat</div>
 </div>
 
 <div id="hud">ETERNAL FALL · live · F = fullscreen</div>
@@ -111,8 +124,8 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    "three": "/assets/vendor/three/build/three.module.js",
+    "three/addons/": "/assets/vendor/three/examples/jsm/"
   }
 }
 </script>
@@ -206,6 +219,9 @@ const TEL = {
   companions:0,
 };
 LS.set('ce_launch', TEL.launch);
+// BIG BANG: l'universo collassa 3 mesi dopo il lancio → countdown perenne nel pannello
+const BANG_AT=(()=>{ const d=new Date(TEL.launch); d.setMonth(d.getMonth()+3); return d.getTime(); })();
+const BANG_DUR=BANG_AT-TEL.launch;
 const KMS_FACTOR=2300, KM_PER_LY=9.461e12;
 function telSave(){
   LS.set('ce_km',TEL.km.toFixed(1)); LS.set('ce_pl',TEL.planets); LS.set('ce_st',TEL.stars);
@@ -236,10 +252,9 @@ function telUpdate(dt){
   const p=n=>String(n).padStart(2,'0');
   $t.day.textContent='DAY '+fmt.format(days);
   $t.clk.textContent=p(h)+':'+p(m)+':'+p(s);
-  $t.ly.textContent=fmtDist(TEL.km);
-  $t.pl.textContent=fmt.format(TEL.planets); $t.st.textContent=fmt.format(TEL.stars);
-  $t.me.textContent=fmt.format(TEL.meteors); $t.mo.textContent=fmt.format(TEL.moons);
-  $t.bh.textContent=fmt.format(TEL.blackholes); $t.co.textContent=fmt.format(TEL.companions);
+  $t.co.textContent=fmt.format(TEL.companions);
+  const rem=Math.max(0,BANG_DUR-ms), cd=Math.floor(rem/1000);   // BIG BANG: tempo che manca (launch + 3 mesi)
+  $t.bang.textContent = rem>0 ? (Math.floor(cd/86400)+'d '+p(Math.floor(cd/3600)%24)+':'+p(Math.floor(cd/60)%60)+':'+p(cd%60)) : 'NOW';
   // il pannello si risveglia quando un contatore cambia (un corpo, una stella del pubblico…) e si abbassa quando è tutto fermo
   if(!telEl) telEl=document.getElementById('tel');
   const sum=TEL.planets+TEL.stars+TEL.meteors+TEL.moons+TEL.blackholes+TEL.companions;
@@ -444,6 +459,10 @@ let pulsar, redgiant, binary, remnant;
 let signal, spores, magnetar, dyson, aurora, duststorm;
 let shower=null, showerT=0, shownShowerLog='';
 let nebBoost=0, galaxies, godray;
+// NUOVI CORPI (varietà): istanze + timer individuali
+let lavaWorld, shattered, whitedwarf, variablestar, ringarc, station, lightEcho, bolide, gwRipple, whalePod;
+let lavaTimer=240, shatteredTimer=300, whitedwarfTimer=120, variablestarTimer=110, ringarcTimer=260, stationTimer=200, lightEchoTimer=300, bolideTimer=150, gwTimer=360, whalePodTimer=220;
+let _echoPending=0;   // eco di luce ~14s dopo una supernova (catena causa→effetto)
 const _white=new THREE.Color(0xffffff), _nebCol=new THREE.Color(), _warm=new THREE.Color(0xfff0d8);
 const manFloatTime={value:0}, manFloatAmt={value:1}, manArmOpen={value:0}, manArmBack={value:0};
 // VISORE / TUTA: uniform condivisi (look + flash da reazione urto). uHit lo pilota l'area "reazione urto" (0..1, niente accumulatore → 24/7 ok).
@@ -650,6 +669,16 @@ function build(){
     else if(w==='aurora'){ aurora.spawn(); aurora.g.position.set(120,0,-260); }
     else if(w==='duststorm'){ duststorm.spawn(); duststorm.mesh.position.set(0,0,-120); }
     else if(w==='shower'){ window._forceShower='Perseids (test)'; shower='Perseids (test)'; }
+    else if(w==='lava'){ lavaWorld.spawn(); lavaWorld.mesh.position.set(0,6,-260); }
+    else if(w==='shattered'){ shattered.spawn(); shattered.g.position.set(30,6,-280); }
+    else if(w==='whitedwarf'){ whitedwarf.spawn(); whitedwarf.g.position.set(20,4,-200); }
+    else if(w==='variable'){ variablestar.spawn(); variablestar.g.position.set(16,4,-160); }
+    else if(w==='ringarc'){ ringarc.spawn(); ringarc.g.position.set(0,4,-700); }
+    else if(w==='station'){ station.spawn(); station.g.position.set(16,2,-160); }
+    else if(w==='echo'){ lightEcho.spawn(); lightEcho.mesh.position.set(0,0,-300); }
+    else if(w==='bolide'){ bolide.spawn(); bolide.pts.position.set(20,30,-150); }
+    else if(w==='gw'){ gwRipple.spawn(); }
+    else if(w==='whales'){ whalePod.spawn(); whalePod.g.position.set(60,6,-400); }
     return 'ok'; };
   window.cadutaInspect=()=>({ rg:{active:redgiant.active,vis:redgiant.g.visible,pos:redgiant.g.position.toArray().map(n=>Math.round(n)),ms:redgiant.mesh.scale.x,uOp:redgiant.mat.uniforms.uOp.value,glowOp:redgiant.glow.material.opacity},
     pul:{active:pulsar.active,vis:pulsar.g.visible,pos:pulsar.g.position.toArray().map(n=>Math.round(n))} });
@@ -702,6 +731,9 @@ function build(){
   nebulaField=new NebulaField(11); comet=new Comet(); cluster=new GlobularCluster(); derelict=new Derelict();
   pulsar=new Pulsar(); redgiant=new RedGiant(); binary=new Binary(); remnant=new Remnant();
   signal=new TheSignal(); spores=new SporeBloom(); magnetar=new Magnetar(); dyson=new DysonSwarm(); aurora=new AuroraCurtain(); duststorm=new DustStorm();
+  lavaWorld=new LavaWorld(); shattered=new ShatteredWorld(ag,astMat); whitedwarf=new WhiteDwarf(); variablestar=new VariableStar(); ringarc=new RingArc(); station=new StationTumble(); lightEcho=new LightEcho(); bolide=new BolideSplit(); gwRipple=new GWRipple(); whalePod=new WhalePod();
+  for(let i=0;i<2;i++) ownedPlanets.push(new OwnedPlanet());   // pianeti permanenti (acquisti): pool che ruota sul catalogo
+  loadPermanent();
   galaxies=[]; const gHues=[0.6,0.08,0.58,0.52,0.12];
   for(let i=0;i<5;i++){ const mat=new THREE.SpriteMaterial({map:galaxyTexture(gHues[i],GTYPES[i]),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0});
     mat.color.setHSL(Math.random()<0.5?0.58:0.07,0.10,0.78);   // tinta tenue per varietà cromatica
@@ -717,7 +749,7 @@ function build(){
   composer.addPass(new OutputPass());
   // SMAA rimosso: l'MSAA del renderer (antialias:true) copre già i bordi; passata risparmiata
 
-  ['day','clk','ly','pl','st','me','mo','bh','co','log'].forEach(k=>$t[k]=document.getElementById('t-'+k));
+  ['day','clk','co','log','bang'].forEach(k=>$t[k]=document.getElementById('t-'+k));
   onResize();
   // stelle "default" del pubblico (sostituite dal vero catalogo in Fase B)
   seedCompanions();
@@ -979,7 +1011,8 @@ class Parallel{
 class Supernova{
   constructor(){ this.spr=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0,color:new THREE.Color(0xffffff)}));
     this.spr.visible=false; this.spr.frustumCulled=false; scene.add(this.spr); this.active=false; this.t=0; }
-  flash(reason){ this.active=true; this.t=0; const ang=Math.random()*Math.PI*2,rad=200+Math.random()*400;
+  flash(reason){ this.active=true; this.t=0; _echoPending=14+Math.random()*4;   // dopo la nova arriva l'eco di luce
+    const ang=Math.random()*Math.PI*2,rad=200+Math.random()*400;
     this.spr.position.set(Math.cos(ang)*rad,(Math.random()*2-1)*150,-1500); this.spr.scale.setScalar(40); this.spr.visible=true;
     $t.log.textContent=(reason||'— a star has died.'); $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),14000); }
   update(dt){ if(!this.active) return; this.t+=dt; const k=this.t<1.2?(this.t/1.2):Math.max(0,1-(this.t-1.2)/10);
@@ -1487,11 +1520,13 @@ function currentShower(){ if(window._forceShower) return window._forceShower; co
 
 /* ---------------- passata cinematografica ---------------- */
 const CineShader={
-  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.026},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.5},uContrast:{value:1.0}},
+  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.026},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.5},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,1.0);}`,
-  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uContrast;uniform vec2 uRes;uniform vec3 uGrade;varying vec2 vUv;
+  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uContrast,uGW;uniform vec2 uRes,uGWDir;uniform vec3 uGrade;varying vec2 vUv;
     float rnd(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
-    void main(){ vec2 uv=vUv; vec2 d=uv-0.5; float r2=dot(d,d);
+    void main(){ vec2 uv=vUv;
+      if(uGW>0.0){ float ph=dot(uv,uGWDir)*42.0 - uTime*6.0; uv += uGWDir*sin(ph)*uGW; }   // onda gravitazionale: increspa tutto il campo
+      vec2 d=uv-0.5; float r2=dot(d,d);
       vec2 off=d*r2*r2*0.020*uAberr;                                   // aberrazione cromatica concentrata ai bordi
       vec3 col=vec3(texture2D(tDiffuse,uv+off).r,texture2D(tDiffuse,uv).g,texture2D(tDiffuse,uv-off).b);
       // DOF a basso costo: ammorbidisce SOLO i bordi (centro nitido). Raggio in pixel via uRes → indip. dalla risoluzione
@@ -1533,6 +1568,365 @@ function applyDirector(){
   if(cinePass) cinePass.uniforms.uGrade.value.copy(director.grade);
 }
 
+/* ---------------- NUOVI CORPI (varietà) ---------------- */
+const _echoCol=new THREE.Color();
+class LavaWorld{
+  constructor(){
+    this._basalt=new THREE.Color(0x1a1410);
+    this.mat=new THREE.ShaderMaterial({transparent:true,depthWrite:true,
+      uniforms:{uTime:{value:0},uOp:{value:0},uSun:{value:new THREE.Vector3()},uHot:{value:new THREE.Color(0xff5a18)},uCrust:{value:new THREE.Color(0x1a1410)},uSeed:{value:0}},
+      vertexShader:`varying vec3 vp;varying vec3 vn;void main(){vp=position;vn=normalize(mat3(modelMatrix)*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:NOISE_GLSL+`varying vec3 vp;varying vec3 vn;uniform float uTime,uOp,uSeed;uniform vec3 uSun,uHot,uCrust;
+        void main(){
+          vec3 q=vp*3.4+uSeed;
+          float cells=vnoise(q+vec3(0.0,uTime*0.04,0.0));
+          float veins=vnoise(q*2.1-uTime*0.03);
+          float crack=smoothstep(0.46,0.52,cells)*smoothstep(0.40,0.55,veins);
+          float pulse=0.7+0.3*sin(uTime*0.5+cells*8.0);
+          float ndl=max(dot(normalize(vn),normalize(uSun)),0.0);
+          vec3 crust=uCrust*(0.18+0.55*ndl);
+          vec3 glow=uHot*crack*pulse*(0.85+0.6*(1.0-ndl));
+          gl_FragColor=vec4(crust+glow,uOp); }`});
+    this.mesh=new THREE.Mesh(new THREE.SphereGeometry(1,48,32),this.mat);
+    this.mesh.visible=false; this.mesh.frustumCulled=false; scene.add(this.mesh);
+    this.active=false; this.spin=0; this._counted=false;
+  }
+  spawn(){ this.active=true; this._counted=false; const r=22+Math.random()*18; this.mesh.scale.setScalar(r);
+    const ang=Math.random()*Math.PI*2,dist=r*1.5+70+Math.random()*120;
+    this.mesh.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*60,SPAWN_Z-Math.random()*400);
+    this.mesh.rotation.set(Math.random()*0.5,Math.random()*6.28,0); this.spin=(Math.random()*2-1)*0.006;
+    this.mat.uniforms.uSeed.value=Math.random()*10; this.mesh.visible=true; }
+  update(dt,speed){ if(!this.active) return; this.mesh.position.z+=speed*dt; this.mesh.rotation.y+=this.spin*dt;
+    const z=this.mesh.position.z, r=this.mesh.scale.x, outEnd=340+r*2.0;
+    const op=Math.min(THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1),THREE.MathUtils.clamp((outEnd-z)/(r*2.6+200),0,1));
+    this.mat.uniforms.uOp.value=op; this.mat.uniforms.uTime.value=shaderTime; this.mat.uniforms.uSun.value.copy(sunDir);
+    this.mat.uniforms.uCrust.value.copy(director.grade).lerp(this._basalt,0.7);
+    if(!this._counted && z>-30){ this._counted=true; TEL.planets++; }
+    if(z>outEnd){ this.active=false; this.mesh.visible=false; } } }
+class ShatteredWorld{
+  constructor(geo,mat){
+    this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
+    this.coreMat=new THREE.MeshStandardMaterial({map:ASSETS.pt[MOON_IDX],roughness:1,metalness:0,envMapIntensity:0.2,transparent:true,opacity:1});
+    this.core=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),this.coreMat); this.g.add(this.core);
+    this.N=IS_MOBILE?40:64;
+    this.rmat=mat.clone(); this.rmat.transparent=true;
+    this.rubble=new THREE.InstancedMesh(geo,this.rmat,this.N);
+    this.rubble.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.rubble.frustumCulled=false; this.g.add(this.rubble);
+    this.ph=new Float32Array(this.N); this.rad=new Float32Array(this.N); this.yj=new Float32Array(this.N); this.sp=new Float32Array(this.N); this.sz=new Float32Array(this.N); this.rot=new Float32Array(this.N*3);
+    this.active=false; this.spin=0; this._counted=false; this.tilt=0;
+  }
+  spawn(){ this.active=true; this._counted=false; const cr=12+Math.random()*8; this.core.scale.setScalar(cr);
+    for(let i=0;i<this.N;i++){ this.ph[i]=Math.random()*6.283; this.rad[i]=cr*(1.7+Math.random()*1.4); this.yj[i]=(Math.random()*2-1)*cr*0.25;
+      this.sp[i]=(0.2+Math.random()*0.3)*(Math.random()<0.5?1:-1); this.sz[i]=cr*(0.05+Math.random()*0.09);
+      this.rot[i*3]=Math.random()*6.283; this.rot[i*3+1]=Math.random()*6.283; this.rot[i*3+2]=Math.random()*6.283; }
+    this.tilt=(Math.random()*2-1)*0.5; this.g.rotation.set(this.tilt,Math.random()*6.28,0);
+    const ang=Math.random()*Math.PI*2,dist=cr*2.4+90+Math.random()*130;
+    this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*55,SPAWN_Z-Math.random()*380);
+    this.spin=(Math.random()*2-1)*0.01; this.g.visible=true; }
+  update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt; this.g.rotation.y+=this.spin*dt;
+    for(let i=0;i<this.N;i++){ this.ph[i]=(this.ph[i]+this.sp[i]*dt)%6.283185;
+      const a=this.ph[i]; _p.set(Math.cos(a)*this.rad[i],this.yj[i],Math.sin(a)*this.rad[i]);
+      this.rot[i*3+1]+=dt*0.4; _e.set(this.rot[i*3],this.rot[i*3+1],this.rot[i*3+2]); _q.setFromEuler(_e); _s.setScalar(this.sz[i]); _m.compose(_p,_q,_s); this.rubble.setMatrixAt(i,_m); }
+    this.rubble.instanceMatrix.needsUpdate=true;
+    const z=this.g.position.z, cr=this.core.scale.x, outEnd=340+cr*4.0;
+    const op=Math.min(THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1),THREE.MathUtils.clamp((outEnd-z)/(cr*4.0+200),0,1));
+    this.coreMat.opacity=op; this.rmat.opacity=op;
+    this.coreMat.color.copy(_white).lerp(director.grade,0.25);
+    if(!this._counted && z>-30){ this._counted=true; TEL.planets++; }
+    if(z>outEnd){ this.active=false; this.g.visible=false; } } }
+class WhiteDwarf{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
+    this.core=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xdfeaff),opacity:0}));
+    this.core.scale.setScalar(0.7); this.g.add(this.core);
+    this.halo=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0x9fc2ff),opacity:0}));
+    this.halo.scale.setScalar(2.4); this.g.add(this.halo);
+    this.ring=new THREE.Mesh(new THREE.RingGeometry(0.9,1.0,40),new THREE.MeshBasicMaterial({color:0xbcd4ff,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,opacity:0}));
+    this.ring.scale.setScalar(1.4); this.g.add(this.ring);
+    this.active=false; this._counted=false; this._col=new THREE.Color();
+  }
+  spawn(){ this.active=true; this._counted=false; const r=0.5+Math.random()*0.5; this.g.scale.setScalar(r);
+    const ang=Math.random()*Math.PI*2,dist=30+Math.random()*70; this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*30,SPAWN_Z*0.6-Math.random()*400); this.g.visible=true; }
+  update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt;
+    const z=this.g.position.z, op=Math.min(THREE.MathUtils.clamp((z-(SPAWN_Z*0.6))/400,0,1),THREE.MathUtils.clamp((40-z)/40,0,1));
+    const col=this._col.copy(director.key).lerp(_white,0.65);
+    this.core.material.color.copy(col); this.halo.material.color.copy(col).lerp(director.grade,0.25);
+    this.core.material.opacity=op*0.85; this.halo.material.opacity=op*0.30; this.ring.material.opacity=op*0.12;
+    this.ring.lookAt(camera.position);
+    if(!this._counted && z>-20){ this._counted=true; TEL.stars++; }
+    if(z>45){ this.active=false; this.g.visible=false; } } }
+class VariableStar{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
+    this.core=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xffe6b8),opacity:0}));
+    this.core.scale.setScalar(1.6); this.g.add(this.core);
+    this.halo=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xffcf8a),opacity:0}));
+    this.halo.scale.setScalar(4.2); this.g.add(this.halo);
+    this.active=false; this._counted=false; this.ph=0; this.w=1.0; this._col=new THREE.Color();
+  }
+  spawn(){ this.active=true; this._counted=false; const r=0.8+Math.random()*1.0; this.g.scale.setScalar(r);
+    const ang=Math.random()*Math.PI*2,dist=34+Math.random()*70; this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*30,SPAWN_Z*0.6-Math.random()*400);
+    this.ph=Math.random()*6.2831853; this.w=0.8+Math.random()*0.5;
+    this.g.visible=true; }
+  update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt; this.ph=(this.ph+dt*this.w)%6.2831853;
+    const pulse=0.30+0.70*Math.pow(Math.sin(this.ph)*0.5+0.5,1.5);
+    const z=this.g.position.z, op=Math.min(THREE.MathUtils.clamp((z-(SPAWN_Z*0.6))/400,0,1),THREE.MathUtils.clamp((40-z)/40,0,1));
+    const col=this._col.copy(director.key).lerp(_warm,0.4).lerp(_white,0.15*pulse);
+    this.core.material.color.copy(col); this.halo.material.color.copy(col).lerp(director.grade,0.2);
+    this.core.material.opacity=op*(0.30+0.30*pulse); this.halo.material.opacity=op*(0.10+0.22*pulse);
+    if(!this._counted && z>-20){ this._counted=true; TEL.stars++; }
+    if(z>45){ this.active=false; this.g.visible=false; } } }
+class RingArc{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
+    this.shellMat=new THREE.MeshStandardMaterial({color:0x191d24,roughness:0.55,metalness:0.7,envMapIntensity:0.6,transparent:true,opacity:0,side:THREE.DoubleSide});
+    this.shell=new THREE.Mesh(new THREE.TorusGeometry(1,0.045,8,80,Math.PI*1.25),this.shellMat); this.g.add(this.shell);
+    this.litMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
+      uniforms:{uTime:{value:0},uOp:{value:0},uCol:{value:new THREE.Color(0xffb060)}},
+      vertexShader:`varying float vu;void main(){vu=uv.x;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:`varying float vu;uniform float uTime,uOp;uniform vec3 uCol;
+        void main(){ float cells=fract(vu*240.0); float lights=smoothstep(0.85,1.0,cells);
+          float flick=0.7+0.3*sin(uTime*3.0+vu*900.0); gl_FragColor=vec4(uCol, lights*flick*0.45*uOp); }`});
+    this.lit=new THREE.Mesh(new THREE.TorusGeometry(0.985,0.012,4,80,Math.PI*1.25),this.litMat); this.g.add(this.lit);
+    this.active=false; this.spin=0; this.t=0; this._counted=false; this._em=new THREE.Color(); this.z0=0;
+  }
+  spawn(){ this.active=true; this._counted=false; this.t=0;
+    const r=80+Math.random()*70; this.g.scale.setScalar(r);
+    const ang=Math.random()*Math.PI*2,dist=r*0.9+90+Math.random()*120;
+    this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*40, SPAWN_Z-Math.random()*300); this.z0=this.g.position.z;
+    this.g.rotation.set(Math.random()*0.6-0.3, Math.random()*Math.PI, Math.random()*Math.PI);
+    this.spin=(Math.random()*2-1)*0.012;
+    this.shellMat.opacity=0; this.litMat.uniforms.uOp.value=0; this.g.visible=true;
+    $t.log.textContent='— a piece of a ring, broken. Once you could have walked its inner sky for a thousand years.';
+    $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000);
+  }
+  update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt; this.g.rotation.y+=this.spin*dt; this.g.rotation.x+=this.spin*0.3*dt;
+    this.t=(this.t+dt)%100000; this.litMat.uniforms.uTime.value=this.t;
+    this.shellMat.color.copy(this._em.set(0x191d24)).lerp(director.key,0.18);
+    this.litMat.uniforms.uCol.value.copy(director.key).lerp(_warm,0.5);
+    const z=this.g.position.z, outEnd=120+this.g.scale.x*1.5;
+    const op=Math.min(THREE.MathUtils.clamp((z-this.z0)/700,0,1), THREE.MathUtils.clamp((outEnd-z)/(this.g.scale.x*1.6+120),0,1));
+    this.shellMat.opacity=op; this.litMat.uniforms.uOp.value=op;
+    if(!this._counted && z>-30){ this._counted=true; TEL.planets++; }
+    if(z>outEnd){ this.active=false; this.g.visible=false; } }
+}
+class StationTumble{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
+    this.mat=new THREE.MeshStandardMaterial({color:0x23272e,roughness:0.7,metalness:0.55,envMapIntensity:0.5,transparent:true,opacity:0});
+    this.hull=new THREE.Group(); this.g.add(this.hull);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(2.6,0.28,12,40),this.mat); ring.rotation.x=Math.PI/2; this.hull.add(ring);
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,1.4,16),this.mat); this.hull.add(hub);
+    for(let i=0;i<6;i++){ const sp=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,2.6,6),this.mat);
+      sp.rotation.z=Math.PI/2; sp.position.set(Math.cos(i/6*6.283)*1.3,0,Math.sin(i/6*6.283)*1.3);
+      sp.rotation.y=-i/6*6.283; this.hull.add(sp); }
+    const boom=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,2.0,6),this.mat); boom.position.set(0,1.6,0); this.hull.add(boom);
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.3,0.5),this.mat); cap.position.set(0,2.6,0); this.hull.add(cap);
+    this.win=[]; for(let i=0;i<2;i++){ const w=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xffd29a),opacity:0}));
+      const a=Math.random()*6.283; w.position.set(Math.cos(a)*2.6,0,Math.sin(a)*2.6); w.scale.setScalar(0.5); this.hull.add(w); this.win.push(w); }
+    this.active=false; this.spin=0; this.tumble=0; this.t=0; this._counted=false; this._em=new THREE.Color(); this.z0=0;
+  }
+  spawn(){ this.active=true; this._counted=false; this.t=0;
+    const r=3+Math.random()*4; this.g.scale.setScalar(r);
+    const side=Math.random()<0.5?-1:1; this.g.position.set(side*(16+Math.random()*30),(Math.random()*2-1)*14, -380-Math.random()*320); this.z0=this.g.position.z;
+    this.g.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
+    this.spin=(Math.random()*2-1)*0.06; this.tumble=(Math.random()*2-1)*0.04;
+    this.mat.opacity=0; this.g.visible=true;
+    $t.log.textContent='— a wheel that once spun for gravity. It still spins. No one is left to feel it.';
+    $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000);
+  }
+  update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt;
+    this.g.rotation.x+=this.tumble*dt; this.g.rotation.z+=this.tumble*0.5*dt; this.hull.rotation.y+=this.spin*dt;
+    this.t=(this.t+dt)%100000;
+    this.mat.color.copy(this._em.set(0x23272e)).lerp(director.key,0.12);
+    const z=this.g.position.z, op=Math.min(THREE.MathUtils.clamp((z-this.z0)/180,0,1), THREE.MathUtils.clamp((44-z)/90,0,1));
+    this.mat.opacity=op;
+    const fl=0.3+0.7*Math.max(0,Math.sin(this.t*2.3)*Math.sin(this.t*0.7));
+    this.win[0].material.opacity=op*fl*0.6; this.win[1].material.opacity=op*(1.0-fl)*0.4;
+    if(!this._counted && z>-25){ this._counted=true; TEL.companions++; }
+    if(z>44){ this.active=false; this.g.visible=false; } }
+}
+class LightEcho{
+  constructor(){
+    this.mat=new THREE.MeshBasicMaterial({color:0xbfe0ff,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
+    this.mesh=new THREE.Mesh(new THREE.RingGeometry(0.45,0.5,80,1),this.mat);
+    this.mesh.visible=false; this.mesh.frustumCulled=false; scene.add(this.mesh);
+    this.active=false; this._counted=false; this.t=0; this.life=8.5;
+  }
+  spawn(){ this.active=true; this._counted=false; this.t=0;
+    const ang=Math.random()*Math.PI*2,dist=60+Math.random()*120;
+    this.mesh.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*40,SPAWN_Z-Math.random()*300);
+    this.mesh.lookAt(camera.position); this.mesh.visible=true; }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.mesh.position.z+=speed*dt; this.mesh.lookAt(camera.position);
+    const grow=this.t/this.life, R=6+grow*grow*(2.0-grow)*190;
+    this.mesh.scale.setScalar(R);
+    const z=this.mesh.position.z;
+    const zfade=Math.min(THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1),THREE.MathUtils.clamp((140-z)/120,0,1));
+    const pulse=Math.sin(Math.min(1,grow)*Math.PI);
+    this.mat.opacity=zfade*pulse*0.5;
+    this.mat.color.copy(_echoCol.copy(_white).lerp(director.grade,0.45));
+    if(!this._counted && z>-30){ this._counted=true; TEL.stars++; }
+    if(this.t>this.life || z>140){ this.active=false; this.mesh.visible=false; } }
+}
+class BolideSplit{
+  constructor(){ this.N=7; this.pos=new Float32Array(this.N*3); this.vel=new Float32Array(this.N*3);
+    this.geo=new THREE.BufferGeometry(); this.geo.setAttribute('position',new THREE.BufferAttribute(this.pos,3));
+    this.mat=new THREE.PointsMaterial({map:starGlow,size:9,sizeAttenuation:true,transparent:true,opacity:0,
+      depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xcfe6ff)});
+    this.pts=new THREE.Points(this.geo,this.mat); this.pts.visible=false; this.pts.frustumCulled=false; scene.add(this.pts);
+    this.active=false; this._counted=false; this.t=0; this.life=4.0; this.split=false; this.hvx=0; this.hvy=0; }
+  spawn(){ this.active=true; this._counted=false; this.t=0; this.split=false;
+    const ang=Math.random()*Math.PI*2,dist=70+Math.random()*60;
+    this.pts.position.set(Math.cos(ang)*dist*0.4,30+Math.random()*20,SPAWN_Z*0.5-Math.random()*200);
+    this.hvx=(-1+Math.random()*0.5)*22; this.hvy=-10-Math.random()*8;
+    for(let i=0;i<this.N*3;i++){ this.pos[i]=0; this.vel[i]=0; }
+    this.geo.attributes.position.needsUpdate=true; this.pts.visible=true; }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.pts.position.z+=speed*dt;
+    this.pos[0]+=this.hvx*dt; this.pos[1]+=this.hvy*dt;
+    if(!this.split && this.t>this.life*0.4){ this.split=true;
+      for(let i=1;i<this.N;i++){ this.pos[i*3]=this.pos[0]; this.pos[i*3+1]=this.pos[1]; this.pos[i*3+2]=this.pos[2];
+        const a=Math.random()*Math.PI*2, sp=6+Math.random()*8;
+        this.vel[i*3]=Math.cos(a)*sp+this.hvx*0.6; this.vel[i*3+1]=Math.sin(a)*sp+this.hvy*0.6; } }
+    if(this.split){ for(let i=1;i<this.N;i++){ this.vel[i*3+1]-=4*dt;
+      this.pos[i*3]+=this.vel[i*3]*dt; this.pos[i*3+1]+=this.vel[i*3+1]*dt; } }
+    this.geo.attributes.position.needsUpdate=true;
+    const env=Math.min(THREE.MathUtils.clamp(this.t/0.3,0,1),THREE.MathUtils.clamp((this.life-this.t)/1.2,0,1));
+    this.mat.opacity=env*0.6; this.mat.color.copy(_white).lerp(director.key,0.25);
+    if(!this._counted && this.t>this.life*0.5){ this._counted=true; TEL.meteors++; }
+    if(this.t>this.life){ this.active=false; this.pts.visible=false; } }
+}
+class GWRipple{
+  constructor(){ this.active=false; this.t=0; this.dur=5.5; this.dir=new THREE.Vector2(1,0); }
+  spawn(){ this.active=true; this.t=0;
+    const a=Math.random()*Math.PI*2; this.dir.set(Math.cos(a),Math.sin(a));
+    if(cinePass) cinePass.uniforms.uGWDir.value.copy(this.dir);
+    $t.log.textContent='— a ripple in spacetime. Something enormous moved, far away.';
+    $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); }
+  update(dt){
+    if(!this.active){ if(cinePass) cinePass.uniforms.uGW.value=0; return; }
+    this.t+=dt;
+    const a=THREE.MathUtils.clamp(this.t/1.4,0,1), b=THREE.MathUtils.clamp((this.dur-this.t)/1.8,0,1);
+    let k=Math.min(a,b); k=k*k*(3-2*k);
+    if(cinePass) cinePass.uniforms.uGW.value=k*0.0038;
+    if(this.t>this.dur){ this.active=false; if(cinePass) cinePass.uniforms.uGW.value=0; }
+  }
+}
+class WhalePod{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
+    this.bodyMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,
+      uniforms:{uOp:{value:0},uGrade:{value:new THREE.Color(0x223a6b)},uGlow:{value:new THREE.Color(0x3fd6c8)}},
+      vertexShader:`varying vec3 vN;varying vec2 vUv;void main(){vUv=uv;vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:`varying vec3 vN;varying vec2 vUv;uniform float uOp;uniform vec3 uGrade,uGlow;
+        void main(){ float rim=pow(1.0-abs(vN.z),2.5);
+          float stripe=smoothstep(0.06,0.0,abs(vUv.y-0.5))*smoothstep(0.95,0.3,vUv.x);
+          vec3 base=uGrade*0.10;
+          vec3 c=base + rim*uGrade*0.5 + stripe*uGlow*0.7;
+          float a=(0.55 + rim*0.45 + stripe*0.6)*uOp;
+          gl_FragColor=vec4(c,a); }`});
+    this.finMat=new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0x2fbfb0),opacity:0});
+    this.whales=[]; const N=IS_MOBILE?2:3;
+    for(let i=0;i<N;i++){
+      const w=new THREE.Group();
+      const body=new THREE.Mesh(new THREE.SphereGeometry(1,18,12),this.bodyMat);
+      body.scale.set(0.9,0.55,3.2); w.add(body);
+      const tail=new THREE.Sprite(this.finMat.clone()); tail.scale.set(2.6,2.0,1); tail.position.z=3.0; w.add(tail);
+      const finL=new THREE.Sprite(this.finMat.clone()); finL.scale.set(2.2,1.2,1); finL.position.set(0.9,-0.2,0.4); w.add(finL);
+      const finR=new THREE.Sprite(this.finMat.clone()); finR.scale.set(2.2,1.2,1); finR.position.set(-0.9,-0.2,0.4); w.add(finR);
+      w.userData={body,tail,finL,finR,ph:Math.random()*6.28,sc:1};
+      this.g.add(w); this.whales.push(w);
+    }
+    this.active=false; this._counted=false; this.t=0; this.dur=0; this.vx=0; this.vy=0; this.z0=0;
+  }
+  spawn(){
+    this.active=true; this._counted=false; this.t=0; this.dur=46+Math.random()*30;
+    const side=Math.random()<0.5?-1:1;
+    this.g.position.set(side*(70+Math.random()*60),(Math.random()*2-1)*40,SPAWN_Z-Math.random()*300);
+    this.z0=this.g.position.z;
+    this.vx=-side*(2.0+Math.random()*2.0); this.vy=(Math.random()*2-1)*0.6;
+    const baseScale=10+Math.random()*9;
+    for(let i=0;i<this.whales.length;i++){ const w=this.whales[i];
+      const s=baseScale*(0.7+Math.random()*0.5); w.scale.setScalar(s); w.userData.sc=s; w.userData.ph=Math.random()*6.28;
+      w.position.set((Math.random()*2-1)*40,(Math.random()*2-1)*22,(Math.random()*2-1)*60);
+      w.rotation.y=(this.vx<0?1:-1)*0.5 + (Math.random()*2-1)*0.3; }
+    this.g.visible=true;
+    $t.log.textContent='— vast, slow shapes crossing the dark. They have no eyes for us.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000);
+  }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.g.position.z+=speed*dt; this.g.position.x+=this.vx*dt; this.g.position.y+=this.vy*dt;
+    this.bodyMat.uniforms.uGrade.value.copy(director.grade);
+    for(const w of this.whales){ const u=w.userData; const ph=this.t*0.6+u.ph;
+      w.rotation.z=Math.sin(ph)*0.10; w.position.y+=Math.sin(ph)*dt*1.2;
+      const beat=0.6+0.4*Math.sin(ph*1.3);
+      u.tail.material.opacity=beat; u.finL.material.opacity=beat*0.8; u.finR.material.opacity=beat*0.8; }
+    const z=this.g.position.z;
+    const op=Math.min(THREE.MathUtils.clamp((z-this.z0)/600,0,1),
+                      THREE.MathUtils.clamp((60-z)/120,0,1),
+                      THREE.MathUtils.clamp((this.dur-this.t)/4,0,1));
+    this.bodyMat.uniforms.uOp.value=op;
+    for(const w of this.whales){ const u=w.userData;
+      u.tail.material.opacity*=op; u.finL.material.opacity*=op; u.finR.material.opacity*=op; }
+    if(!this._counted && z>-30){ this._counted=true; TEL.companions++; }
+    if(this.t>=this.dur||z>70){ this.active=false; this.g.visible=false; }
+  }
+}
+
+/* ---------------- PIANETI PERMANENTI (acquisto: nome + logo) ---------------- */
+class OwnedPlanet{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
+    this.mat=new THREE.MeshStandardMaterial({roughness:0.95,metalness:0,envMapIntensity:0.55,transparent:true,opacity:1});
+    this.mat.map=this.mat.emissiveMap=ASSETS.pt[0]; this.mat.emissive=new THREE.Color(0xffffff); this.mat.emissiveIntensity=0;
+    this.pUni={ uSunDir:{value:new THREE.Vector3(0,1,0)}, uTime:{value:0}, uIsEarth:{value:0}, uIsSun:{value:0}, uAirless:{value:0}, uHasAtmo:{value:1}, uBump:{value:3.0}, uTexel:{value:new THREE.Vector2(1/2048,1/1024)}, uNight:{value:new THREE.Color(0x0a1020)}, uRim:{value:new THREE.Color(0x88bbff)} };
+    this.mat.onBeforeCompile=planetOnBeforeCompile(this.pUni);
+    this.mesh=new THREE.Mesh(new THREE.SphereGeometry(1,64,48),this.mat); this.g.add(this.mesh);
+    this.label=null;
+    this.logo=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthWrite:false,opacity:0})); this.logo.visible=false; this.g.add(this.logo);
+    this.active=false; this._counted=false; this.spin=0; this.r=24; this.z0=0; this.item=null;
+  }
+  spawn(item){
+    this.active=true; this._counted=false; this.item=item||{};
+    const r=this.r=24+Math.random()*16; this.mesh.scale.setScalar(r);
+    const skin=Math.max(0,Math.min(PMETA.length-1, (item.skin|0))); const meta=PMETA[skin];
+    this.mat.map=this.mat.emissiveMap=ASSETS.pt[skin];
+    const pu=this.pUni; pu.uIsEarth.value=meta&&meta.earth?1:0; pu.uIsSun.value=0; pu.uAirless.value=meta&&meta.gray?1:0;
+    pu.uHasAtmo.value=(meta&&meta.gray)?0:1; pu.uBump.value=(meta&&meta.bump!=null)?meta.bump:3.0;
+    pu.uRim.value.setHSL(meta?meta.hue:0.6,0.6,0.62);
+    const _im=ASSETS.pt[skin]&&ASSETS.pt[skin].image; if(_im&&_im.width) pu.uTexel.value.set(1/_im.width,1/_im.height); else pu.uTexel.value.set(1/2048,1/1024);
+    const ang=Math.random()*Math.PI*2, dist=r*1.45+70+Math.random()*110;
+    this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*45,SPAWN_Z-Math.random()*380); this.z0=this.g.position.z;
+    this.mesh.rotation.set(Math.random()*0.4-0.2,Math.random()*6.28,0); this.spin=(Math.random()*2-1)*0.006;
+    // niente nome scritto in 3D sul pianeta (sembrerebbe una targa pubblicitaria): il nome appare nel log quando passa
+    const tex=item.logo?logoTex.get(item.logo):null;
+    if(tex){ this.logo.material.map=tex; this.logo.material.needsUpdate=true; const ls=r*0.9; this.logo.scale.set(ls,ls,1); this.logo.position.set(0,-r*1.4,0); this.logo.visible=true; }
+    else this.logo.visible=false;
+    this.g.visible=true;
+  }
+  update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt; this.mesh.rotation.y+=this.spin*dt;
+    const z=this.g.position.z, r=this.r, outEnd=340+r*2.0;
+    const op=Math.min(THREE.MathUtils.clamp((z-this.z0)/700,0,1),THREE.MathUtils.clamp((outEnd-z)/(r*2.6+200),0,1));
+    this.mat.opacity=op;
+    this.pUni.uSunDir.value.copy(sunDir); this.pUni.uTime.value=shaderTime; this.pUni.uNight.value.copy(director.grade);
+    if(this.logo.visible) this.logo.material.opacity=op*0.95;
+    if(!this._counted && z>-30){ this._counted=true; TEL.planets++;
+      if(this.item && this.item.name && $t && $t.log){ $t.log.textContent='— a world named '+this.item.name+'.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),9000); } }
+    if(z>outEnd){ this.active=false; this.g.visible=false; } }
+}
+/* catalogo permanenti (acquisti) + semina dal bridge */
+let ownedPlanets=[], ownedTimer=25, ownedIdx=0;
+const permPlanets=[], logoTex=new Map(), permStarSeen=new Set();
+async function loadPermanent(){
+  try{ const r=await fetch('/api/permanent',{cache:'no-store'}); if(!r.ok) return; const j=await r.json();
+    if(j && Array.isArray(j.stars)){ for(const s of j.stars){ if(s.name && !permStarSeen.has(s.name)){ permStarSeen.add(s.name); companionPool.push(s.name); } } }   // stelle permanenti → ricorrono per sempre
+    if(j && Array.isArray(j.planets)){ permPlanets.length=0; for(const p of j.planets){ permPlanets.push(p);
+      if(p.logo && !logoTex.has(p.logo)){ const t=texL.load(p.logo); t.colorSpace=THREE.SRGBColorSpace; logoTex.set(p.logo,t); } } }
+  }catch(e){ /* bridge non attivo */ }
+}
+setInterval(()=>{ if(started) loadPermanent(); }, 300000);   // ricontrolla nuovi acquisti ogni 5 min
+window.cadutaDebugOwned=(name,skin,logo)=>{ const free=ownedPlanets.find(p=>!p.active)||ownedPlanets[0]; if(free){ free.spawn({name:name||'TEST',skin:skin|0,logo:logo||''}); free.g.position.set(30,4,-280); } return 'ok'; };  // test pianeta permanente
+
 /* ---------------- loop ---------------- */
 const clock=new THREE.Clock();
 let shaderTime=0; const SWRAP=100000;
@@ -1548,6 +1942,7 @@ const tmpLook=new THREE.Vector3(), planetFocus=new THREE.Vector3(), _bhProj=new 
 // auto-scaler
 let fpsAcc=0,fpsN=0,fpsTimer=0,tier=0,tierCooldown=0;
 function autoscale(dt,fps){
+  if(window.obsstudio || /[?&]live=1/.test(location.search)) return;   // LIVE/cloud: GPU dedicata → qualità sempre al massimo, mai downscale (l'fps in cattura è fuorviante)
   fpsTimer+=dt; if(fpsTimer<2) return; fpsTimer=0;
   if(tierCooldown>0){ tierCooldown-=2; return; }                 // dopo un cambio aspetta ~8s → niente flip-flop (i micro-hitch venivano dalla realloc dei target ad ogni cambio)
   if(fps<48 && tier<2){ tier++; applyTier(); tierCooldown=8; }    // banda più larga (48–60) → cambi più rari
@@ -1728,6 +2123,21 @@ function animate(){
   auroraTimer-=dt; if(auroraTimer<=0 && !aurora.active){ auroraTimer=240+Math.random()*260; aurora.spawn(); } aurora.update(dt,speed);
   // dust storm: rara e mai sovrapposta ad altri corpi a fbm pesante (remnant/nebulosa)
   duststormTimer-=dt; if(duststormTimer<=0 && !duststorm.active && !remnant.active && nebBoost<0.3){ duststormTimer=300+Math.random()*360; duststorm.spawn(); } duststorm.update(dt,speed);
+  // --- NUOVI CORPI (varietà): timer individuali + update ogni frame ---
+  lavaTimer-=dt; if(lavaTimer<=0 && !lavaWorld.active){ lavaTimer=240+Math.random()*220; lavaWorld.spawn(); } lavaWorld.update(dt,speed);
+  shatteredTimer-=dt; if(shatteredTimer<=0 && !shattered.active){ shatteredTimer=300+Math.random()*260; shattered.spawn(); } shattered.update(dt,speed);
+  whitedwarfTimer-=dt; if(whitedwarfTimer<=0 && !whitedwarf.active){ whitedwarfTimer=150+Math.random()*200; whitedwarf.spawn(); } whitedwarf.update(dt,speed);
+  variablestarTimer-=dt; if(variablestarTimer<=0 && !variablestar.active){ variablestarTimer=140+Math.random()*180; variablestar.spawn(); } variablestar.update(dt,speed);
+  ringarcTimer-=dt; if(ringarcTimer<=0 && !ringarc.active){ ringarcTimer=300+Math.random()*360; ringarc.spawn(); } ringarc.update(dt,speed);
+  stationTimer-=dt; if(stationTimer<=0 && !station.active){ stationTimer=200+Math.random()*240; station.spawn(); } station.update(dt,speed);
+  lightEchoTimer-=dt; if(lightEchoTimer<=0 && !lightEcho.active){ lightEchoTimer=300+Math.random()*400; lightEcho.spawn(); } lightEcho.update(dt,speed);
+  bolideTimer-=dt; if(bolideTimer<=0 && !bolide.active){ bolideTimer=130+Math.random()*200; bolide.spawn(); } bolide.update(dt,speed);
+  gwTimer-=dt; if(gwTimer<=0 && !gwRipple.active){ gwTimer=360+Math.random()*420; gwRipple.spawn(); } gwRipple.update(dt);
+  whalePodTimer-=dt; if(whalePodTimer<=0 && !whalePod.active){ whalePodTimer=240+Math.random()*260; whalePod.spawn(); } whalePod.update(dt,speed);
+  // PIANETI PERMANENTI: ne mostra uno alla volta, ruotando sul catalogo acquistato
+  ownedTimer-=dt; if(ownedTimer<=0){ ownedTimer=30+Math.random()*40; const free=ownedPlanets.find(p=>!p.active); if(free && permPlanets.length){ free.spawn(permPlanets[ownedIdx%permPlanets.length]); ownedIdx++; } }
+  for(const p of ownedPlanets) p.update(dt,speed);
+  if(_echoPending>0){ _echoPending-=dt; if(_echoPending<=0 && !lightEcho.active) lightEcho.spawn(); }   // eco di luce ~14s dopo una supernova
 
   // --- CAMERA QUASI-FERMA dietro l'uomo: niente orbita, solo un respiro impercettibile ---
   camPhase+=dt*timeScale;
@@ -1806,14 +2216,186 @@ function animate(){
 function smooth(a,b,x){ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); }
 
 /* ---------------- audio ---------------- */
+/* sampler: strumenti veri (organo a canne / pianoforte / archi), campioni CC-MIT FluidR3_GM in assets/samples */
+function midiToName(m){ const pc=['C',null,null,'Eb',null,null,'Gb',null,null,'A',null,null][((m%12)+12)%12]; return pc+(Math.floor(m/12)-1); }
+class SampleKit{
+  constructor(ctx,base){ this.ctx=ctx; this.base=base; this.kits={}; this.ready=false; }
+  async load(){
+    const defs={ organ:[24,72], piano:[36,84], strings:[36,72] }, jobs=[];   // una nota ogni 3 semitoni → pitch-shift minimo
+    for(const name in defs){ const lo=defs[name][0],hi=defs[name][1],notes=[]; this.kits[name]={notes};
+      for(let m=lo;m<=hi;m+=3){ const s={midi:m,buffer:null}; notes.push(s);
+        jobs.push(fetch(`${this.base}/${name}/${midiToName(m)}.mp3`).then(r=>r.arrayBuffer()).then(a=>this.ctx.decodeAudioData(a)).then(b=>{s.buffer=b;}).catch(()=>{})); } }
+    await Promise.all(jobs);
+    for(const k in this.kits) this.kits[k].notes=this.kits[k].notes.filter(s=>s.buffer);
+    this.ready = this.kits.organ.notes.length>2 && this.kits.piano.notes.length>2 && this.kits.strings.notes.length>2;
+    return this.ready;
+  }
+  _near(kit,midi){ const ns=this.kits[kit]&&this.kits[kit].notes; if(!ns||!ns.length) return null; let best=ns[0],bd=1e9; for(const s of ns){ const d=Math.abs(s.midi-midi); if(d<bd){bd=d;best=s;} } return best; }
+  // suona una nota; ritorna {src,g,sampMidi}. opt: {loop,loopStart,loopEnd,attack,dur,release,pan,sends:[nodi]}
+  note(kit,midi,dest,t,peak,opt){ opt=opt||{}; const ctx=this.ctx,s=this._near(kit,midi); if(!s||!s.buffer) return null;
+    const src=ctx.createBufferSource(); src.buffer=s.buffer; src.playbackRate.value=Math.pow(2,(midi-s.midi)/12);
+    if(opt.loop){ src.loop=true; src.loopStart=opt.loopStart!=null?opt.loopStart:0.6; src.loopEnd=opt.loopEnd!=null?opt.loopEnd:2.4; }
+    const g=ctx.createGain(); g.gain.value=0.0001; let head=g, pan=null;
+    if(opt.pan!=null){ pan=ctx.createStereoPanner(); pan.pan.value=opt.pan; src.connect(g).connect(pan); head=pan; } else src.connect(g);
+    head.connect(dest); if(opt.sends) for(const n of opt.sends) head.connect(n);
+    const atk=opt.attack!=null?opt.attack:0.02; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(Math.max(peak,0.0002),t+atk);
+    src.start(t);   // <-- avvia davvero il campione (senza questo: nessun suono)
+    const cleanup=()=>{try{src.disconnect();g.disconnect();if(pan)pan.disconnect();}catch(e){}};
+    if(opt.dur!=null){ const rel=opt.release!=null?opt.release:0.4; g.gain.setTargetAtTime(0.0001,t+opt.dur,rel/3); src.stop(t+opt.dur+rel+0.3); src.onended=cleanup; }
+    return {src,g,sampMidi:s.midi,_cleanup:cleanup};
+  }
+}
+
+/* Libreria di brani completi: copie locali già rallentate al 72% e normalizzate.
+   Due deck HTMLMediaElement evitano di decodificare in RAM oltre un'ora di musica;
+   Web Audio gestisce crossfade, filtro da buco nero e ducking del motore procedurale. */
+const MUSIC_SCENE_ENERGY={galassia:0.45,vuoto:0.10,nebulosa:0.34,pianeta:0.48,cintura:0.90,brace:0.78,gelo:0.20,abisso:0.05};
+let PRELOADED_MUSIC_LIBRARY=null;
+const LIVE_MUSIC_DECKS=new Set();
+const unlockLiveMusic=()=>{ for(const deck of LIVE_MUSIC_DECKS) deck.unlock(); };
+document.addEventListener('click',unlockLiveMusic,{passive:true});
+document.addEventListener('keydown',unlockLiveMusic,{passive:true});
+const MUSIC_LIBRARY_READY=fetch('assets/music/tracks.json',{cache:'no-store'}).then(r=>{if(!r.ok) throw new Error('HTTP '+r.status);return r.json();}).then(j=>{
+  if(!Array.isArray(j)||!j.length) throw new Error('catalogo vuoto'); PRELOADED_MUSIC_LIBRARY=j.filter(x=>x&&x.file&&x.title); return PRELOADED_MUSIC_LIBRARY;
+}).catch(e=>{console.warn('[music] preload catalogo fallito:',e);return [];});
+class AdaptiveMusicDeck{
+  constructor(ctx,dest,onTrack){
+    this.ctx=ctx; this.onTrack=onTrack; this.library=[]; this.bag=[]; this.mood='galassia';
+    this.started=false; this.loaded=false; this.enabled=true; this.active=-1; this.breakUntil=0;
+    this.rate=0.94; this.targetRate=0.94; this.level=0.74; this.blocked=false;
+    this.hp=ctx.createBiquadFilter(); this.hp.type='highpass'; this.hp.frequency.value=32; this.hp.Q.value=0.35;
+    this.lp=ctx.createBiquadFilter(); this.lp.type='lowpass'; this.lp.frequency.value=18000; this.lp.Q.value=0.25;
+    this.bus=ctx.createGain(); this.bus.gain.value=0.82;
+    this.hp.connect(this.lp).connect(this.bus).connect(dest);
+    this.decks=[this._makeDeck(),this._makeDeck()];
+    LIVE_MUSIC_DECKS.add(this);
+    if(PRELOADED_MUSIC_LIBRARY&&PRELOADED_MUSIC_LIBRARY.length){ this.library=PRELOADED_MUSIC_LIBRARY.slice();this.loaded=true;this._refill(); }
+    else this._load();
+  }
+  _makeDeck(){
+    const el=new Audio(); el.preload='metadata'; el.playsInline=true; el.preservesPitch=true; el.webkitPreservesPitch=true;
+    const gain=this.ctx.createGain(); gain.gain.value=0;
+    const source=this.ctx.createMediaElementSource(el); source.connect(gain).connect(this.hp);
+    const deck={el,gain,source,track:null,closing:false,stopAt:0,pauseAt:0,fadeLead:24};
+    // 24/7: un brano che fa 404 o stream interrotto NON deve bloccare il deck in silenzio → salta al prossimo.
+    // Guardia su el.error reale: i _clear() (removeAttribute src + load) in Chromium emettono 'emptied', non 'error'.
+    el.addEventListener('error', ()=>{ if(!deck.track||!el.error) return;
+      console.warn('[music] brano in errore, salto:', deck.track.title, el.error.code);
+      deck.track=null; if(this.decks[this.active]===deck) this._startNext(false,4); });
+    return deck;
+  }
+  async _load(){
+    try{
+      const j=await MUSIC_LIBRARY_READY; if(!Array.isArray(j)||!j.length) throw new Error('catalogo vuoto');
+      this.library=j.slice(); this.loaded=true; this._refill();
+      if(this.started&&this.active<0) this._startNext(true);
+    }catch(e){ console.warn('[music] catalogo non caricato; resta il motore procedurale:',e); }
+  }
+  start(){ this.started=true; if(this.loaded&&this.active<0) this._startNext(true); }
+  unlock(){
+    if(!this.started||!this.enabled||this.active<0) return;
+    try{this.ctx.resume();}catch(_){}
+    const d=this.decks[this.active]; if(!d||!d.track||!d.el.paused) return;
+    const p=d.el.play(); if(p&&p.then) p.then(()=>{this.blocked=false;console.log('[music] riproduzione sbloccata');}).catch(()=>{this.blocked=true;});
+  }
+  _refill(){
+    this.bag=this.library.slice();
+    for(let i=this.bag.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [this.bag[i],this.bag[j]]=[this.bag[j],this.bag[i]]; }
+  }
+  _pick(){
+    if(!this.bag.length) return null;
+    const desired=MUSIC_SCENE_ENERGY[this.mood]??0.4;
+    let pool=this.bag.filter(x=>Array.isArray(x.moods)&&x.moods.includes(this.mood)); if(!pool.length) pool=this.bag;
+    let best=pool[0],bestScore=-1;
+    for(const tr of pool){
+      const fit=1-Math.min(1,Math.abs((tr.energy??0.4)-desired));
+      const mood=Array.isArray(tr.moods)&&tr.moods.includes(this.mood)?1:0;
+      const score=(tr.weight||1)*(0.25+fit*0.85+mood*0.9)*(0.72+Math.random()*0.56);
+      if(score>bestScore){bestScore=score;best=tr;}
+    }
+    this.bag.splice(this.bag.indexOf(best),1); return best;
+  }
+  _fade(d,target,dur){
+    const t=this.ctx.currentTime,g=d.gain.gain; g.cancelScheduledValues(t); g.setValueAtTime(Math.max(0,g.value),t); g.linearRampToValueAtTime(target,t+Math.max(0.05,dur));
+  }
+  _clear(d){
+    try{d.el.pause();d.el.removeAttribute('src');d.el.load();}catch(_){}
+    d.gain.gain.cancelScheduledValues(this.ctx.currentTime); d.gain.gain.value=0;
+    d.track=null; d.closing=false; d.stopAt=0; d.pauseAt=0;
+  }
+  _playInto(index,track,fade){
+    const d=this.decks[index]; if(d.track) this._clear(d);
+    d.track=track; d.closing=false; d.stopAt=0; d.pauseAt=0; d.fadeLead=18+Math.random()*16;
+    d.el.src='assets/music/'+track.file; d.el.playbackRate=this.rate; d.el.defaultPlaybackRate=this.rate;
+    d.el.preservesPitch=true; d.el.webkitPreservesPitch=true; d.el.load();
+    d.gain.gain.value=0;
+    const p=d.el.play(); if(p&&p.catch) p.catch(e=>{this.blocked=true;console.warn('[music] play in attesa di interazione:',track.title,e);});
+    this._fade(d,this.level,fade); this.active=index;
+    if(this.onTrack) this.onTrack(track,this.rate,this.bag.length);
+  }
+  _startNext(initial,fadeOverride){
+    if(!this.started||!this.loaded||!this.enabled) return false;
+    if(!this.bag.length) this._refill(); const tr=this._pick(); if(!tr) return false;
+    const oldIndex=this.active, nextIndex=oldIndex<0?0:1-oldIndex, fade=fadeOverride||((initial?22:16)+Math.random()*10);
+    this._playInto(nextIndex,tr,fade);
+    if(oldIndex>=0){ const old=this.decks[oldIndex]; this._fade(old,0,fade); old.closing=true; old.stopAt=this.ctx.currentTime+fade+1; }
+    this.breakUntil=0; return true;
+  }
+  _cycleBreak(d){
+    const fade=d.fadeLead; this._fade(d,0,fade); d.closing=true; d.stopAt=this.ctx.currentTime+fade+1;
+    this.active=-1; this.breakUntil=this.ctx.currentTime+fade+55+Math.random()*100;
+  }
+  next(){ if(!this.loaded) return false; if(!this.bag.length) this._refill(); return this._startNext(false,9); }
+  setEnabled(on){
+    this.enabled=!!on; const now=this.ctx.currentTime;
+    if(!this.enabled){ for(const d of this.decks) if(d.track){this._fade(d,0,4);d.pauseAt=now+4.2;} }
+    else if(this.active>=0&&this.decks[this.active].track){ const d=this.decks[this.active];d.pauseAt=0;d.el.play().catch(()=>{});this._fade(d,this.level,5); }
+    else this._startNext(true,8);
+    return this.enabled;
+  }
+  status(){ const d=this.active>=0?this.decks[this.active]:null; return {enabled:this.enabled,blocked:this.blocked,title:d&&d.track?d.track.title:'procedural interlude',rate:this.rate,remaining:d&&isFinite(d.el.duration)?Math.max(0,(d.el.duration-d.el.currentTime)/this.rate):null,unplayed:this.bag.length}; }
+  update(dt,dir,mood){
+    if(!this.loaded) return 0; const now=this.ctx.currentTime,m=mood||{}; this.mood=(dir.to&&dir.to.name)||'galassia';
+    const travel=(dir.cur.speed*(dir.speedMul||1)),sn=Math.max(0,Math.min(1,(travel-18)/70));
+    this.targetRate=Math.max(0.82,Math.min(1.06,0.88+sn*0.16-(m.dread||0)*0.08+(m.nova||0)*0.015));
+    this.rate+=(this.targetRate-this.rate)*Math.min(1,dt/9);
+    for(const d of this.decks){
+      if(d.track){ d.el.playbackRate=this.rate; d.el.defaultPlaybackRate=this.rate; }
+      if(d.stopAt&&now>=d.stopAt) this._clear(d);
+      else if(d.pauseAt&&now>=d.pauseAt){d.pauseAt=0;try{d.el.pause();}catch(_){}}
+    }
+    const dread=Math.max(0,Math.min(1,m.dread||0)),lp=16000*(1-dread)+1250*dread;
+    this.lp.frequency.setTargetAtTime(lp,now,1.8); this.bus.gain.setTargetAtTime(0.82+(m.nova||0)*0.04,now,1.2);
+    if(this.enabled&&this.started){
+      if(this.active<0){ if(this.breakUntil&&now>=this.breakUntil){this._refill();this._startNext(true);} }
+      else{
+        const d=this.decks[this.active],el=d.el;
+        if(d.track&&!d.closing&&isFinite(el.duration)&&el.duration>0){
+          const remaining=(el.duration-el.currentTime)/Math.max(0.1,this.rate);
+          if(remaining<=d.fadeLead){ if(this.bag.length) this._startNext(false,d.fadeLead); else this._cycleBreak(d); }
+          else if(el.ended){ if(this.bag.length) this._startNext(false,5); else this._cycleBreak(d); }
+        }
+      }
+    }
+    let presence=0; for(const d of this.decks) presence+=Math.max(0,d.gain.gain.value)/this.level;
+    return Math.max(0,Math.min(1,presence));
+  }
+}
 class AmbientEngine{
-  constructor(){ this.ready=false; }
+  constructor(){ this.ready=false; this.useSamples=false; this._organVoices=[]; }
   start(){ if(this.ready) return; const Ctx=window.AudioContext||window.webkitAudioContext; this.ctx=new Ctx(); const ctx=this.ctx;
     this.master=ctx.createGain(); this.master.gain.value=0.0001;
     this.comp=ctx.createDynamicsCompressor(); this.comp.threshold.value=-18; this.comp.ratio.value=4; this.comp.attack.value=0.05; this.comp.release.value=0.4;
-    this.verb=ctx.createConvolver(); this.verb.buffer=this._imp(6.2,2.5); this.wet=ctx.createGain(); this.wet.gain.value=0.58; this.dry=ctx.createGain(); this.dry.gain.value=0.6;
+    this.verb=ctx.createConvolver(); this.verb.buffer=this._imp(9.0,1.9); this.wet=ctx.createGain(); this.wet.gain.value=0.66; this.dry=ctx.createGain(); this.dry.gain.value=0.56;   // coda lunghissima → spazio vasto
     this.verbHP=ctx.createBiquadFilter(); this.verbHP.type='highpass'; this.verbHP.frequency.value=95;   // tiene pulita la coda lunga del riverbero (niente fango dal sub) → spazio "vasto"
-    this.master.connect(this.dry).connect(this.comp); this.master.connect(this.verbHP).connect(this.verb).connect(this.wet).connect(this.comp); this.comp.connect(ctx.destination);
+    this.master.connect(this.dry).connect(this.comp); this.master.connect(this.verbHP).connect(this.verb).connect(this.wet).connect(this.comp);
+    this.limiter=ctx.createDynamicsCompressor(); this.limiter.threshold.value=-1.5; this.limiter.knee.value=0; this.limiter.ratio.value=20; this.limiter.attack.value=0.002; this.limiter.release.value=0.06;   // brickwall di sicurezza: niente clipping in 24h anche su picchi coincidenti (battito + cue + brano)
+    this.duckGain=ctx.createGain(); this.duckGain.gain.value=1;   // duck di musica+tappeto mentre parla la voce narrante (la voce entra DOPO il duck → resta chiara)
+    this.comp.connect(this.duckGain).connect(this.limiter).connect(ctx.destination);
+    this.music=new AdaptiveMusicDeck(ctx,this.comp,(track,rate,left)=>{
+      console.log('[music]',track.title,'· rate',rate.toFixed(2),'· restano',left);
+      if($t&&$t.log&&!this.voiceBusy){ $t.log.textContent='NOW DRIFTING · '+track.title.toUpperCase(); $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),14000); telSurge(); }   // non sovrascrivere il sottotitolo della voce narrante
+    });
     this.filter=ctx.createBiquadFilter(); this.filter.type='lowpass'; this.filter.frequency.value=600; this.filter.Q.value=0.7;
     this.padGain=ctx.createGain(); this.padGain.gain.value=0.5; this.filter.connect(this.padGain).connect(this.master);
     this.lfo=ctx.createOscillator(); this.lfo.frequency.value=0.04; this.lfoGain=ctx.createGain(); this.lfoGain.gain.value=280; this.lfo.connect(this.lfoGain).connect(this.filter.frequency); this.lfo.start();
@@ -1828,99 +2410,261 @@ class AmbientEngine{
     this.dread.connect(this.dreadG).connect(this.master); this.dread2.connect(this.dreadG); this.dread.start(); this.dread2.start();
     this._novaFx=false;
     // --- colore "nastro": wow & flutter, un lievissimo drift d'intonazione condiviso (cent) → calore analogico nostalgico ---
-    this.wow=ctx.createOscillator(); this.wow.type='sine'; this.wow.frequency.value=0.07; this.wowG=ctx.createGain(); this.wowG.gain.value=6.0; this.wow.connect(this.wowG); this.wow.start();
+    this.wow=ctx.createOscillator(); this.wow.type='sine'; this.wow.frequency.value=0.05; this.wowG=ctx.createGain(); this.wowG.gain.value=6.5; this.wow.connect(this.wowG); this.wow.start();   // detune di nastro che fluttua → psichedelia (senza esagerare nel "fisarmonica")
     this.flut=ctx.createOscillator(); this.flut.type='sine'; this.flut.frequency.value=0.33; this.flutG=ctx.createGain(); this.flutG.gain.value=2.5; this.flut.connect(this.flutG); this.flut.start();
     for(const v of this.voices){ this.wowG.connect(v.o.detune); this.flutG.connect(v.o.detune); }
     // --- eco/delay con feedback addolcito → scia ipnotica da sequencer (Treza / Tangerine Dream) ---
-    this.echo=ctx.createDelay(2.0); this.echo.delayTime.value=0.6; this.echoFb=ctx.createGain(); this.echoFb.gain.value=0.40;
+    this.echo=ctx.createDelay(2.0); this.echo.delayTime.value=0.6; this.echoFb=ctx.createGain(); this.echoFb.gain.value=0.48;   // scia d'eco più lunga (psichedelica)
     this.echoTone=ctx.createBiquadFilter(); this.echoTone.type='lowpass'; this.echoTone.frequency.value=1700;
     this.echo.connect(this.echoTone).connect(this.echoFb).connect(this.echo); this.echoMix=ctx.createGain(); this.echoMix.gain.value=0.5; this.echoTone.connect(this.echoMix).connect(this.master);
-    // --- arpeggio: sequencer ipnotico (motivo ad anello sui toni dell'accordo) con auto-pan stereo + eco ---
-    this.arpFilt=ctx.createBiquadFilter(); this.arpFilt.type='lowpass'; this.arpFilt.frequency.value=2300; this.arpFilt.Q.value=0.3;
-    this.arpOsc=ctx.createOscillator(); this.arpOsc.type='triangle'; this.arpOsc.frequency.value=this._f(this.root+12); this.wowG.connect(this.arpOsc.detune);
+    // --- arpeggio PIANOFORTE (Interstellar/"Day One"): attacco percussivo + decadimento, intonazione stabile, auto-pan + eco ---
+    this.arpFilt=ctx.createBiquadFilter(); this.arpFilt.type='lowpass'; this.arpFilt.frequency.value=2500; this.arpFilt.Q.value=0.3;
     this.arpEnv=ctx.createGain(); this.arpEnv.gain.value=0.0001; this.arpPan=ctx.createStereoPanner(); this.arpMix=ctx.createGain(); this.arpMix.gain.value=0.0001;
-    this.arpOsc.connect(this.arpFilt).connect(this.arpEnv).connect(this.arpPan).connect(this.arpMix).connect(this.master); this.arpMix.connect(this.echo); this.arpOsc.start();
+    this.arpFilt.connect(this.arpEnv).connect(this.arpPan).connect(this.arpMix).connect(this.master); this.arpMix.connect(this.echo);
+    this.arpFund=ctx.createOscillator(); this.arpFund.type='triangle'; this.arpFund.frequency.value=this._f(this.root+12); this.arpFundG=ctx.createGain(); this.arpFundG.gain.value=1.0; this.arpFund.connect(this.arpFundG).connect(this.arpFilt); this.arpFund.start();
+    this.arpOct=ctx.createOscillator(); this.arpOct.type='sine'; this.arpOct.frequency.value=this._f(this.root+24); this.arpOctG=ctx.createGain(); this.arpOctG.gain.value=0.20; this.arpOct.connect(this.arpOctG).connect(this.arpFilt); this.arpOct.start();   // ottava tenue = corpo della corda (decade con la nota)
+    this.arpTwf=ctx.createOscillator(); this.arpTwf.type='sine'; this.arpTwf.frequency.value=this._f(this.root+24); this.arpTwfG=ctx.createGain(); this.arpTwfG.gain.value=0.05; this.arpTwf.connect(this.arpTwfG).connect(this.arpFilt); this.arpTwf.start();   // doppia ottava: solo un filo di brillantezza nell'attacco
     this.panLfo=ctx.createOscillator(); this.panLfo.type='sine'; this.panLfo.frequency.value=0.05; this.panLfoG=ctx.createGain(); this.panLfoG.gain.value=0.65; this.panLfo.connect(this.panLfoG).connect(this.arpPan.pan); this.panLfo.start();
-    this.arpPat=[0,2,1,3, 2,4,3,1, 0,2,3,4]; this._arpP=0;
+    this.arpPat=[0,1,2,3, 4,3,2,1]; this._arpP=0;   // arco ascendente/discendente sui toni dell'accordo (figura riconoscibile, stile Interstellar)
     // --- lead: note lunghe con bend + vibrato (Marooned / Gilmour), mandato all'eco ---
     this.leadFilt=ctx.createBiquadFilter(); this.leadFilt.type='lowpass'; this.leadFilt.frequency.value=2400; this.leadFilt.Q.value=0.5;
     this.leadOsc=ctx.createOscillator(); this.leadOsc.type='sine'; this.leadOsc.frequency.value=this._f(this.root+19);
     this.leadEnv=ctx.createGain(); this.leadEnv.gain.value=0.0001; this.leadMix=ctx.createGain(); this.leadMix.gain.value=0.0001;
     this.leadVib=ctx.createOscillator(); this.leadVib.type='sine'; this.leadVib.frequency.value=5.0; this.leadVibG=ctx.createGain(); this.leadVibG.gain.value=5.0; this.leadVib.connect(this.leadVibG).connect(this.leadOsc.detune); this.leadVib.start(); this.wowG.connect(this.leadOsc.detune);
     this.leadOsc.connect(this.leadFilt).connect(this.leadEnv).connect(this.leadMix).connect(this.master); this.leadMix.connect(this.echo); this.leadOsc.start();
+    // --- RITMO "orologio cosmico" (controllato, 4/4 ~66 BPM): clock sul quarto + battito grave su 1&3 + tremolo d'archi sugli ottavi ---
+    this.bpm=66; this.beatEvery=30/this.bpm;   // clock a ottavi; i quarti = passi pari (0,2,4,6) di una battuta da 8
+    this.tickFilt=ctx.createBiquadFilter(); this.tickFilt.type='lowpass'; this.tickFilt.frequency.value=1100; this.tickFilt.Q.value=0.7;
+    this.tickOsc=ctx.createOscillator(); this.tickOsc.type='triangle'; this.tickOsc.frequency.value=520; this.tickEnv=ctx.createGain(); this.tickEnv.gain.value=0.0001; this.tickMix=ctx.createGain(); this.tickMix.gain.value=0.0001;
+    this.tickOsc.connect(this.tickFilt).connect(this.tickEnv).connect(this.tickMix).connect(this.master); this.tickOsc.start();   // tick morbido/ovattato, asciutto e uniforme (niente tick-tock)
+    this.pulseLP=ctx.createBiquadFilter(); this.pulseLP.type='lowpass'; this.pulseLP.frequency.value=300; this.pulseLP.Q.value=0.5;
+    this.pulseOsc=ctx.createOscillator(); this.pulseOsc.type='sine'; this.pulseOsc.frequency.value=this._f(29); this.pulseEnv=ctx.createGain(); this.pulseEnv.gain.value=0.0001; this.pulseMix=ctx.createGain(); this.pulseMix.gain.value=0.42;   // BATTITO DI CUORE profondo: livello costante (più discreto per l'h24), l'inviluppo per-thump è in _heart()
+    this.heartT=0; this.heartEvery=1.1;
+    this.pulseOsc.connect(this.pulseLP).connect(this.pulseEnv).connect(this.pulseMix).connect(this.master); this.pulseOsc.start();   // LOW: battito grave ovattato su 1 e 3 (segue il root); il verbHP lo tiene asciutto
+    this.tremLP=ctx.createBiquadFilter(); this.tremLP.type='lowpass'; this.tremLP.frequency.value=720; this.tremLP.Q.value=0.6;
+    this.tremOsc=ctx.createOscillator(); this.tremOsc.type='sawtooth'; this.tremOsc.frequency.value=this._f(this.root+12); this.tremEnv=ctx.createGain(); this.tremEnv.gain.value=0.0001; this.tremMix=ctx.createGain(); this.tremMix.gain.value=0.0001;
+    this.tremOsc.connect(this.tremLP).connect(this.tremEnv).connect(this.tremMix).connect(this.master); this.tremOsc.start();   // suddivisione: tremolo d'archi filtrato sugli ottavi (sottile)
+    this.beatT=0; this._step=0; this.rhyBase=0; this.rhyCur=0; this.rhyPhase=0;
     // --- "movimenti": tavolozze armoniche con progressione di accordi ad anello e tempo dell'arpeggio propri ---
     this.movs=[
-      {name:'aeolian',      root:38, scale:[0,2,3,5,7,8,10], chord:[0,7,12,15,19], prog:[0,-4,-2,-5], tempo:1.40, filtBase:320, filtRange:1500, wetBase:0.46, padBase:0.34, lfo:0.040, trem:0.045, vib:0,   arp:0.40, lead:0    },
-      {name:'interstellar', root:36, scale:[0,2,3,5,7,8,11], chord:[0,7,12,19,24], prog:[0, 3,-2, 0], tempo:1.05, filtBase:380, filtRange:1900, wetBase:0.44, padBase:0.32, lfo:0.050, trem:0.045, vib:0,   arp:0.85, lead:0    },
-      {name:'marooned',     root:33, scale:[0,3,5,7,10],     chord:[0,7,10,15,19], prog:[0,-5,-2,-5], tempo:1.60, filtBase:300, filtRange:1300, wetBase:0.58, padBase:0.34, lfo:0.038, trem:0.040, vib:5.0, arp:0.28, lead:0.80 },
-      {name:'phrygian',     root:34, scale:[0,1,3,5,7,8,10], chord:[0,7,12,17,20], prog:[0, 1,-4, 0], tempo:1.50, filtBase:260, filtRange:1200, wetBase:0.56, padBase:0.30, lfo:0.045, trem:0.045, vib:4.0, arp:0.30, lead:0.40 },
-      {name:'dorian',       root:40, scale:[0,2,3,5,7,9,10], chord:[0,7,12,16,21], prog:[0, 5,-2, 3], tempo:1.20, filtBase:360, filtRange:1700, wetBase:0.48, padBase:0.32, lfo:0.048, trem:0.048, vib:4.2, arp:0.55, lead:0.45 },
+      // DRONI PROFONDI (originale, dark-ambient): nessun arpeggio, nessun lead — solo organo grave, archi tenui,
+      // singole note di pianoforte che si espandono nel riverbero (_shim) + battito di cuore profondo (globale)
+      {name:'deriva',       root:31, scale:[0,2,3,5,7,8,10], chord:[0,7,10,14,19], prog:[0,-2,-4, 3], tempo:1.70, filtBase:300, filtRange:1100, wetBase:0.60, padBase:0.36, lfo:0.040, trem:0.040, vib:0, arp:0, lead:0, strings:0.30 },   // minore grave alla deriva (m9)
+      {name:'cosmica',      root:33, scale:[0,2,3,5,7,9,10], chord:[0,7,12,14,19], prog:[0,-2,-5,-3], tempo:1.50, filtBase:340, filtRange:1500, wetBase:0.58, padBase:0.36, lfo:0.048, trem:0.044, vib:0, arp:0, lead:0, strings:0.42 },   // CASA BASE: dorico sospeso grave, organo + archi (vasto, fluttuante)
+      {name:'lontano',      root:28, scale:[0,3,5,7,10],     chord:[0,7,12,15,19], prog:[0,-5, 3,-2], tempo:1.85, filtBase:270, filtRange:1050, wetBase:0.62, padBase:0.36, lfo:0.036, trem:0.038, vib:0, arp:0, lead:0, strings:0.28 },   // gravissimo e lontano (pentatonica)
+      {name:'phrygian',     root:30, scale:[0,1,3,5,7,8,10], chord:[0,7,12,13,19], prog:[0, 1,-4,-1], tempo:1.70, filtBase:250, filtRange:1000, wetBase:0.62, padBase:0.32, lfo:0.052, trem:0.044, vib:0, arp:0, lead:0, strings:0.30 },   // frigio scuro (b9): tensione, inquietudine
+      {name:'psichedelica', root:34, scale:[0,2,4,6,7,9,11], chord:[0,7,12,14,18], prog:[0, 2,-3,-5], tempo:1.45, filtBase:320, filtRange:1700, wetBase:0.60, padBase:0.34, lfo:0.075, trem:0.050, vib:0, arp:0, lead:0, strings:0.38 },   // lidio #4+#11, filtro che spazza, detune largo → trip
+      {name:'abisso',       root:26, scale:[0,2,3,5,7,8,10], chord:[0,7,12,19],    prog:[0,-2,-5,-4], tempo:2.05, filtBase:220, filtRange:800,  wetBase:0.66, padBase:0.32, lfo:0.034, trem:0.036, vib:0, arp:0, lead:0, strings:0.22 },   // quinte cave gravissime, desolato
     ];
-    this.movIdx=0; this.cur={filtBase:320,filtRange:1500,wetBase:0.46,padBase:0.34}; this.tgt={filtBase:320,filtRange:1500,wetBase:0.46,padBase:0.34};
+    this.movIdx=0; this.cur={filtBase:300,filtRange:1300,wetBase:0.50,padBase:0.34}; this.tgt={filtBase:300,filtRange:1300,wetBase:0.50,padBase:0.34};
+    this.movPick=[1,1,1,4,4,0,2,3,5];   // deriva lenta tra i movimenti: casa base 'cosmica' (×3) e 'psichedelica' (×2), gli altri di passaggio
     this.scale=this.movs[0].scale; this.rootBase=this.movs[0].root; this.chordV=this.movs[0].chord; this.root=this.rootBase;
     this.arpBase=this.movs[0].arp; this.arpCur=0; this.leadBase=this.movs[0].lead; this.leadCur=0; this._progI=0;
     this.arpT=0; this.arpEvery=this.movs[0].tempo; this.leadT=0; this.leadEvery=4; this._leadDeg=0;
     this.breathPh=0; this.breathLen=80+Math.random()*45;   // respiro lento (crescendo/diminuendo) per onde immersive
-    this.movT=0; this.movEvery=150+Math.random()*120;
-    this.changeT=0; this.changeEvery=11+Math.random()*5; this.shimT=0; this.shimEvery=9+Math.random()*10;
-    this.master.gain.setValueAtTime(0.0001,ctx.currentTime); this.master.gain.exponentialRampToValueAtTime(0.44,ctx.currentTime+6); this.ready=true; }
+    this.movT=0; this.movEvery=190+Math.random()*140;
+    this.changeT=0; this.changeEvery=22+Math.random()*10; this.shimT=0; this.shimEvery=6+Math.random()*7;
+    this._applyMovement(1,3);   // parte dal movimento "interstellar"
+    // bus per gli strumenti campionati: organo → stesso filtro/movimento del pad; piano → pan/eco/presenza dell'arpeggio
+    this.organBus=ctx.createGain(); this.organBus.gain.value=0.95; this.organBus.connect(this.filter);
+    this.strPadBus=ctx.createGain(); this.strPadBus.gain.value=0.0001; this.strPadBus.connect(this.master);   // tappeto d'archi sostenuti: swell che respira (il suono spaziale di Interstellar)
+    this.strCur=0; this._strVoices=[];   // (strBase è già impostato da _applyMovement qui sopra → non azzerarlo)
+    this.pianoBus=ctx.createGain(); this.pianoBus.gain.value=1.0; this.pianoBus.connect(this.arpPan);
+    this.kit=new SampleKit(ctx,'assets/samples'); this.kit.load().then(ok=>{ if(ok) this._enableSamples(); else console.warn('[audio] campioni non caricati: resto sugli oscillatori sintetici'); }).catch(e=>console.warn('[audio] sampler errore:',e));
+    this._initNarrator();
+    this.master.gain.setValueAtTime(0.0001,ctx.currentTime); this.master.gain.setTargetAtTime(0.44,ctx.currentTime,2.0); this.music.start(); this.ready=true; }
+  _enableSamples(){ const ctx=this.ctx,t=ctx.currentTime; if(this.useSamples) return; this.useSamples=true;   // gli strumenti veri prendono il posto degli oscillatori
+    for(const v of this.voices){ v.g.gain.cancelScheduledValues(t); v.g.gain.setTargetAtTime(0.0001,t,1.5); }   // spegne il pad a oscillatori
+    this.arpFundG.gain.setTargetAtTime(0.0001,t,0.4); this.arpOctG.gain.setTargetAtTime(0.0001,t,0.4); this.arpTwfG.gain.setTargetAtTime(0.0001,t,0.4);   // spegne l'arpeggio a oscillatori
+    this._organVoices=[]; this._voiceOrgan(true); this._strVoices=[]; this._voiceStrings(true);   // organo a canne + tappeto d'archi sull'accordo corrente
+    if(typeof console!=='undefined') console.log('[audio] campioni reali attivi: organo a canne + pianoforte + archi (swell)'); }
+  _voiceStrings(initial){ const ctx=this.ctx,t=ctx.currentTime;   // tappeto d'archi sostenuto (triade alta), si ri-articola in crossfade ad ogni accordo
+    for(const h of this._strVoices){ try{ h.g.gain.cancelScheduledValues(t); h.g.gain.setTargetAtTime(0.0001,t,1.2); h.src.onended=h._cleanup; h.src.stop(t+3.5); }catch(e){} }
+    this._strVoices=[]; if(!this.strBase) return;   // niente archi se il movimento non li prevede
+    const notes = this.theme ? this._curN.slice(2).map(m=>m+12) : [this.chordV[0]+12, this.chordV[1]+12, this.chordV[3]+12].map(s=>this.root+s);   // toni alti dell'accordo, un'ottava sopra → registro "cosmico"
+    for(const midi of notes){ const h=this.kit.note('strings',midi,this.strPadBus,t,0.12,{loop:true,loopStart:0.6,loopEnd:2.4,attack:initial?4:2.5}); if(h) this._strVoices.push(h); } }
+  _voiceOrgan(initial){ const ctx=this.ctx,t=ctx.currentTime;   // (ri)voca l'accordo con l'organo, con crossfade ad ogni cambio
+    for(const h of this._organVoices){ try{ h.g.gain.cancelScheduledValues(t); h.g.gain.setTargetAtTime(0.0001,t,0.6); h.src.onended=h._cleanup; h.src.stop(t+2.5); }catch(e){} }
+    this._organVoices=[]; const atk=initial?2.0:0.7;
+    const notes = this.theme ? this._curN : this.chordV.map(s=>this.root+s);   // accordo reale del tema, oppure voicing planato
+    for(const midi of notes){ const h=this.kit.note('organ',midi,this.organBus,t,0.18,{loop:true,loopStart:0.6,loopEnd:2.4,attack:atk}); if(h) this._organVoices.push(h); } }
   _f(m){ return 440*Math.pow(2,(m-69)/12); }
   _imp(dur,decay){ const ctx=this.ctx,rate=ctx.sampleRate,len=(rate*dur)|0,buf=ctx.createBuffer(2,len,rate);
     for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay); } return buf; }
-  _chord(){ const ctx=this.ctx,t=ctx.currentTime,pr=this.movs[this.movIdx].prog; this._progI=(this._progI+1)%pr.length; this.root=this.rootBase+pr[this._progI];   // progressione ad anello → cadenza nostalgica diretta (no random)
-    for(const v of this.voices) v.o.frequency.setTargetAtTime(this._f(this.root+v.semi),t,4.5); this.sub.frequency.setTargetAtTime(this._f(this.root-12),t,4.5); }
-  _arpStep(){ const ctx=this.ctx,t=ctx.currentTime,cv=this.chordV,pat=this.arpPat,idx=pat[this._arpP%pat.length],oc=((this._arpP%(pat.length*2))<pat.length?0:12); this._arpP++;   // motivo ad anello che ogni due giri sale d'ottava → mutazione lenta
-    this.arpOsc.frequency.setTargetAtTime(this._f(this.root+cv[idx%cv.length]+12+oc),t,0.04);
-    const e=this.arpEnv.gain,dur=this.arpEvery; e.cancelScheduledValues(t); e.setValueAtTime(Math.max(e.value,0.0001),t);
-    e.exponentialRampToValueAtTime(0.072,t+0.05); e.exponentialRampToValueAtTime(0.0001,t+dur*0.92); }
-  _leadStep(){ const ctx=this.ctx,t=ctx.currentTime;   // lead lento con bend e vibrato (stile Marooned / Gilmour)
-    if(Math.random()<0.22){ this.leadEnv.gain.setTargetAtTime(0.0001,t,1.2); this.leadEvery=4+Math.random()*4; return; }   // ogni tanto una pausa: lascia respirare
-    const sc=this.scale,n=sc.length,step=(Math.random()<0.6?(Math.random()<0.5?1:-1):(Math.random()<0.5?2:-2));
+  _setTheme(i){ const c=this.theme[i],tr=this._themeTrans||0; this._curBass=c.b+tr; this._curN=[c.b+tr].concat(c.n.map(m=>m+tr)); this._curA=c.a.map(m=>m+tr); this.root=this._curBass; }   // accordo corrente del tema (con eventuale trasposizione casuale del giro)
+  _chord(){ const ctx=this.ctx,t=ctx.currentTime;
+    if(this.theme){ this._themeI=(this._themeI+1)%this.theme.length;
+      if(this._themeI===0) this._themeTrans = Math.random()<0.30 ? [2,-2,5,-5,7,-3][(Math.random()*6)|0] : 0;   // VARIAZIONE CASUALE: ad ogni giro, a volte cambia tonalità
+      this._setTheme(this._themeI); this._arpOctVar = Math.random()<0.25?12:0;   // a volte l'arpeggio sale d'un'ottava
+      if(this.barLen>0){ this._arpP=0; this.arpT=this.arpEvery; }
+      this.sub.frequency.setTargetAtTime(this._f(this._curBass-12),t,3.5);
+      if(this.useSamples){ this._voiceOrgan(false); this._voiceStrings(false); } return; }
+    const pr=this.movs[this.movIdx].prog; this._progI=(this._progI+1)%pr.length; this.root=this.rootBase+pr[this._progI];   // (altri movimenti) progressione planata ad anello
+    if(this.barLen>0){ this._arpP=0; this.arpT=this.arpEvery; }
+    for(const v of this.voices) v.o.frequency.setTargetAtTime(this._f(this.root+v.semi),t,4.5); this.sub.frequency.setTargetAtTime(this._f(this.root-12),t,4.5);
+    if(this.useSamples){ this._voiceOrgan(false); this._voiceStrings(false); } }
+  _arpStep(){ const ctx=this.ctx,t=ctx.currentTime,pat=this.arpPat,pv=pat[this._arpP%pat.length],oc=((this._arpP%(pat.length*2))<pat.length?0:12); this._arpP++;   // arco ascendente/discendente, sale d'ottava al secondo giro
+    let base; if(this.theme){ const a=this._curA; base=a[pv%a.length]+(this._arpOctVar||0)-12; }   // arpeggia i toni reali del tema, un'ottava più in basso = più profondo (niente salto d'ottava automatico; solo variazione casuale)
+    else base=this.root+this.chordV[pv%this.chordV.length]+12+oc;
+    if(this.useSamples){ this.kit.note('piano', base, this.pianoBus, t, 0.42, {attack:0.004, dur:1.6, release:0.8}); return; }   // pianoforte VERO (campione), via pan/eco/presenza dell'arpeggio
+    this.arpFund.frequency.setValueAtTime(this._f(base),t); this.arpOct.frequency.setValueAtTime(this._f(base+12),t); this.arpTwf.frequency.setValueAtTime(this._f(base+24),t);   // (fallback oscillatori) intonazione stabile
+    const e=this.arpEnv.gain; e.cancelScheduledValues(t); e.setValueAtTime(Math.max(e.value,0.0001),t);
+    e.exponentialRampToValueAtTime(0.12,t+0.004); e.exponentialRampToValueAtTime(0.0001,t+1.8); }   // martelletto: attacco di 4ms e poi decadimento (~1.8s) che suona oltre la nota = effetto pedale
+  _beatStep(){ const ctx=this.ctx,t=ctx.currentTime,s=this._step; this._step=(s+1)&7;   // battuta di 8 ottavi (4/4); quarti = passi pari
+    const ph=this.rhyPhase, tickL=smooth(0,18,ph), lowL=smooth(50,72,ph), tremL=smooth(100,128,ph), clim=smooth(150,205,ph);   // arco temporale deterministico: tick → +LOW → +tremolo → climax
+    const quarter=(s&1)===0, b13=(s===0||s===4);
+    if(quarter){ const tv=(b13?tickL*(1-lowL):tickL)*(0.7+0.5*clim); if(tv>0.02){ const e=this.tickEnv.gain; e.cancelScheduledValues(t); e.setValueAtTime(0.0001,t); e.exponentialRampToValueAtTime(0.05*tv,t+0.003); e.exponentialRampToValueAtTime(0.0001,t+0.06); } }   // tick sul quarto (su 1&3 sfuma quando entra il LOW)
+    if(b13){ const lv=lowL*(0.8+0.4*clim); if(lv>0.02){ this.pulseOsc.frequency.setValueAtTime(this._f(this.root),t); const p=this.pulseEnv.gain; p.cancelScheduledValues(t); p.setValueAtTime(0.0001,t); p.exponentialRampToValueAtTime(0.16*lv,t+0.006); p.exponentialRampToValueAtTime(0.0001,t+0.30); } }   // battito grave su 1 e 3
+    if(tremL>0.02){ const xv=tremL*(0.7+0.6*clim),tg=this.root+12; if(this.useSamples&&this.tremSrc) this.tremSrc.playbackRate.setValueAtTime(Math.pow(2,(tg-this.tremSampMidi)/12),t); else this.tremOsc.frequency.setValueAtTime(this._f(tg),t); const g=this.tremEnv.gain; g.cancelScheduledValues(t); g.setValueAtTime(Math.max(g.value,0.0001),t); g.exponentialRampToValueAtTime(0.045*xv,t+0.02); g.exponentialRampToValueAtTime(0.0001,t+this.beatEvery*0.9); }   // tremolo d'archi sugli ottavi (suddivisione sottile)
+    if(this.rhyBase>0 && (quarter||clim>0.5)) this._arpStep(); }   // pianoforte agganciato alla griglia: quarti, e ottavi nel climax (più densità, stesso tempo)
+  _leadStep(){ const ctx=this.ctx,t=ctx.currentTime,sc=this.scale,n=sc.length;   // lead lento con bend e vibrato (Marooned/Gilmour), a tendenza discendente
+    if(Math.random()<0.26){ this.leadEnv.gain.setTargetAtTime(0.0001,t,1.4); this.leadEvery=5+Math.random()*5; return; }   // pause più ampie: più spazio, più malinconia
+    const step=(Math.random()<0.62?1:2)*(Math.random()<0.66?-1:1);   // 2/3 dei passi scendono → frasi che "sospirano" verso il basso
     this._leadDeg+=step; if(this._leadDeg<0) this._leadDeg+=n; if(this._leadDeg>=n*2) this._leadDeg-=n;
-    const oct=Math.floor(this._leadDeg/n),idx=((this._leadDeg%n)+n)%n,note=this.root+19+sc[idx]+oct*12,bend=0.5+Math.random()*1.8;
-    this.leadOsc.frequency.setTargetAtTime(this._f(note),t,bend);   // il bend lento verso la nota
+    const oct=Math.floor(this._leadDeg/n),idx=((this._leadDeg%n)+n)%n,note=this.root+19+sc[idx]+oct*12,bend=0.7+Math.random()*1.8;
     const e=this.leadEnv.gain; e.cancelScheduledValues(t); e.setValueAtTime(Math.max(e.value,0.0001),t);
-    e.exponentialRampToValueAtTime(0.095,t+1.1); e.setTargetAtTime(0.045,t+1.1,2.5); this.leadEvery=4.5+Math.random()*4.5; }
+    e.exponentialRampToValueAtTime(0.090,t+1.2); e.setTargetAtTime(0.042,t+1.2,2.8);
+    if(Math.random()<0.60){ const ni=(idx+1)%n,up=this.root+19+sc[ni]+(ni===0?12:0)+oct*12; this.leadOsc.frequency.setTargetAtTime(this._f(up),t,0.18); this.leadOsc.frequency.setTargetAtTime(this._f(note),t+0.7,0.5); }   // appoggiatura: tocca la nota sopra e si risolve scendendo (il gesto del "pianto")
+    else this.leadOsc.frequency.setTargetAtTime(this._f(note),t,bend);
+    this.leadEvery=5.5+Math.random()*5; }
   _applyMovement(i,glide){ const mv=this.movs[i],ctx=this.ctx,t=ctx.currentTime; this.movIdx=i;   // deriva graduale verso una nuova tavolozza armonica
     this.scale=mv.scale; this.rootBase=mv.root; this.chordV=mv.chord; this.root=mv.root;
     this.tgt.filtBase=mv.filtBase; this.tgt.filtRange=mv.filtRange; this.tgt.wetBase=mv.wetBase; this.tgt.padBase=mv.padBase;
     for(let k=0;k<this.voices.length;k++){ const v=this.voices[k]; v.semi=mv.chord[k]; v.o.frequency.setTargetAtTime(this._f(this.root+v.semi),t,glide); }
     this.sub.frequency.setTargetAtTime(this._f(this.root-12),t,glide);
-    this.arpBase=mv.arp; this.leadBase=mv.lead; this.arpEvery=mv.tempo; this.echo.delayTime.setTargetAtTime(mv.tempo*0.5,t,glide);   // l'eco si aggancia al tempo dell'arpeggio
-    this.leadVib.frequency.setTargetAtTime(mv.vib||4.5,t,6); this.lfo.frequency.setTargetAtTime(mv.lfo,t,6); this.trem.frequency.setTargetAtTime(mv.trem,t,6); }
-  _shim(){ const ctx=this.ctx,t=ctx.currentTime,deg=this.scale[(Math.random()*this.scale.length)|0],note=this.root+24+deg+(Math.random()<0.5?12:0);
-    const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=this._f(note); const g=ctx.createGain(); g.gain.value=0.0001; o.connect(g).connect(this.filter); o.start(t);
-    const peak=0.06+Math.random()*0.06; g.gain.exponentialRampToValueAtTime(peak,t+2.5); g.gain.exponentialRampToValueAtTime(0.0001,t+9); o.stop(t+9.5); o.onended=()=>{try{o.disconnect();g.disconnect();}catch(e){}}; }
+    this.arpBase=mv.arp; this.leadBase=mv.lead; this.arpEvery=mv.tempo; this.echo.delayTime.setTargetAtTime((mv.rhythm>0?this.beatEvery:mv.tempo*0.5),t,glide);   // eco sul beat nei movimenti ritmici, sul tempo dell'arpeggio altrove
+    this.barLen=mv.loop?mv.tempo*16:0; if(this.barLen>0){ this.changeEvery=this.barLen; this.changeT=0; }   // LOOP: accordo ogni 16 note d'arpeggio (2 archi: basso poi un'ottava sopra) = cadenza fissa, rallentata
+    this.rhyBase=mv.rhythm||0; if(mv.rhythm>0) this.rhyPhase=0;   // l'arco ritmico (impercettibile → climax) riparte ad ogni ingresso nel movimento ritmico
+    this.leadVib.frequency.setTargetAtTime(mv.vib||4.5,t,6); this.lfo.frequency.setTargetAtTime(mv.lfo,t,6); this.trem.frequency.setTargetAtTime(mv.trem,t,6);
+    this.theme=mv.theme||null; this._themeI=0; this._themeTrans=0; this._arpOctVar=0; if(this.theme) this._setTheme(0);   // tema esplicito (cover) o progressione planata
+    this.strBase=mv.strings||0; if(this.useSamples){ this._voiceOrgan(false); this._voiceStrings(false); } }   // organo + archi sul nuovo accordo del movimento
+  _heart(dread){ const ctx=this.ctx,t=ctx.currentTime,fo=this.pulseOsc.frequency,g=this.pulseEnv.gain;   // battito di cuore profondo: lub-dub con calo d'intonazione ("thud")
+    fo.cancelScheduledValues(t); g.cancelScheduledValues(t); const lub=t,dub=t+0.30;
+    fo.setValueAtTime(this._f(40),lub); fo.exponentialRampToValueAtTime(this._f(26),lub+0.16); g.setValueAtTime(0.0001,lub); g.exponentialRampToValueAtTime(0.50,lub+0.015); g.exponentialRampToValueAtTime(0.0001,lub+0.26);
+    fo.setValueAtTime(this._f(38),dub); fo.exponentialRampToValueAtTime(this._f(26),dub+0.14); g.setValueAtTime(0.0001,dub); g.exponentialRampToValueAtTime(0.30,dub+0.015); g.exponentialRampToValueAtTime(0.0001,dub+0.30);
+    this.heartEvery=(dread>0.3?1.5:1.0)+Math.random()*0.3; }   // ~50-60 bpm, più lento/cupo nei buchi neri
+  _shim(){ const ctx=this.ctx,t=ctx.currentTime,opts=[0,3,7,10,12,3],deg=opts[(Math.random()*opts.length)|0],note=this.root+12+deg+(Math.random()<0.3?12:0);   // nota di pianoforte GRAVE (tono dell'accordo), che si espande nel riverbero
+    if(this.useSamples){ this.kit.note('piano', note, this.master, t, 0.26, {attack:0.12, dur:3.0, release:2.6, pan:(Math.random()*2-1)*0.55, sends:[this.echo]}); return; }   // attacco morbido + lunga coda → la nota "fiorisce" e si espande per secondi
+    const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()*2-1)*0.8; const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2600; lp.Q.value=0.4;
+    const g=ctx.createGain(); g.gain.value=0.0001; lp.connect(g).connect(pan); pan.connect(this.master); pan.connect(this.echo);   // pianoforte lontano: paneggiato a caso e annegato in riverbero+eco → ricordo/nostalgia
+    const o1=ctx.createOscillator(); o1.type='triangle'; o1.frequency.value=this._f(note); o1.connect(lp); o1.start(t);
+    const o2=ctx.createOscillator(); o2.type='sine'; o2.frequency.value=this._f(note+12); const g2=ctx.createGain(); g2.gain.value=0.4; o2.connect(g2).connect(lp); o2.start(t);   // ottava più tenue → corpo "da pianoforte/celesta"
+    const peak=0.04+Math.random()*0.03; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(peak,t+0.006); g.gain.exponentialRampToValueAtTime(0.0001,t+5.0);   // attacco percussivo, coda lunga
+    o1.stop(t+5.5); o2.stop(t+5.5); o1.onended=()=>{try{o1.disconnect();o2.disconnect();g.disconnect();g2.disconnect();lp.disconnect();pan.disconnect();}catch(e){}}; }
+  _noiseBuf(){ if(this._nbuf) return this._nbuf; const ctx=this.ctx,len=(ctx.sampleRate*1.2)|0,b=ctx.createBuffer(1,len,ctx.sampleRate),d=b.getChannelData(0); for(let i=0;i<len;i++) d[i]=Math.random()*2-1; return this._nbuf=b; }
+  _cue(kind){ if(!this.ready||this.ctx.state!=='running') return; const ctx=this.ctx,t=ctx.currentTime;   // cue sonoro discreto per un comando del pubblico (feedback/engagement)
+    if(t-(this._lastCue||0)<0.25) return; this._lastCue=t;   // anti-spam (max ~4/s)
+    const g=ctx.createGain(); g.gain.value=0.0001; const pan=ctx.createStereoPanner(); pan.pan.value=(Math.random()*2-1)*0.5;
+    g.connect(pan); pan.connect(this.master); if(this.echo) pan.connect(this.echo);   // via master → riverbero+dry, + coda d'eco: il cue "vive" nello stesso spazio
+    const nodes=[g,pan], done=()=>{ try{ for(const n of nodes) n.disconnect(); }catch(e){} };
+    if(kind==='comet'){ const src=ctx.createBufferSource(); src.buffer=this._noiseBuf(); const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=1.2; bp.frequency.setValueAtTime(500,t); bp.frequency.exponentialRampToValueAtTime(4200,t+0.7); src.connect(bp).connect(g); nodes.push(src,bp);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.03,t+0.18); g.gain.exponentialRampToValueAtTime(0.0001,t+0.95); src.start(t); src.stop(t+1.0); src.onended=done; return; }   // whoosh ascendente (comet/wish)
+    const o=ctx.createOscillator(); o.type='sine'; o.connect(g); nodes.push(o); o.onended=done;
+    if(kind==='star'){ o.frequency.value=this._f(this.root+24); const o2=ctx.createOscillator(); o2.type='sine'; o2.frequency.value=this._f(this.root+31); o2.connect(g); nodes.push(o2);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.05,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+2.4); o.start(t); o.stop(t+2.5); o2.start(t+0.015); o2.stop(t+2.5); }   // rintocco luminoso (star/light/message)
+    else if(kind==='dark'){ o.frequency.setValueAtTime(this._f(this.root),t); o.frequency.exponentialRampToValueAtTime(this._f(this.root-12),t+2.2);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.07,t+0.05); g.gain.exponentialRampToValueAtTime(0.0001,t+2.5); o.start(t); o.stop(t+2.6); }   // tono discendente cupo (blackhole)
+    else { o.type='triangle'; o.frequency.value=this._f(this.root-5);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.055,t+0.04); g.gain.exponentialRampToValueAtTime(0.0001,t+3.0); o.start(t); o.stop(t+3.1); } }   // swell grave caldo (whales/aurora/world/nebula)
+  _initNarrator(){ const ctx=this.ctx;   // VOCE NARRANTE: file MP3 in assets/voice/ + manifest voice.json — inerte/innocua se assenti
+    this.voiceLib=[]; this.voiceBag=[]; this.voiceBad=new Set(); this.voiceBusy=false; this.voiceLast=-1; this.voiceT=0; this.voiceEvery=120; this.voiceBadClearT=0; this._voiceTok=0;   // prima frase ~2 min, poi ~4.5-6 min
+    this.voiceEl=new Audio(); this.voiceEl.preload='auto';
+    try{ this.voiceSrc=ctx.createMediaElementSource(this.voiceEl); }catch(e){ this.voiceSrc=null; }
+    this.voiceGain=ctx.createGain(); this.voiceGain.gain.value=0.9;
+    if(this.voiceSrc) this.voiceSrc.connect(this.voiceGain);
+    this.voiceGain.connect(this.limiter);   // voce ASCIUTTA, instradata DOPO il duck → resta chiara e sopra al bed abbassato
+    this.voiceVerb=ctx.createGain(); this.voiceVerb.gain.value=0.16; this.voiceGain.connect(this.voiceVerb).connect(this.verb);   // un velo di spazio (riverbero)
+    fetch('assets/voice/voice.json',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(j=>{ this.voiceLib=Array.isArray(j)?j.filter(x=>x&&x.file):[]; if(this.voiceLib.length) console.log('[voice]',this.voiceLib.length,'righe narranti caricate'); }).catch(()=>{}); }
+  _voicePick(){ const av=[]; for(let i=0;i<this.voiceLib.length;i++) if(!this.voiceBad.has(i)) av.push(i); if(!av.length) return -1;
+    if(!this.voiceBag.length){ this.voiceBag=av.slice(); for(let i=this.voiceBag.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [this.voiceBag[i],this.voiceBag[j]]=[this.voiceBag[j],this.voiceBag[i]]; } }   // giro completo (no-repeat) poi rimescola
+    let idx=this.voiceBag.pop(); if(idx===this.voiceLast && this.voiceBag.length){ const a=this.voiceBag.pop(); this.voiceBag.unshift(idx); idx=a; } return idx; }
+  _speak(){ if(this.voiceBusy||!this.voiceLib.length) return; const idx=this._voicePick(); if(idx<0) return; const line=this.voiceLib[idx],el=this.voiceEl,tok=++this._voiceTok; this.voiceBusy=true; this.voiceLast=idx;
+    const restore=()=>{ clearTimeout(this._voiceTimer); el.onplaying=el.onended=el.onerror=null; if(this.duckGain) this.duckGain.gain.setTargetAtTime(1.0,this.ctx.currentTime,0.7); if(typeof $t!=='undefined'&&$t&&$t.log) $t.log.classList.remove('on'); this.voiceBusy=false; };
+    this._voiceTimer=setTimeout(restore,30000);   // safety: nulla resta appeso
+    el.onplaying=()=>{ if(tok!==this._voiceTok) return; if(this.duckGain) this.duckGain.gain.setTargetAtTime(0.45,this.ctx.currentTime,0.4); if(typeof $t!=='undefined'&&$t&&$t.log){ $t.log.textContent='“'+(line.text||'')+'”'; $t.log.classList.add('on'); } };   // duck + sottotitolo
+    el.onended=()=>{ if(tok===this._voiceTok) restore(); };
+    el.onerror=()=>{ if(tok!==this._voiceTok) return; this.voiceBad.add(idx); restore(); };   // file mancante/corrotto → salta, riprova tra ~8 min
+    try{ el.src='assets/voice/'+line.file; el.load(); }catch(e){}
+    const p=el.play(); if(p&&p.catch) p.catch(()=>{ if(tok===this._voiceTok){ this.voiceBad.add(idx); restore(); } }); }
   update(dt,dir,mood){ if(!this.ready||this.ctx.state!=='running') return; const t=this.ctx.currentTime;
     const m=mood||{planet:0,dread:0,nova:0},c=this.cur,k=Math.min(1,dt/12);   // lerp lento (~12s) dei parametri del movimento → cambi impercettibili
+    const musicPresence=this.music?this.music.update(dt,dir,m):0;
+    this.master.gain.setTargetAtTime(0.44*(1-musicPresence*0.78),t,2.4);   // il brano è protagonista; il generativo si fa più indietro sotto la traccia (resta tessuto reattivo)
     c.filtBase+=(this.tgt.filtBase-c.filtBase)*k; c.filtRange+=(this.tgt.filtRange-c.filtRange)*k; c.wetBase+=(this.tgt.wetBase-c.wetBase)*k; c.padBase+=(this.tgt.padBase-c.padBase)*k;
     // respiro lento (~80-125s): onde di crescendo/diminuendo → immersione "interstellar"
     this.breathPh+=dt/this.breathLen; if(this.breathPh>=1){ this.breathPh-=1; this.breathLen=80+Math.random()*45; }
     const sw=0.5-0.5*Math.cos(this.breathPh*6.28318);   // 0→1→0 dolce
+    const clim=(this.rhyBase>0||this.rhyCur>0.01)?smooth(150,205,this.rhyPhase)*this.rhyCur:0;   // climax ritmico: più intensità/densità per accumulo (stesso tempo, stesso battito)
     // musica reattiva (su base "movimento") + respiro: pianeta → più caldo/pieno; buco nero → cupo e basso; nebulosa → più luminosa
-    this.filter.frequency.setTargetAtTime(c.filtBase + sw*760 + dir.cur.aB*c.filtRange + m.planet*500 - m.dread*1000, t, 1.5);
-    this.padGain.gain.setTargetAtTime(c.padBase + sw*0.06 + dir.cur.aD*0.30 + m.planet*0.20 - m.dread*0.12, t, 1.5);
-    this.wet.gain.setTargetAtTime(c.wetBase + sw*0.06 + (1-dir.cur.aB)*0.28 + m.dread*0.3, t, 2.0);
-    this.dreadG.gain.setTargetAtTime(m.dread*0.5, t, 1.2);
+    this.filter.frequency.setTargetAtTime(c.filtBase + sw*600 + clim*260 + dir.cur.aB*c.filtRange + m.planet*720 - m.dread*1200, t, 1.5);   // pianeta → più aperto/caldo; buco nero → più cupo
+    this.padGain.gain.setTargetAtTime(c.padBase + sw*0.10 + clim*0.05 + dir.cur.aD*0.30 + m.planet*0.28 - m.dread*0.12, t, 1.5);   // l'organo respira di più (crescendi), si gonfia di più vicino ai pianeti
+    this.wet.gain.setTargetAtTime(c.wetBase + sw*0.06 + (1-dir.cur.aB)*0.22 + m.dread*0.3, t, 2.0);
+    this.dreadG.gain.setTargetAtTime(m.dread*0.62, t, 1.2);   // rombo grave più presente vicino ai buchi neri
     // presenza arpeggio/lead: dissolvenza lenta del movimento (~8s) modulata dal respiro
     this.arpCur+=(this.arpBase-this.arpCur)*Math.min(1,dt/8); this.leadCur+=(this.leadBase-this.leadCur)*Math.min(1,dt/8);
     this.arpMix.gain.setTargetAtTime(this.arpCur*(0.55+0.45*sw)*(1-m.dread*0.5), t, 0.9);
+    this.rhyCur+=(this.rhyBase-this.rhyCur)*Math.min(1,dt/8); if(this.rhyBase>0) this.rhyPhase+=dt; const rg=this.rhyCur*(1-m.dread*0.85); this.tickMix.gain.setTargetAtTime(rg,t,0.5); this.tremMix.gain.setTargetAtTime(rg,t,0.5);   // (ritmo spento) — il pulseMix NON si tocca: è il livello del battito di cuore
+    this.heartT+=dt; if(this.heartT>=this.heartEvery){ this.heartT=0; this._heart(m.dread); }   // battito di cuore profondo, sempre presente (più lento/cupo nei buchi neri)
     this.leadMix.gain.setTargetAtTime(this.leadCur*(0.60+0.40*sw), t, 0.9);
+    this.strCur+=(this.strBase-this.strCur)*Math.min(1,dt/10); if(this.strPadBus) this.strPadBus.gain.setTargetAtTime(this.strCur*(0.28+0.80*sw)*(1-m.dread*0.6), t, 1.6);   // SWELL d'archi: cresce e cala col respiro (il grande suono spaziale)
     if(m.nova && !this._novaFx){ this._novaFx=true; this._shim(); this._shim(); setTimeout(()=>{this._novaFx=false;},3500); }
-    this.changeT+=dt; if(this.changeT>=this.changeEvery){ this.changeT=0; this.changeEvery=11+Math.random()*5; this._chord(); }
-    this.shimT+=dt; if(this.shimT>=this.shimEvery){ this.shimT=0; this.shimEvery=8+Math.random()*12; if(dir.cur.aB>0.3 && m.dread<0.3) this._shim(); }
-    if(this.arpBase>0||this.arpCur>0.01){ this.arpT+=dt; if(this.arpT>=this.arpEvery){ this.arpT=0; this._arpStep(); } }   // tempo fisso per movimento → pulsazione ipnotica agganciata all'eco
+    this.changeT+=dt; if(this.changeT>=this.changeEvery){ this.changeT=0; this.changeEvery=this.barLen>0?this.barLen:(22+Math.random()*10); this._chord(); }   // LOOP: battuta fissa; altrimenti accordi che indugiano a caso
+    this.shimT+=dt; if(this.shimT>=this.shimEvery){ this.shimT=0; this.shimEvery=6+Math.random()*7; if(m.dread<0.4) this._shim(); }   // carillon più presente (tace solo nei buchi neri)
+    if(this.rhyBase===0 && (this.arpBase>0||this.arpCur>0.01)){ this.arpT+=dt; if(this.arpT>=this.arpEvery){ this.arpT=0; this._arpStep(); } }   // arpeggio "libero" solo fuori dai movimenti ritmici (in quelli è agganciato alla griglia)
     if(this.leadBase>0||this.leadCur>0.01){ this.leadT+=dt; if(this.leadT>=this.leadEvery){ this.leadT=0; this._leadStep(); } }
-    this.movT+=dt; if(this.movT>=this.movEvery){ this.movT=0; this.movEvery=150+Math.random()*120; let n=this.movIdx; while(n===this.movIdx) n=(Math.random()*this.movs.length)|0; this._applyMovement(n,12+Math.random()*6); } }   // ogni ~2.5-4 min: deriva verso un nuovo movimento
+    if(this.rhyBase>0||this.rhyCur>0.01){ this.beatT+=dt; while(this.beatT>=this.beatEvery){ this.beatT-=this.beatEvery; this._beatStep(); } }   // clock a tempo fisso (orologio cosmico): passo accurato anche con frame lenti
+    this.movT+=dt; if(this.movT>=this.movEvery){ this.movT=0; this.movEvery=150+Math.random()*150; let n=this.movIdx; while(n===this.movIdx) n=this.movPick[(Math.random()*this.movPick.length)|0]; this._applyMovement(n,14+Math.random()*8); }   // deriva lenta: ogni ~2.5-5min un nuovo movimento, transizione morbida
+    this.voiceBadClearT=(this.voiceBadClearT||0)+dt; if(this.voiceBadClearT>=480){ this.voiceBadClearT=0; if(this.voiceBad) this.voiceBad.clear(); }   // ~ogni 8 min ridà una chance ai file voce (anche se aggiunti durante la live)
+    if(this.voiceLib&&this.voiceLib.length){ this.voiceT+=dt; if(!this.voiceBusy&&this.voiceT>=this.voiceEvery){ this.voiceT=0; this.voiceEvery=270+Math.random()*90; this._speak(); } }   // VOCE NARRANTE ~ogni 5 min (con jitter)
+  }
 }
 const audio=new AmbientEngine();
+window.cadutaMusicNext=()=>!!(audio.music&&audio.music.next());
+window.cadutaMusicPause=()=>!!(audio.music&&audio.music.setEnabled(false));
+window.cadutaMusicPlay=()=>!!(audio.music&&audio.music.setEnabled(true));
+window.cadutaMusicStatus=()=>audio.music?audio.music.status():{enabled:false,title:'audio non avviato'};
 
 /* ---------------- catalogo del pubblico (Fase B: /api/stars) ---------------- */
 let lastCatalogTs=0;
+/* ---------------- comandi dalla chat (router + coda anti-ammasso) ---------------- */
+const cmdQueue=[]; let _lastCmdEvent=0; const CMD_EVENT_GAP=11000, CMD_QMAX=20;   // un evento "evocato" ogni ~11s → niente clump, scena calma
+const CMD_EVENTS={
+  comet:    ()=> (comet && !comet.active) ? (comet.spawn(),true) : false,
+  wish:     ()=> (bolide && !bolide.active) ? (bolide.spawn(),true) : false,
+  whales:   ()=> (whalePod && !whalePod.active) ? (whalePod.spawn(),true) : false,
+  aurora:   ()=> (aurora && !aurora.active) ? (aurora.spawn(),true) : false,
+  nebula:   ()=> { nebBoost=Math.max(nebBoost,0.9); return true; },
+  blackhole:()=> (blackhole && !blackhole.active) ? (blackhole.spawn(),true) : false,
+  world:    ()=> { const o=[lavaWorld,shattered,ringarc].filter(x=>x&&!x.active); if(o.length){ o[(Math.random()*o.length)|0].spawn(); return true; } const p=planets.find(p=>!p.active); if(p){ p.spawn(false,null,false); return true; } return false; },
+};
+const CMD_CUE={star:'star',message:'star',light:'star',comet:'comet',wish:'comet',whales:'deep',aurora:'deep',world:'deep',nebula:'deep',blackhole:'dark'};
+window.cadutaCommand=(cmd,arg,user)=>{
+  cmd=String(cmd||'').toLowerCase();
+  if(cmd==='musicnext') return window.cadutaMusicNext();
+  if(cmd==='musicpause') return window.cadutaMusicPause();
+  if(cmd==='musicplay') return window.cadutaMusicPlay();
+  if(CMD_CUE[cmd] && audio && audio._cue) audio._cue(CMD_CUE[cmd]);   // cue sonoro discreto = feedback al pubblico
+  if(cmd==='star'||cmd==='message'){ const label=String(arg||user||'').slice(0,40).trim(); if(label) window.cadutaAddStar(label); return true; }
+  if(cmd==='light'){ const who=String(arg||user||'qualcuno').slice(0,38).trim(); window.cadutaAddStar('🕯 '+who); return true; }
+  if(cmd==='help'){ if($t&&$t.log){ $t.log.textContent='command: !star !light !message !comet !wish !whales !aurora !world !nebula !blackhole'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } return true; }
+  if(CMD_EVENTS[cmd]){ if(cmdQueue.length<CMD_QMAX) cmdQueue.push(cmd); return true; }   // evento → in coda
+  return false;
+};
+setInterval(()=>{                                                   // svuota la coda eventi, uno ogni CMD_EVENT_GAP
+  if(!started || !cmdQueue.length) return;
+  const now=Date.now(); if(now-_lastCmdEvent<CMD_EVENT_GAP) return;
+  const cmd=cmdQueue.shift(), fn=CMD_EVENTS[cmd];
+  if(fn){ if(fn()) _lastCmdEvent=now; else if(cmdQueue.length<CMD_QMAX) cmdQueue.push(cmd); }   // corpo occupato → riprova più tardi
+}, 2500);
 async function pollCatalog(){
   try{
     const r=await fetch('/api/stars?since='+lastCatalogTs,{cache:'no-store'});
-    if(r.ok){ const j=await r.json(); if(j&&Array.isArray(j.stars)){ for(const st of j.stars) window.cadutaAddStar(st.name); if(typeof j.total==='number') TEL.companions=Math.max(TEL.companions,j.total); lastCatalogTs=j.ts||lastCatalogTs; } }
+    if(r.ok){ const j=await r.json(); if(j){
+      if(Array.isArray(j.stars)){ for(const st of j.stars) window.cadutaAddStar(st.name); }
+      if(Array.isArray(j.cmds)){ for(const c of j.cmds){ try{ window.cadutaCommand(c.cmd,c.arg,c.user); }catch(_){} } }   // comandi dalla chat
+      if(typeof j.total==='number') TEL.companions=Math.max(TEL.companions,j.total);
+      lastCatalogTs=j.ts||lastCatalogTs;
+    } }
   }catch(e){ /* bridge non attivo: nessun problema */ }
 }
 setInterval(()=>{ if(started) pollCatalog(); }, 10000);
@@ -1933,9 +2677,9 @@ function onResize(){
 }
 window.addEventListener('resize', onResize);
 
-const gate=document.getElementById('gate'), hud=document.getElementById('hud'), tel=document.getElementById('tel');
+const gate=document.getElementById('gate'), hud=document.getElementById('hud'), tel=document.getElementById('tel'), cmds=document.getElementById('cmds');
 function begin(){ if(started||!built) return; started=true; audio.start();
-  gate.classList.add('hidden'); tel.classList.add('show'); setTimeout(()=>gate.style.display='none',2600); setTimeout(()=>hud.classList.add('dim'),8000); }
+  gate.classList.add('hidden'); tel.classList.add('show'); if(cmds) cmds.classList.add('show'); setTimeout(()=>gate.style.display='none',2600); setTimeout(()=>hud.classList.add('dim'),8000); }
 enterBtn.addEventListener('click', begin);
 window.addEventListener('keydown', e=>{ if(e.key==='f'||e.key==='F'){ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); } });
 let hudTimer; window.addEventListener('mousemove', ()=>{ if(!started) return; hud.classList.remove('dim'); clearTimeout(hudTimer); hudTimer=setTimeout(()=>hud.classList.add('dim'),3000); });

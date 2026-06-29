@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Eternal Fall — admin permanenti</title>
+<style>
+  :root{ color-scheme:dark; }
+  body{ margin:0; font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif; background:#0a0e1a; color:#cdd6f0; padding:18px; max-width:980px; margin:0 auto; }
+  h1{ font-size:18px; letter-spacing:.04em; font-weight:600; }
+  .muted{ color:#7e8bb0; }
+  input,select,button,textarea{ font:inherit; background:#141a2e; color:#cdd6f0; border:1px solid #28324f; border-radius:8px; padding:7px 9px; }
+  button{ cursor:pointer; }
+  button.go{ background:#1f6feb; border-color:#1f6feb; color:#fff; }
+  button.ok{ background:#1f8f4e; border-color:#1f8f4e; color:#fff; }
+  button.no{ background:#8f2b2b; border-color:#8f2b2b; color:#fff; }
+  .bar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:10px 0 18px; }
+  .card{ border:1px solid #28324f; border-radius:12px; padding:14px; margin-bottom:18px; background:#0e1424; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+  table{ width:100%; border-collapse:collapse; }
+  th,td{ text-align:left; padding:7px 8px; border-bottom:1px solid #1c2440; vertical-align:middle; }
+  th{ color:#7e8bb0; font-weight:500; }
+  .pill{ padding:2px 8px; border-radius:999px; font-size:12px; }
+  .s-pending{ background:#4a3a12; color:#ffd27a; } .s-approved{ background:#173a22; color:#79e0a0; }
+  .s-rejected{ background:#3a1717; color:#e09a9a; } .s-expired{ background:#222; color:#999; }
+  img.logo{ height:26px; vertical-align:middle; border-radius:4px; background:#000; }
+  label{ display:block; font-size:12px; color:#7e8bb0; margin-bottom:3px; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .row > div{ flex:1 1 130px; }
+</style>
+</head>
+<body>
+<h1>✦ Eternal Fall — moderazione permanenti</h1>
+<div class="bar">
+  <input id="tok" type="password" placeholder="ADMIN_TOKEN" style="min-width:240px">
+  <button class="go" onclick="save()">Salva token & carica</button>
+  <span id="msg" class="muted"></span>
+</div>
+
+<div class="card">
+  <strong>Aggiungi (grant manuale)</strong>
+  <div class="row" style="margin-top:10px">
+    <div><label>Tipo</label><select id="a_type"><option value="star">⭐ stella</option><option value="planet">🪐 pianeta</option></select></div>
+    <div><label>Nome / dedica</label><input id="a_name" maxlength="40" placeholder="es. Mario Rossi"></div>
+    <div><label>Logo (URL/path, solo pianeti)</label><input id="a_logo" placeholder="es. assets/logos/foo.png"></div>
+    <div><label>Skin (0–11, pianeti)</label><input id="a_skin" type="number" min="0" max="11" value="0"></div>
+    <div><label>Tint hex (opz.)</label><input id="a_tint" placeholder="#ffd27a"></div>
+    <div><label>Durata giorni (0 = per sempre)</label><input id="a_days" type="number" min="0" value="0"></div>
+    <div><label>Stato</label><select id="a_status"><option value="approved">approved (subito visibile)</option><option value="pending">pending</option></select></div>
+  </div>
+  <div style="margin-top:10px"><button class="ok" onclick="add()">Aggiungi</button></div>
+</div>
+
+<div class="card">
+  <strong>Prova comandi (test live, senza chat YouTube)</strong>
+  <div class="muted" style="margin:6px 0 10px">Clic = inietta il comando; compare nella live entro ~10s. Tieni aperta la tab della live su questo stesso server.</div>
+  <div class="row" style="align-items:flex-end; margin-bottom:10px">
+    <div style="flex:2 1 220px"><label>Nome / testo (per star · light · message)</label><input id="c_arg" maxlength="40" placeholder="es. Mario  /  In memoria di…"></div>
+    <div><button class="go" onclick="cmd('star',1)">⭐ star</button></div>
+    <div><button class="go" onclick="cmd('light',1)">🕯 light</button></div>
+    <div><button class="go" onclick="cmd('message',1)">✉ message</button></div>
+  </div>
+  <div class="grid">
+    <button class="go" onclick="cmd('musicnext')">♫ prossima musica</button>
+    <button onclick="cmd('musicpause')">Ⅱ pausa musica</button>
+    <button class="ok" onclick="cmd('musicplay')">▶ riprendi musica</button>
+    <button onclick="cmd('comet')">☄ comet</button>
+    <button onclick="cmd('wish')">✨ wish</button>
+    <button onclick="cmd('whales')">🐋 whales</button>
+    <button onclick="cmd('aurora')">🌌 aurora</button>
+    <button onclick="cmd('world')">🪐 world</button>
+    <button onclick="cmd('nebula')">☁ nebula</button>
+    <button onclick="cmd('blackhole')">⚫ blackhole</button>
+    <button onclick="cmd('help')">? help</button>
+  </div>
+  <div id="cmsg" class="muted" style="margin-top:8px"></div>
+</div>
+
+<div class="card">
+  <strong>Catalogo</strong> <span id="count" class="muted"></span>
+  <table style="margin-top:10px"><thead><tr><th>tipo</th><th>nome</th><th>logo</th><th>stato</th><th>scadenza</th><th></th></tr></thead><tbody id="list"></tbody></table>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+function tok(){ return localStorage.getItem('ef_admin_tok')||''; }
+function save(){ localStorage.setItem('ef_admin_tok', $('tok').value.trim()); load(); }
+function hdr(){ return {'x-admin-token':tok(),'content-type':'application/json'}; }
+async function api(path, opts){ const r=await fetch(path,Object.assign({headers:hdr()},opts||{})); let j={}; try{ j=await r.json(); }catch(e){} return {ok:r.ok,status:r.status,j}; }
+function fmtUntil(it){ if(!it.until) return 'per sempre'; const d=Math.ceil((it.until-Date.now())/86400000); return d>0?(d+'g'):'scaduto'; }
+async function load(){
+  $('tok').value=tok();
+  const {ok,status,j}=await api('/api/admin/permanent');
+  if(!ok){ $('msg').textContent = status===401?'token errato/mancante (imposta ADMIN_TOKEN nel server)':'errore '+status; $('msg').className=''; $('list').innerHTML=''; return; }
+  $('msg').textContent='ok'; $('msg').className='muted';
+  const items=(j.items||[]).slice().reverse();
+  $('count').textContent='('+items.length+')';
+  $('list').innerHTML = items.map(it=>{
+    const logo = it.logo? '<img class="logo" src="'+it.logo.replace(/"/g,'')+'" onerror="this.style.display=\'none\'">' : '';
+    return '<tr><td>'+(it.type==='planet'?'🪐':'⭐')+'</td><td>'+esc(it.name)+'</td><td>'+logo+'</td>'
+      +'<td><span class="pill s-'+it.status+'">'+it.status+'</span></td><td class="muted">'+fmtUntil(it)+'</td>'
+      +'<td class="row" style="gap:6px">'
+      +(it.status!=='approved'?'<button class="ok" onclick="act(\''+it.id+'\',\'approve\')">✓</button>':'')
+      +(it.status!=='rejected'?'<button class="no" onclick="act(\''+it.id+'\',\'reject\')">✗</button>':'')
+      +'<button onclick="act(\''+it.id+'\',\'delete\')">elimina</button>'
+      +'</td></tr>';
+  }).join('') || '<tr><td colspan="6" class="muted">vuoto</td></tr>';
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+async function add(){
+  const body={ type:$('a_type').value, name:$('a_name').value, logo:$('a_logo').value, skin:$('a_skin').value, tint:$('a_tint').value, days:$('a_days').value, status:$('a_status').value };
+  const {ok,j}=await api('/api/admin/permanent',{method:'POST',body:JSON.stringify(body)});
+  if(ok){ $('a_name').value=''; $('a_logo').value=''; load(); } else alert('errore: '+(j.error||''));
+}
+async function cmd(c, needArg){
+  const arg = needArg ? (($('c_arg').value||'').trim()) : '';
+  if(needArg && !arg){ $('cmsg').textContent='scrivi prima un nome/testo qui sopra'; return; }
+  const {ok,j}=await api('/api/admin/command?cmd='+encodeURIComponent(c)+'&arg='+encodeURIComponent(arg),{method:'POST'});
+  $('cmsg').textContent = ok ? ('inviato: !'+c+(arg?(' '+arg):'')+' — comparirà nella live entro ~10s') : ('errore: '+(j.error||'(server vecchio? riavvialo)'));
+}
+async function act(id,action){
+  if(action==='delete' && !confirm('Eliminare?')) return;
+  const {ok,j}=await api('/api/admin/permanent/action?id='+encodeURIComponent(id)+'&action='+action,{method:'POST'});
+  if(ok) load(); else alert('errore: '+(j.error||''));
+}
+load();
+</script>
+</body>
+</html>

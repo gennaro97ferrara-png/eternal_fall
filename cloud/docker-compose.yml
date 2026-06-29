@@ -1,0 +1,28 @@
+# Eternal Fall — live 24/7 nel cloud (un solo container fa tutto).
+# Avvio:  cd cloud && docker compose up -d --build
+# Log:    docker compose logs -f
+services:
+  eternal-fall:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: eternal-fall-cloud
+    container_name: eternal-fall
+    restart: unless-stopped
+    runtime: nvidia                 # registrato da nvidia-ctk (vedi bootstrap-host.sh)
+    shm_size: "2gb"                 # Chromium ha bisogno di /dev/shm ampio
+    env_file:
+      - ../.env                     # YT_STREAM_KEY + (opzionale) chiavi YouTube per le stelle
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all   # graphics+video+display = WebGL GPU + NVENC
+    ports:
+      # SOLO loopback: admin.html raggiungibile via tunnel SSH, non esposto in pubblico
+      # (il token admin è debole). Tunnel:  ssh -L 8099:localhost:8099 root@HOST
+      - "127.0.0.1:8099:8099"
+    volumes:
+      - ..:/app                     # il progetto montato a runtime (aggiorni con rsync, niente rebuild)
+      - chrome-profile:/tmp/chrome-profile   # persiste il profilo Chromium (contatore GIORNO N)
+
+volumes:
+  chrome-profile:

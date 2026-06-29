@@ -1,0 +1,296 @@
+#!/usr/bin/env bash
+# Eternal Fall — orchestratore della live nel cloud.
+#  1) PulseAudio (sink virtuale "stream")  2) Xvfb (display :0)  3) server.js
+#  4) Chromium GPU su ?live=1               5) ffmpeg x11grab+NVENC → YouTube
+#  6) supervisione 24/7: riavvia ciò che cade + riavvio periodico del browser
+set -uo pipefail
+log(){ echo "[$(date '+%H:%M:%S')] [eternal-fall] $*"; }
+
+# ───────────────────────── config (override via .env) ─────────────────────────
+APP_DIR=${APP_DIR:-/app}
+PORT=${PORT:-8099}
+RENDER_W=${RENDER_W:-1920}            # risoluzione di rendering (= display Xvfb)
+RENDER_H=${RENDER_H:-1080}
+OUT_W=${OUT_W:-$RENDER_W}             # risoluzione inviata a YouTube (scala se ≠ render)
+OUT_H=${OUT_H:-$RENDER_H}
+FPS=${FPS:-60}
+VBITRATE=${VBITRATE:-9M}
+VMAXRATE=${VMAXRATE:-$VBITRATE}
+VBUF=${VBUF:-18M}
+ABITRATE=${ABITRATE:-160k}
+NVENC_PRESET=${NVENC_PRESET:-p5}     # p1(veloce)…p7(migliore)
+NVENC_TUNE=${NVENC_TUNE:-hq}         # hq | ll | ull
+VIDEO_ENCODER=${VIDEO_ENCODER:-h264_nvenc}
+RTMP_URL=${RTMP_URL:-rtmp://a.rtmp.youtube.com/live2}
+DSF=${DEVICE_SCALE_FACTOR:-1}        # 2 = supersampling stile retina (più GPU)
+ANGLE_BACKEND=${ANGLE_BACKEND:-vulkan}   # vulkan (consigliato NVIDIA in container) | gl-egl (EGL nativo)
+BROWSER_RESTART_HOURS=${BROWSER_RESTART_HOURS:-8}   # anti memory-leak; 0 = mai
+CHROME_COMPOSITING_FLAG=${CHROME_COMPOSITING_FLAG:-}   # vuoto=GPU compositing (host con modeset=1); "--disable-gpu-compositing"=software
+# EDID 4K (3840x2160@60 CVT-RB) per il MONITOR VIRTUALE headless (CustomEDID, vedi start_display):
+# forza il driver nvidia a esporre un output DFP → NvFBC/cattura-schermo hanno una scansione da leggere.
+EDID_HEX="00ffffffffffff0031d801010100000000210104a5502d7802ee91a3544c99260f50540000000101010101010101010101010101010134d000a0f0703e803020350000000000001e000000fd00304b1ea03c0120202020202020000000fc004546414c4c2d344b0a202020200000001000000000000000000000000000000096"
+GOP=$(( FPS * 2 ))                    # keyframe ogni 2s (richiesto da YouTube)
+
+if [ -z "${YT_STREAM_KEY:-}" ]; then
+  log "FATALE: YT_STREAM_KEY non impostata. Mettila nel .env (vedi cloud/.env.cloud.example). Esco."
+  exit 1
+fi
+
+export DISPLAY=:0
+export HOME=/root
+export PULSE_SERVER=unix:/tmp/pulse/native
+# Forza EGL/GLX di NVIDIA: con anche 50_mesa.json presente, glvnd può scegliere Mesa
+# → "libEGL warning: DRI3 error" e WebGL software. Restringiamo al solo vendor NVIDIA.
+export __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+# Policy gestita: spegne DEFINITIVAMENTE la barra di traduzione di Chrome
+# (i soli flag --disable-features=Translate a volte non bastano).
+mkdir -p /etc/opt/chrome/policies/managed
+printf '{"TranslateEnabled": false}\n' > /etc/opt/chrome/policies/managed/eternalfall.json
+
+CHROME_BIN=$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || true)
+FFMPEG_BIN=$(command -v ffmpeg || true)
+[ -n "$CHROME_BIN" ] || { log "FATALE: Chrome non trovato"; exit 1; }
+[ -n "$FFMPEG_BIN" ] || { log "FATALE: ffmpeg non trovato"; exit 1; }
+GSR_BIN=$(command -v gpu-screen-recorder || true)   # se compilato → cattura NvFBC (Piano B)
+CAPTURE_MODE=ffmpeg                                  # ffmpeg (x11grab) | gsr (NvFBC) — deciso da start_display
+
+CHROME_PID=""; FFMPEG_PID=""; SERVER_PID=""; XVFB_PID=""
+cleanup(){ log "arresto in corso…"; kill "$CHROME_PID" "$FFMPEG_PID" "$SERVER_PID" "$XVFB_PID" 2>/dev/null; pulseaudio --kill 2>/dev/null; exit 0; }
+trap cleanup TERM INT
+
+# ───────────────────────── 1) audio: PulseAudio + null sink ─────────────────────────
+mkdir -p /tmp/pulse && chmod 777 /tmp/pulse
+pulseaudio --system -n --disallow-exit --exit-idle-time=-1 -D \
+  --load="module-native-protocol-unix auth-anonymous=1 socket=/tmp/pulse/native" \
+  --load="module-null-sink sink_name=stream sink_properties=device.description=EternalFall" \
+  --load="module-always-sink" 2>/dev/null
+sleep 1
+pactl set-default-sink stream 2>/dev/null || true
+log "audio pronto (sink virtuale: stream)"
+
+# ───────────────────── 2) display: Xorg+NVIDIA (NvFBC) o Xvfb (fallback) ─────────────────────
+start_display(){
+  # La cattura GPU NvFBC richiede un Xorg vero pilotato dal driver NVIDIA.
+  # Lo proviamo SOLO se gpu-screen-recorder è stato compilato; in caso contrario Xvfb.
+  if [ -n "$GSR_BIN" ]; then
+    mkdir -p /etc/X11
+    # Monitor virtuale: scrivo un EDID 4K e lo passo al driver nvidia (CustomEDID) così espone
+    # un output DFP headless → NvFBC/cattura-schermo hanno una scansione reale da catturare.
+    local CUSTOM_EDID_LINE=""
+    if [ "${VIRTUAL_DISPLAY:-1}" = 1 ] && command -v python3 >/dev/null 2>&1; then
+      if python3 -c "import binascii;open('/etc/X11/edid.bin','wb').write(binascii.unhexlify('${EDID_HEX}'))" 2>/dev/null; then
+        CUSTOM_EDID_LINE='    Option "CustomEDID" "DFP-0:/etc/X11/edid.bin"'
+        log "monitor virtuale: EDID 4K scritto (/etc/X11/edid.bin)"
+      else
+        log "⚠ EDID non generato → niente monitor virtuale"
+      fi
+    fi
+    cat > /etc/X11/xorg.conf <<EOF
+Section "ServerFlags"
+    Option "AutoAddGPU" "false"
+    Option "DontVTSwitch" "true"
+EndSection
+Section "Monitor"
+    Identifier "Monitor0"
+    HorizSync 30.0-300.0
+    VertRefresh 30.0-120.0
+    Option "DPMS" "false"
+EndSection
+Section "Device"
+    Identifier "nvidia"
+    Driver "nvidia"
+    Option "AllowEmptyInitialConfiguration" "true"
+    Option "ConnectedMonitor" "DFP-0"
+${CUSTOM_EDID_LINE}
+    Option "ModeValidation" "NoMaxPClkCheck,NoEdidMaxPClkCheck,NoMaxSizeCheck,NoHorizSyncCheck,NoVertRefreshCheck,NoVirtualSizeCheck,AllowNonEdidModes,NoEdidHDMI2Check,NoConfigConflictCheck"
+EndSection
+Section "Screen"
+    Identifier "screen"
+    Device "nvidia"
+    Monitor "Monitor0"
+    Option "MetaModes" "DFP-0: ${RENDER_W}x${RENDER_H} +0+0"
+    DefaultDepth 24
+    SubSection "Display"
+        Depth 24
+        Modes "${RENDER_W}x${RENDER_H}"
+        Virtual ${RENDER_W} ${RENDER_H}
+    EndSubSection
+EndSection
+EOF
+    # Il modulo GLX di NVIDIA crasha Xorg in questa VM (libnvidia-glcore). Non ci serve:
+    # Chrome renderizza via EGL e gsr cattura la FINESTRA. Lo togliamo → Xorg usa la GLX
+    # generica, che basta a gsr per creare il contesto GL (il render vero è su EGL/NVIDIA).
+    mv /usr/lib/xorg/modules/extensions/libglxserver_nvidia.so /tmp/glxserver_nvidia.bak 2>/dev/null || true
+    log "provo Xorg+NVIDIA headless (per cattura NvFBC della finestra)…"
+    Xorg :0 -config /etc/X11/xorg.conf -noreset -novtswitch -sharevts -nolisten tcp >/tmp/xorg.log 2>&1 &
+    XVFB_PID=$!
+    for _ in $(seq 1 40); do xdpyinfo >/dev/null 2>&1 && break; sleep 0.25; done
+    if xdpyinfo >/dev/null 2>&1; then
+      CAPTURE_MODE=gsr
+      log "display :0 = Xorg+NVIDIA ✓ → cattura NvFBC finestra (gpu-screen-recorder)"
+      return
+    fi
+    log "⚠ Xorg+NVIDIA non parte in questa VM (vedi /tmp/xorg.log) → fallback Xvfb + ffmpeg"
+    kill "$XVFB_PID" 2>/dev/null; sleep 1
+  fi
+  Xvfb :0 -screen 0 "${RENDER_W}x${RENDER_H}x24" -ac +extension GLX +extension RANDR +render -noreset >/tmp/xvfb.log 2>&1 &
+  XVFB_PID=$!
+  for _ in $(seq 1 40); do xdpyinfo >/dev/null 2>&1 && break; sleep 0.25; done
+  CAPTURE_MODE=ffmpeg
+  log "display :0 = Xvfb ✓ (${RENDER_W}x${RENDER_H})"
+}
+start_display
+
+# ───────────────────── preflight driver/ICD (perché ANGLE non vada in segfault) ─────────────────────
+# Causa #1 dei segfault gl-egl/EGL: il toolkit inietta la lib vendor NVIDIA ma NON
+# il file ICD che dice a libglvnd/Vulkan dove trovarla. Verifichiamo cosa c'è.
+log "preflight driver/ICD…"
+ldconfig 2>/dev/null || true
+have(){ ldconfig -p 2>/dev/null | grep -qi "$1"; }
+have libEGL_nvidia && log "  vendor EGL NVIDIA ✓ (libEGL_nvidia)" || log "  ⚠ libEGL_nvidia NON iniettata → manca capability 'graphics' o driver non montato"
+have libGLX_nvidia && log "  vendor GLX NVIDIA ✓ (libGLX_nvidia)" || log "  ⚠ libGLX_nvidia NON iniettata"
+have "libEGL.so.1" && log "  loader GLVND EGL  ✓ (libEGL.so.1)"   || log "  ⚠ libEGL.so.1 assente → installa libegl1/libglvnd0 nell'immagine"
+ls /usr/share/glvnd/egl_vendor.d/*nvidia*.json /etc/glvnd/egl_vendor.d/*nvidia*.json >/dev/null 2>&1 \
+  && log "  EGL ICD nvidia.json ✓ ($(ls /usr/share/glvnd/egl_vendor.d/*nvidia*.json /etc/glvnd/egl_vendor.d/*nvidia*.json 2>/dev/null | tr '\n' ' '))" \
+  || log "  ⚠ nessun egl_vendor.d/*nvidia*.json (né iniettato né fallback) — EGL cadrà in software"
+ls /usr/share/vulkan/icd.d/*nvidia*.json /etc/vulkan/icd.d/*nvidia*.json >/dev/null 2>&1 \
+  && log "  Vulkan ICD nvidia   ✓ ($(ls /usr/share/vulkan/icd.d/*nvidia*.json /etc/vulkan/icd.d/*nvidia*.json 2>/dev/null | tr '\n' ' '))" \
+  || log "  ⚠ nessun vulkan/icd.d/*nvidia*.json → ANGLE vulkan cadrà in software"
+command -v eglinfo    >/dev/null 2>&1 && eglinfo -B 2>/dev/null | grep -i "vendor"               | head -1 | while read -r l; do log "  eglinfo: $l"; done
+command -v vulkaninfo >/dev/null 2>&1 && vulkaninfo --summary 2>/dev/null | grep -iE "deviceName" | head -1 | while read -r l; do log "  vulkan: $l"; done
+
+# ───────────────────────── diagnostica GPU WebGL (non bloccante) ─────────────────────────
+log "verifico accelerazione GPU del WebGL (ANGLE=${ANGLE_BACKEND})…"
+GPU_DOM=$(timeout 30 "$CHROME_BIN" --headless=new --no-sandbox --use-gl=angle --use-angle="${ANGLE_BACKEND}" \
+  --enable-features=Vulkan --ignore-gpu-blocklist --dump-dom chrome://gpu 2>/dev/null | tr '<>' '\n\n')
+if echo "$GPU_DOM" | grep -qi "Hardware accelerated" && ! echo "$GPU_DOM" | grep -qi "Software only"; then
+  log "GPU: WebGL HARDWARE accelerato ✓"
+else
+  log "⚠ ATTENZIONE: WebGL forse NON su GPU (software/SwiftShader) → scena a scatti."
+  log "  Controlla: nvidia-smi sull'host, NVIDIA_DRIVER_CAPABILITIES=all (deve includere graphics+display!),"
+  log "  i warning ICD qui sopra, e se vulkan non va prova ANGLE_BACKEND=gl-egl."
+fi
+nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>/dev/null | while read -r l; do log "GPU host: $l"; done
+
+# ───────────────────────── 3) server.js (root: scrive permanent.json) ─────────────────────────
+start_server(){ ( cd "$APP_DIR" && node server.js >/tmp/server.log 2>&1 ) & SERVER_PID=$!; }
+start_server
+for _ in $(seq 1 60); do curl -sf "http://localhost:${PORT}/api/health" >/dev/null 2>&1 && break; sleep 0.5; done
+log "server.js attivo su :${PORT}"
+
+# ───────────────────────── 4) Chromium GPU su ?live=1 ─────────────────────────
+# ANGLE vulkan richiede di abilitare la feature Vulkan; gl-egl no (anzi, lasciarla
+# può forzare percorsi Vulkan che in container senza ICD vanno in segfault).
+case "${ANGLE_BACKEND}" in
+  vulkan) ANGLE_FEATURES="--enable-features=Vulkan" ;;
+  *)      ANGLE_FEATURES="" ;;
+esac
+start_chrome(){
+  rm -f /tmp/chrome-profile/SingletonLock /tmp/chrome-profile/Singleton* 2>/dev/null
+  # window-size è in DIP: × DSF = pixel fisici = display Xvfb. Senza /DSF, con DSF=2
+  # la finestra diventa il doppio del display → si cattura solo 1/4 dello schermo.
+  local WIN_W=$(( RENDER_W / DSF )) WIN_H=$(( RENDER_H / DSF ))
+  # Composizione finestra: CHROME_COMPOSITING_FLAG (da .env) decide la strategia di cattura.
+  #  • vuoto (default, con host nvidia-drm.modeset=1) → GPU compositing: c'è un vblank reale,
+  #    Chrome presenta i frame e la finestra è catturabile a 60fps.
+  #  • "--disable-gpu-compositing" → composizione software: cattura garantita ma ~18fps a 4K
+  #    (fallback per host SENZA modeset/vblank, dove la GPU-composita non aggiorna la pixmap).
+  # --remote-debugging-port: solo loopback del container, comodo per diagnosticare freeze via CDP.
+  # shellcheck disable=SC2086
+  "$CHROME_BIN" \
+    --user-data-dir=/tmp/chrome-profile \
+    --no-sandbox --no-first-run --no-default-browser-check \
+    --disable-infobars --disable-session-crashed-bubble --disable-translate \
+    --disable-features=Translate,TranslateUI,CalculateNativeWinOcclusion \
+    --disable-backgrounding-occluded-windows --disable-renderer-backgrounding \
+    --disable-background-timer-throttling \
+    --lang=en-US --accept-lang=en-US \
+    --kiosk --start-fullscreen --window-position=0,0 --window-size="${WIN_W},${WIN_H}" \
+    --force-device-scale-factor="${DSF}" --hide-scrollbars \
+    --use-gl=angle --use-angle="${ANGLE_BACKEND}" ${ANGLE_FEATURES} \
+    --ignore-gpu-blocklist --enable-gpu-rasterization \
+    ${CHROME_COMPOSITING_FLAG} \
+    --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1 --remote-allow-origins=* \
+    --autoplay-policy=no-user-gesture-required \
+    "http://localhost:${PORT}/?live=1" >/tmp/chrome.log 2>&1 &
+  CHROME_PID=$!
+  log "Chromium avviato (pid $CHROME_PID, ANGLE=${ANGLE_BACKEND}, scale=${DSF})"
+}
+start_chrome
+sleep 6   # lascia caricare scena/asset prima di iniziare a catturare
+
+# ───────────────────────── 5) ffmpeg → YouTube ─────────────────────────
+SCALE=""
+[ "${OUT_W}x${OUT_H}" != "${RENDER_W}x${RENDER_H}" ] && SCALE="-vf scale=${OUT_W}:${OUT_H}:flags=lanczos"
+start_ffmpeg(){
+  # shellcheck disable=SC2086
+  "$FFMPEG_BIN" -hide_banner -loglevel warning \
+    -thread_queue_size 1024 -f x11grab -draw_mouse 0 -framerate "${FPS}" -video_size "${RENDER_W}x${RENDER_H}" -i :0.0 \
+    -thread_queue_size 1024 -f pulse -i stream.monitor \
+    ${SCALE} \
+    -c:v "${VIDEO_ENCODER}" -preset "${NVENC_PRESET}" -tune "${NVENC_TUNE}" \
+    -rc cbr -b:v "${VBITRATE}" -maxrate "${VMAXRATE}" -bufsize "${VBUF}" \
+    -spatial-aq 1 -temporal-aq 1 -rc-lookahead "${NVENC_LOOKAHEAD:-16}" \
+    -g "${GOP}" -keyint_min "${GOP}" -bf 3 -fps_mode cfr -r "${FPS}" \
+    -c:a aac -b:a "${ABITRATE}" -ar 44100 -ac 2 \
+    -f flv "${RTMP_URL}/${YT_STREAM_KEY}" >/tmp/ffmpeg.log 2>&1 &
+  FFMPEG_PID=$!
+  log "ffmpeg → YouTube (pid $FFMPEG_PID, out ${OUT_W}x${OUT_H}@${FPS}, ${VBITRATE} ${VIDEO_ENCODER})"
+}
+start_gsr(){
+  # gpu-screen-recorder: cattura la FINESTRA Chrome della scena sulla GPU (NvFBC) + NVENC.
+  # Si aggira il modeset=N (niente cattura schermo) puntando la finestra per ID.
+  # "-w focused" è fragile (senza WM non c'è focus → id 0 = nero): troviamo l'id per nome.
+  local KBPS="${VBITRATE%M}"; KBPS=$(( KBPS * 1000 ))   # es. 45M → 45000
+  local WID=""
+  for _ in $(seq 1 30); do
+    WID=$(DISPLAY=:0 xwininfo -root -tree 2>/dev/null | grep -i "google chrome" | grep -oiE "0x[0-9a-f]+" | head -1)
+    [ -n "$WID" ] && break
+    sleep 0.5
+  done
+  if [ -z "$WID" ]; then
+    log "⚠ finestra Chrome non trovata → fallback ffmpeg x11grab"
+    CAPTURE_MODE=ffmpeg; start_ffmpeg; return
+  fi
+  # attendi che il monitor del sink PulseAudio sia pronto: al restart gsr può partire
+  # prima che il sink esista → "Audio device 'stream.monitor' is not a valid audio device".
+  for _ in $(seq 1 40); do
+    pactl list short sources 2>/dev/null | grep -q "stream.monitor" && break
+    sleep 0.5
+  done
+  "$GSR_BIN" -w "$WID" -s "${RENDER_W}x${RENDER_H}" -f "${FPS}" -k h264 \
+    -bm cbr -q "${KBPS}" -fm cfr -cursor no -keyint 2 -encoder gpu \
+    -a stream.monitor -ac aac \
+    -c flv -o "${RTMP_URL}/${YT_STREAM_KEY}" >/tmp/gsr.log 2>&1 &
+  FFMPEG_PID=$!
+  log "gpu-screen-recorder (NvFBC finestra $WID) → YouTube (pid $FFMPEG_PID, ${RENDER_W}x${RENDER_H}@${FPS}, ${VBITRATE})"
+}
+start_capture(){
+  if [ "$CAPTURE_MODE" = gsr ]; then
+    start_gsr
+    sleep 3
+    if ! kill -0 "$FFMPEG_PID" 2>/dev/null; then
+      log "⚠ NvFBC/gpu-screen-recorder non parte (vedi /tmp/gsr.log) → fallback ffmpeg x11grab"
+      CAPTURE_MODE=ffmpeg; start_ffmpeg
+    fi
+  else
+    start_ffmpeg
+  fi
+}
+start_capture
+
+# ───────────────────────── 6) supervisione 24/7 ─────────────────────────
+log "live in onda. Supervisione attiva."
+last_browser=$(date +%s)
+while true; do
+  sleep 5
+  kill -0 "$SERVER_PID" 2>/dev/null || { log "server.js caduto → riavvio"; start_server; }
+  kill -0 "$CHROME_PID" 2>/dev/null || { log "Chromium caduto → riavvio"; start_chrome; last_browser=$(date +%s); }
+  kill -0 "$FFMPEG_PID" 2>/dev/null || { log "cattura caduta → riconnetto"; sleep 3; start_capture; }
+  now=$(date +%s)
+  if [ "${BROWSER_RESTART_HOURS}" -gt 0 ] && [ $(( now - last_browser )) -ge $(( BROWSER_RESTART_HOURS * 3600 )) ]; then
+    log "riavvio periodico Chromium (anti memory-leak)"
+    kill "$CHROME_PID" 2>/dev/null; sleep 2; start_chrome; last_browser=$now
+  fi
+done
