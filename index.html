@@ -132,7 +132,7 @@
   .rpanel .eta .k{ color:var(--lbl); letter-spacing:0.26em; font-size:0.72em; margin-right:0.5em; }
   #nextpanel .dots{ height:5px; margin-top:1em; background:repeating-linear-gradient(to right,var(--red-soft) 0 2px,transparent 2px 10px); opacity:0.5; border-radius:2px; }
   /* caption centrale pulita (niente parentesi) */
-  #t-log{ position:absolute; left:50%; bottom:16vh; transform:translateX(-50%); max-width:40vw; text-align:center;
+  #t-log{ position:absolute; left:50%; bottom:17vh; transform:translateX(-50%); max-width:34vw; text-align:center;   /* sta nel varco tra i pannelli → non sborda */
     font-style:italic; font-weight:300; font-size:clamp(13px,1.5vw,23px); line-height:1.5; color:#ececf6; opacity:0; transition:opacity 1.2s ease; }
   #t-log.on{ opacity:0.92; }
   /* chat bar */
@@ -2927,7 +2927,11 @@ class AmbientEngine{
     if(tier.length>1){ const t2=tier.filter(i=>i!==this.voiceLast); if(t2.length) tier=t2; }   // niente ripetizione immediata
     return tier[(Math.random()*tier.length)|0]; }
   _pickSoul(){ const src=this.soulIdx.length?this.soulIdx:this.capIdx; if(!src.length) return -1; const av=this._notRecent(src); return av.length?av[(Math.random()*av.length)|0]:-1; }
-  _caption(line){ const t=line.text||''; if(line.attribution) return t+'  — '+line.attribution; const k=line.kind||'chronicle'; return (k==='capsule'||k==='philosophy')?t:('“'+t+'”'); }   // cronaca/refrain tra virgolette (la voce dell'uomo); capsule documentario senza
+  _caption(line){ const t=line.text||'';
+    if(line.attribution) return t+'  — '+line.attribution;                 // citazione filosofica (corta)
+    if((line.kind||'chronicle')!=='capsule') return '“'+t+'”';             // cronaca/refrain (corti) tra virgolette
+    const m=t.match(/^[^.!?]*[.!?]/); let s=m?m[0].trim():t;               // CAPSULA: solo la prima frase → sottotitolo breve, niente muro di testo che sborda sulle box
+    if(s.length>150) s=s.slice(0,147).replace(/\s+\S*$/,'')+'…'; return s; }
   _setNow(line){ if(typeof $t==='undefined'||!$t) return; const isCap=(line.kind==='capsule'||line.kind==='philosophy');   // pannello NOW TRANSMITTING
     if($t.nowTitle) $t.nowTitle.textContent = isCap ? (line.title || VOICE_CATLABEL[line.cat] || 'Transmission') : 'Eternal Fall';
     if($t.nowTag)   $t.nowTag.textContent   = isCap ? (line.tagline || VOICE_CATLABEL[line.cat] || '') : '— a voice still falling'; }
