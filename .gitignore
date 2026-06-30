@@ -19,3 +19,5 @@ permanent.json
 
 # sfondi equirettangolari (grandi, scaricati da spacespheremaps.com — free commercial)
 /assets/skies/*.png
+/assets/voice/.slowed.json
+/assets/voice/ce_vcount*
