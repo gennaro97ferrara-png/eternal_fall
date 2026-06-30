@@ -366,6 +366,17 @@ const PRESETS=[
   {name:'brace',    skyBright:0.8,exposure:1.05,neb:0.8,dust:0.9,planet:0.15,aster:0.2,star:0.5,speed:30,grade:0x70210c,key:0xffb070,kInt:2.4,aB:0.65,aD:0.85},
   {name:'gelo',     skyBright:0.85,exposure:1.05,neb:0.7,dust:0.8,planet:0.1,aster:0.0,star:0.7,speed:26,grade:0x0e4a55,key:0xcffaff,kInt:2.3,aB:0.6,aD:0.7},
   {name:'abisso',   skyBright:0.4,exposure:0.85,neb:0.12,dust:0.4,planet:0.05,aster:0.0,star:0.9,speed:18,grade:0x070b18,key:0x9fb0e0,kInt:1.7,aB:0.25,aD:0.35},
+  // ---- 10 PRESET SPETTACOLARI (luminosi, colori vari → anche più varietà d'accento; mai scuri) ----
+  {name:'aurora',   skyBright:0.90,exposure:1.10,neb:0.92,dust:0.70,planet:0.08,aster:0.0, star:0.75,speed:22,grade:0x0d5a4a,key:0xa8ffe0,kInt:2.3,aB:0.70,aD:0.85},   // veli aurorali smeraldo/teal
+  {name:'rosa',     skyBright:0.90,exposure:1.10,neb:0.95,dust:0.80,planet:0.08,aster:0.0, star:0.70,speed:26,grade:0x7a1f55,key:0xffc6e6,kInt:2.3,aB:0.72,aD:0.88},   // nebulosa rosa/magenta
+  {name:'smeraldo', skyBright:0.88,exposure:1.08,neb:0.90,dust:0.75,planet:0.08,aster:0.0, star:0.70,speed:24,grade:0x1f5a3a,key:0xc6ffda,kInt:2.3,aB:0.70,aD:0.85},   // nube verde profonda
+  {name:'oro',      skyBright:0.88,exposure:1.06,neb:0.70,dust:0.95,planet:0.12,aster:0.10,star:0.60,speed:28,grade:0x6a4a12,key:0xffe6a8,kInt:2.6,aB:0.68,aD:0.85},   // bagliore dorato (vivaio stellare)
+  {name:'zaffiro',  skyBright:0.85,exposure:1.06,neb:0.65,dust:0.60,planet:0.10,aster:0.0, star:0.85,speed:24,grade:0x16306e,key:0xbcd4ff,kInt:2.2,aB:0.62,aD:0.75},   // blu elettrico profondo
+  {name:'ametista', skyBright:0.90,exposure:1.10,neb:0.95,dust:0.80,planet:0.08,aster:0.0, star:0.70,speed:26,grade:0x4a1f7a,key:0xdcc6ff,kInt:2.3,aB:0.72,aD:0.88},   // nebulosa viola intensa
+  {name:'lampo',    skyBright:1.00,exposure:1.14,neb:0.80,dust:0.85,planet:0.10,aster:0.10,star:0.80,speed:32,grade:0x5a3a5e,key:0xfff0f4,kInt:2.7,aB:0.78,aD:0.92},   // regione abbagliata, drammatica
+  {name:'fornace',  skyBright:0.90,exposure:1.08,neb:0.78,dust:0.90,planet:0.12,aster:0.15,star:0.60,speed:30,grade:0x6e2a0c,key:0xffc090,kInt:2.6,aB:0.70,aD:0.88},   // fornace stellare ambra (caldo, non rosso)
+  {name:'glaciale', skyBright:0.95,exposure:1.10,neb:0.60,dust:0.65,planet:0.10,aster:0.0, star:0.90,speed:24,grade:0x2a5a66,key:0xe6ffff,kInt:2.3,aB:0.66,aD:0.80},   // cattedrale di ghiaccio cyan
+  {name:'cuore',    skyBright:1.00,exposure:1.10,neb:0.72,dust:0.80,planet:0.10,aster:0.05,star:1.00,speed:20,grade:0x3a2e5a,key:0xffe8c6,kInt:2.5,aB:0.72,aD:0.85},   // cuore galattico denso di stelle
 ];
 class Director{
   constructor(){ this.cur=Object.assign({},PRESETS[0]); this.from=Object.assign({},PRESETS[0]); this.to=Object.assign({},PRESETS[0]);
