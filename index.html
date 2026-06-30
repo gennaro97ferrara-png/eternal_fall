@@ -2595,7 +2595,7 @@ class AdaptiveMusicDeck{
   constructor(ctx,dest,onTrack){
     this.ctx=ctx; this.onTrack=onTrack; this.library=[]; this.bag=[]; this.mood='galassia';
     this.started=false; this.loaded=false; this.enabled=true; this.active=-1; this.breakUntil=0;
-    this.rate=0.94; this.targetRate=0.94; this.speedMul=1; this.level=0.74; this.blocked=false;
+    this.rate=0.85; this.targetRate=0.85; this.speedMul=1; this.level=0.74; this.blocked=false;   // musica più LENTA (pitch preservato) → calma da documentario
     this.hp=ctx.createBiquadFilter(); this.hp.type='highpass'; this.hp.frequency.value=32; this.hp.Q.value=0.35;
     this.lp=ctx.createBiquadFilter(); this.lp.type='lowpass'; this.lp.frequency.value=18000; this.lp.Q.value=0.25;
     this.bus=ctx.createGain(); this.bus.gain.value=0.82;
