@@ -550,7 +550,10 @@ function updateGalaxies(dt,speed){ if(!galaxies) return;
     if(z>(g.recZ||-380)) galaxyRespawn(g,-7000-Math.random()*3000); } }
 
 /* ---------------- scene globals ---------------- */
-let sky,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
+let sky,sky2,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
+// SFONDI multipli (varietà): Via Lattea + 8 nebulose equirettangolari (assets/skies/), crossfade lazy-load (1-2 texture in VRAM alla volta)
+const SKY_FILES=['milkyway_8k.jpg','skies/nebula_1.png','skies/nebula_2.png','skies/nebula_3.png','skies/nebula_4.png','skies/nebula_5.png','skies/nebula_6.png','skies/nebula_7.png','skies/nebula_8.png'];
+let skyIdx=0, skyT=200, skyEvery=300, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
 // LIVE: l'auto-scaler è OFF (PIX fisso a 2) → base bloom più nitida (1440p anziché 1080p → upscale a 4K 1.5× invece di 2×). Non-live resta a 1/2.
 let starLayers=[], fastDust=null, nebSheets=[], bloomDiv=(/[?&]live=1/.test(location.search)?1.5:2);
@@ -651,6 +654,9 @@ function build(){
   sky=new THREE.Mesh(new THREE.SphereGeometry(6000,60,40),
     new THREE.MeshBasicMaterial({map:ASSETS.milkyway,side:THREE.BackSide,depthWrite:false,fog:false}));
   sky.renderOrder=-10; scene.add(sky);
+  sky2=new THREE.Mesh(new THREE.SphereGeometry(5985,60,40),   // sfera di crossfade per cambiare sfondo senza pop
+    new THREE.MeshBasicMaterial({map:null,side:THREE.BackSide,depthWrite:false,fog:false,transparent:true,opacity:0}));
+  sky2.renderOrder=-9; sky2.visible=false; scene.add(sky2);
 
   // CAMPO STELLARE VOLUMETRICO a 3 strati di profondità → parallasse (senso di 3D con camera ferma)
   starLayers=[
@@ -786,6 +792,7 @@ function build(){
   window.cadutaVoiceStatus=()=>audio?{lib:audio.voiceLib.length,capsule:audio.capIdx.length,identitarie:audio.soulIdx.length,perCategoria:Object.fromEntries(Object.entries(audio.capByCat||{}).map(([k,v])=>[k,v.length])),busy:audio.voiceBusy,prossimaIn:Math.max(0,(audio.voiceEvery-audio.voiceT)|0)+'s',refrainIn:Math.max(0,(audio.soulEvery-audio.soulT)|0)+'s',ultime:(audio.voiceRecent||[]).slice(-6).map(i=>(audio.voiceLib[i]||{}).id||i)}:'audio non pronto';
   window.cadutaSpeak=(tag)=>{ if(!audio)return'audio non pronto'; if(tag) audio.enqueueVoice(tag); audio.voiceT=audio.voiceEvery; return tag?('prossima capsula → '+tag):'capsula forzata ora'; };   // forza subito una capsula (opz. con tag fenomeno)
   window.cadutaAccent=(f)=>{ if(f) applyAccent(f); return {famiglia:_accFam, disponibili:ACCENT_FAMS.map(x=>x.name)}; };   // forza/ispeziona la famiglia d'accento dinamico
+  window.cadutaSky=(i)=>{ cycleSky(typeof i==='number'?i:undefined); return {attuale:SKY_FILES[skyIdx], sfondi:SKY_FILES}; };   // cambia sfondo (test/anteprima)
   window.cadutaScene=(name)=>{ const p=PRESETS.find(x=>x.name===name); if(!p) return PRESETS.map(x=>x.name);   // salta a un mood (test/anteprima)
     director.from=Object.assign({},director.cur); director.from.grade=director.grade.getHex(); director.from.key=director.key.getHex();
     director.to=Object.assign({},p); director.t=0; director.dur=2; director.hold=600; return 'scena → '+name; };
@@ -1884,9 +1891,24 @@ const CineShader={
 
 function applyDirector(){
   const c=director.cur;
-  if(sky) sky.material.color.copy(director.grade).lerp(_white,0.74).multiplyScalar(Math.max(0.62,c.skyBright)*0.92);   // Via Lattea TINTA dal mood (varietà sfondo) + pavimento 0.62 (mai troppo scura) — in place, niente alloc
+  if(sky){ sky.material.color.copy(director.grade).lerp(_white,0.74).multiplyScalar(Math.max(0.62,c.skyBright)*0.92);   // Via Lattea TINTA dal mood (varietà sfondo) + pavimento 0.62 (mai troppo scura) — in place, niente alloc
+    if(sky2 && sky2.visible) sky2.material.color.copy(sky.material.color); }   // durante il crossfade tingi anche lo sfondo entrante
   if(keyLight){ keyLight.color.copy(_white).lerp(director.key,0.5); keyLight.intensity=c.kInt; }   // tinta regione attenuata
   if(cinePass) cinePass.uniforms.uGrade.value.copy(director.grade);
+}
+// SFONDI: crossfade verso una nebulosa diversa ogni ~5-9 min (lazy-load + dispose → 1-2 texture in VRAM)
+function cycleSky(target){ if(skyFading||skyLoading||!sky2) return; let n=(typeof target==='number')?((target%SKY_FILES.length)+SKY_FILES.length)%SKY_FILES.length:skyIdx;
+  if(typeof target!=='number' && SKY_FILES.length>1){ while(n===skyIdx) n=(Math.random()*SKY_FILES.length)|0; } if(n===skyIdx) return; skyPendIdx=n; skyLoading=true;
+  texL.load('assets/'+SKY_FILES[n], t=>{ t.colorSpace=THREE.SRGBColorSpace; t.mapping=THREE.EquirectangularReflectionMapping; t.anisotropy=MAXANISO;
+    sky2.material.map=t; sky2.material.needsUpdate=true; sky2.material.opacity=0; sky2.visible=true; skyFade=0; skyFading=true; skyLoading=false;
+  }, undefined, ()=>{ skyLoading=false; });   // errore di rete → annulla, riprova al prossimo giro (niente crash)
+}
+function updateSky(dt){ if(!sky2) return;
+  skyT+=dt; if(skyT>=skyEvery){ skyT=0; skyEvery=300+Math.random()*240; cycleSky(); }
+  if(skyFading){ skyFade+=dt/3; const a=skyFade<1?(skyFade*skyFade*(3-2*skyFade)):1; sky2.material.opacity=a;
+    if(skyFade>=1){ const old=sky.material.map; sky.material.map=sky2.material.map; sky.material.needsUpdate=true;
+      sky2.material.opacity=0; sky2.material.map=null; sky2.visible=false; skyFading=false; skyIdx=skyPendIdx;
+      if(old && old!==ASSETS.milkyway){ try{old.dispose();}catch(e){} } } }   // libera la VRAM della texture uscente (mai la Via Lattea, tenuta in cache)
 }
 
 /* ---------------- NUOVI CORPI (varietà) ---------------- */
@@ -2537,7 +2559,7 @@ function animate(){
   bloomPass.strength=Math.min(0.78, 0.36+director.cur.aB*0.30+director.surge*0.20);   // bloom ridotto + cap più basso → il centro non si brucia, dettagli/UI restano leggibili
 
   composer.render();
-  telUpdate(dt); updateAccent(dt);   // accento UI segue il mood della scena (transizione lenta)
+  telUpdate(dt); updateAccent(dt); updateSky(dt);   // accento UI + crossfade sfondi col mood
   const audioMood={ planet: nearestPlanet?Math.min(nearScore*2,1):0, dread:1-timeScale, nova:supernova.active?1:0 };
   audio.update(dt,director,audioMood);
 
