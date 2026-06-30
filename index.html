@@ -1884,7 +1884,7 @@ const CineShader={
 
 function applyDirector(){
   const c=director.cur;
-  if(sky) sky.material.color.setScalar(Math.max(0.62,c.skyBright)*0.86);   // Via Lattea di sfondo — PAVIMENTO 0.62: mai troppo scura (alza solo abisso/vuoto)
+  if(sky) sky.material.color.copy(director.grade).lerp(_white,0.74).multiplyScalar(Math.max(0.62,c.skyBright)*0.92);   // Via Lattea TINTA dal mood (varietà sfondo) + pavimento 0.62 (mai troppo scura) — in place, niente alloc
   if(keyLight){ keyLight.color.copy(_white).lerp(director.key,0.5); keyLight.intensity=c.kInt; }   // tinta regione attenuata
   if(cinePass) cinePass.uniforms.uGrade.value.copy(director.grade);
 }
