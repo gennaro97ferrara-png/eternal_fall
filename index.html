@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Caduta Eterna</title>
 <style>
-  :root { color-scheme: dark; --ink:#cdd6f4; --ui:1.3; }   /* --ui = scala globale overlay: grande per chi guarda da cell il video 1920; la media query lo riporta a 1 sui browser stretti */
+  :root { color-scheme: dark; --ink:#cdd6f4; --ui:1.55; }   /* --ui = scala globale overlay: grande per chi guarda da cell il video 1920; la media query lo riporta a 1 sui browser stretti */
   html, body { margin:0; height:100%; background:#000; overflow:hidden; }
+  html.nocursor, html.nocursor * { cursor:none !important; }   /* LIVE: niente cursore del mouse in onda */
   #app { position:fixed; inset:0; }
   canvas { display:block; width:100%; height:100%; }
 
@@ -57,6 +58,9 @@
   #tel .log { margin-top:6px; font-size:clamp(8.5px,2.2vw,10.5px); opacity:0; max-width:30ch;
     font-style:italic; letter-spacing:0.01em; transition:opacity 2.5s ease; color:#bac2de; }
   #tel .log.on { opacity:0.62; }
+  #tel .genre { margin-top:7px; font-size:clamp(8px,2vw,10px); letter-spacing:0.24em; text-transform:uppercase;
+    font-weight:600; color:#8fc2e6; opacity:0; transition:opacity 0.7s ease; }   /* GENERE della capsula in onda */
+  #tel .genre.on { opacity:0.72; }
 
   /* COMMAND — stessa lingua visiva di SHIP'S LOG, ancorato a destra, sempre visibile ma calmo */
   #cmds { position:fixed; z-index:6; transform:scale(var(--ui)); transform-origin:top right;
@@ -87,6 +91,61 @@
     #cmds .c .d { display:none; }            /* schermo stretto: solo i comandi, niente descrizioni → meno affollato */
     #credit { max-width:54vw; line-height:1.35; }
   }
+  /* ============ SPACE RADIO HUD — stile cinematografico raffinato ============ */
+  @font-face{ font-family:'Bebas Neue'; src:url('assets/fonts/bebas-neue.woff2') format('woff2'); font-weight:400; font-style:normal; font-display:swap; }
+  /* accento DINAMICO (pastello FREDDO, MAI rosso) registrato come <color> → transizione morbida (~1.6s) col mood scena. SOLO pallini, waveform, tick, "LIVE". (--red è solo il nome storico della variabile: ora è viola/lavanda) */
+  @property --red{ syntax:'<color>'; inherits:true; initial-value:#aa8ceb; }
+  @property --red-soft{ syntax:'<color>'; inherits:true; initial-value:rgba(170,140,235,0.55); }
+  @property --red-dim{ syntax:'<color>'; inherits:true; initial-value:rgba(170,140,235,0.22); }
+  :root{ --red:#aa8ceb; --red-soft:rgba(170,140,235,0.55); --red-dim:rgba(170,140,235,0.22); --ink:#e8e9f2;
+    --line:rgba(232,233,242,0.15); --line2:rgba(232,233,242,0.30); --lbl:rgba(232,233,242,0.55); --sub:rgba(232,233,242,0.50);
+    --disp:"Helvetica Neue","Inter",ui-sans-serif,system-ui,Arial,sans-serif; --hmono:ui-monospace,"SF Mono",Menlo,monospace;
+    transition:--red 1.6s ease,--red-soft 1.6s ease,--red-dim 1.6s ease; }
+  #hud-ui{ position:fixed; inset:0; z-index:6; pointer-events:none; opacity:0; transition:opacity 1.8s ease; font-family:var(--hmono); color:var(--ink);
+    text-shadow:0 1px 5px rgba(0,0,0,0.85),0 0 14px rgba(0,0,0,0.5); }
+  #hud-ui.show{ opacity:1; }
+  /* brand */
+  #brand{ position:absolute; top:5.5vh; left:3.8vw; }
+  #brand .t{ font-family:var(--disp); font-weight:200; font-size:clamp(28px,5.4vw,82px); line-height:0.96; letter-spacing:0.14em; text-transform:uppercase; color:#f3f3fb; }
+  #brand .s{ font-family:var(--disp); font-weight:300; font-size:clamp(11px,1.7vw,22px); letter-spacing:0.62em; text-transform:uppercase;
+    color:var(--lbl); margin-top:0.7em; border-top:1px solid var(--line2); padding-top:0.6em; display:inline-block; }
+  #brand .onair{ display:flex; align-items:center; gap:0.7em; margin-top:1.7em; font-size:clamp(10px,1.3vw,16px); letter-spacing:0.38em; color:var(--lbl); }
+  .rdot{ width:0.62em; height:0.62em; border-radius:50%; background:var(--red); box-shadow:0 0 8px 1px var(--red-soft); animation:rpulse 2.4s ease-in-out infinite; flex:none; }
+  @keyframes rpulse{ 0%,100%{ opacity:1 } 50%{ opacity:0.35 } }
+  /* live badge — cornice a parentesi (alto-dx) */
+  #livebadge{ position:absolute; top:5.6vh; right:3.8vw; text-align:right; padding:0.55em 1.1em; }
+  #livebadge .lv{ display:flex; align-items:center; justify-content:flex-end; gap:0.5em; font-size:clamp(11px,1.35vw,17px); letter-spacing:0.26em; color:var(--red); }
+  #livebadge .meta{ margin-top:0.5em; font-size:clamp(8px,1vw,12px); letter-spacing:0.3em; color:var(--lbl); line-height:1.55; }
+  #livebadge::before,#livebadge::after{ content:''; position:absolute; width:14px; height:14px; border:1.5px solid var(--line2); }
+  #livebadge::before{ top:0; right:0; border-left:0; border-bottom:0; } #livebadge::after{ bottom:0; left:0; border-right:0; border-top:0; }
+  /* panels */
+  .rpanel{ position:absolute; bottom:12vh; width:clamp(240px,27vw,460px); border:1px solid var(--line); border-radius:16px;
+    padding:1.2em 1.4em; background:rgba(10,9,16,0.42); backdrop-filter:blur(4px); }
+  #nowpanel{ left:3.8vw; } #nextpanel{ right:3.8vw; }
+  .rpanel .lbl{ display:flex; align-items:center; gap:0.7em; color:var(--lbl); font-size:clamp(9px,1.02vw,13px); letter-spacing:0.32em; text-transform:uppercase; }
+  .rpanel .lbl::before{ content:''; width:1.7em; height:2px; background:var(--red); flex:none; }   /* tick d'accento */
+  .rpanel .big{ font-family:var(--disp); font-weight:700; font-size:clamp(19px,2.5vw,40px); line-height:1.04; letter-spacing:0.005em; text-transform:uppercase; color:#f3f3fb; margin-top:0.62em; min-height:1em; }
+  .rpanel .sml{ font-size:clamp(10px,1.1vw,15px); color:var(--sub); margin-top:0.55em; min-height:1.1em; letter-spacing:0.02em; }
+  #wave{ display:block; width:100%; height:clamp(18px,3vh,34px); margin-top:1em; opacity:0.9; }
+  .rpanel .eta{ margin-top:0.75em; font-size:clamp(11px,1.3vw,18px); letter-spacing:0.1em; color:var(--red); font-variant-numeric:tabular-nums; }
+  .rpanel .eta .k{ color:var(--lbl); letter-spacing:0.26em; font-size:0.72em; margin-right:0.5em; }
+  #nextpanel .dots{ height:5px; margin-top:1em; background:repeating-linear-gradient(to right,var(--red-soft) 0 2px,transparent 2px 10px); opacity:0.5; border-radius:2px; }
+  /* caption centrale pulita (niente parentesi) */
+  #t-log{ position:absolute; left:50%; bottom:16vh; transform:translateX(-50%); max-width:40vw; text-align:center;
+    font-style:italic; font-weight:300; font-size:clamp(13px,1.5vw,23px); line-height:1.5; color:#ececf6; opacity:0; transition:opacity 1.2s ease; }
+  #t-log.on{ opacity:0.92; }
+  /* chat bar */
+  #chatbar{ position:absolute; left:3.8vw; right:3.8vw; bottom:4.4vh; display:flex; align-items:center; gap:1.5em; border:1px solid var(--line);
+    border-radius:12px; padding:0.75em 1.5em; background:rgba(10,9,16,0.38); backdrop-filter:blur(4px); font-size:clamp(10px,1.15vw,15px); letter-spacing:0.16em; color:var(--lbl); }
+  #chatbar .cs{ display:flex; align-items:center; gap:0.6em; white-space:nowrap; color:var(--lbl); }
+  #chatbar .chips{ display:flex; flex:1; justify-content:space-around; gap:0.8em; }
+  #chatbar .chips span{ color:var(--ink); opacity:0.78; position:relative; padding:0 0.7em; white-space:nowrap; }
+  #chatbar .chips span+span::before{ content:''; position:absolute; left:-0.4em; top:50%; height:1.1em; width:1px; background:var(--line2); transform:translateY(-50%); }
+  #credit2{ position:absolute; right:3.8vw; bottom:1.4vh; z-index:5; color:rgba(232,233,242,0.14); font-family:var(--hmono); font-size:clamp(7px,0.78vw,10px); letter-spacing:0.05em; max-width:46vw; text-align:right; pointer-events:none; }
+  @media (orientation:portrait){
+    #brand .t{ font-size:8.5vw; } .rpanel{ width:43vw; bottom:11vh; padding:0.9em 1em; } .rpanel .big{ font-size:4.6vw; }
+    #t-log{ max-width:84vw; bottom:25vh; } #chatbar{ font-size:2.5vw; gap:0.6em; padding:0.6em 0.8em; } #chatbar .chips{ gap:0.3em; } #chatbar .chips span{ padding:0 0.3em; }
+  }
   #err { position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
     padding:24px; color:#f38ba8; background:#000; font-family:ui-monospace,monospace; font-size:13px;
     text-align:center; line-height:1.7; }
@@ -95,25 +154,38 @@
 <body>
 <div id="app"></div>
 
-<div id="tel">
-  <div class="day"><span id="t-day">DAY 0</span><span class="clk" id="t-clk">00:00:00</span></div>
-  <div class="bang"><span class="lab">BIG BANG</span><span class="cd" id="t-bang">—</span></div>
-  <div class="comp"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8.5" cy="8" r="3"/><circle cx="16" cy="9" r="2.3"/><path d="M2.5 19c0-3.2 2.7-5 6-5s6 1.8 6 5Z"/><path d="M14.8 19c.1-2.1 1.2-3.6 3.2-4 1.9.3 3.5 1.7 3.5 4Z"/></svg><span class="lab">COMPANIONS</span><span class="val" id="t-co">0</span></div>
-  <div class="log" id="t-log"></div>
-</div>
+<div id="hud-ui">
+  <div id="brand">
+    <div class="t">ETERNAL FALL</div>
+    <div class="s">SPACE RADIO</div>
+    <div class="onair"><span class="rdot"></span>ON AIR</div>
+  </div>
 
-<div id="cmds">
-  <div class="hdr">COMMAND</div>
-  <div class="c"><span class="k">!star ‹name›</span><span class="d">your star</span></div>
-  <div class="c"><span class="k">!light ‹name›</span><span class="d">a candle</span></div>
-  <div class="c"><span class="k">!message ‹text›</span><span class="d">a message</span></div>
-  <div class="c"><span class="k">!comet · !wish · !whales · !aurora</span></div>
-  <div class="c sub"><span class="k">!world · !nebula · !blackhole</span><span class="d">members</span></div>
-  <div class="note">type in the live chat</div>
-</div>
+  <div id="livebadge"><span class="lv"><span class="rdot"></span>LIVE</span><span class="meta">24/7<br>DOCUMENTARY</span></div>
 
-<div id="hud">ETERNAL FALL · live · F = fullscreen</div>
-<div id="credit">Milky Way © ESO/S. Brunier · Astronaut © Poly/Google · planets © Solar System Scope (CC BY)</div>
+  <div id="nowpanel" class="rpanel">
+    <div class="lbl">NOW TRANSMITTING</div>
+    <div class="big" id="now-title">ETERNAL FALL</div>
+    <div class="sml" id="now-tag">a documentary of the universe</div>
+    <canvas id="wave" width="600" height="64"></canvas>
+  </div>
+
+  <div id="nextpanel" class="rpanel">
+    <div class="lbl">NEXT SIGNAL</div>
+    <div class="big" id="next-title">—</div>
+    <div class="eta"><span class="k">NEXT IN</span> <span id="next-eta">—</span></div>
+    <div class="dots"></div>
+  </div>
+
+  <div id="t-log"></div>
+
+  <div id="chatbar">
+    <div class="cs"><svg viewBox="0 0 24 24" width="1.15em" height="1.15em" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H9l-4 3v-3H4z"/></svg>CHAT SIGNALS</div>
+    <div class="chips"><span>!comet</span><span>!blackhole</span><span>!nebula</span><span>!aurora</span><span>!star</span><span>!message</span></div>
+  </div>
+
+  <div id="credit2">Milky Way © ESO/S. Brunier · Astronaut © Poly/Google · planets © Solar System Scope (CC BY)</div>
+</div>
 <div id="gate">
   <h1>Eternal Fall</h1>
   <p>A man, seen from behind, falling forever through the universe.<br>Every star he meets is someone who once passed through here.</p>
@@ -159,6 +231,7 @@ const container=document.getElementById('app');
 let renderer;
 try { renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'}); }
 catch(e){ showError('WebGL not available.<br>A GPU-capable browser is required.'); throw e; }
+if(window.obsstudio || /[?&]live=1/.test(location.search)) document.documentElement.classList.add('nocursor');   // LIVE/cattura: nascondi il cursore del mouse
 const IS_MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'') || (window.matchMedia && matchMedia('(pointer:coarse)').matches && !matchMedia('(pointer:fine)').matches);
 const PIX_HI = IS_MOBILE?1.75:2.0;   // mobile: niente 2x (la GPU regge e l'auto-scaler non deve crollare a 1.0 = sfocato)
 let PIX=Math.min(window.devicePixelRatio||1,PIX_HI);
@@ -244,28 +317,40 @@ const LOGS=[
 ];
 let logT=24+Math.random()*30;
 let telPrevSum=0, telIdleT=0, telSurgeT=0, telEl=null;
-function telSurge(){ if(!telEl) telEl=document.getElementById('tel'); telSurgeT=4.5; telIdleT=0; telEl.classList.add('surge'); telEl.classList.remove('idle'); }
+function telSurge(){ /* UI Space Radio: pannelli sempre visibili → nessun "surge" da fare (no-op, mantenuto per i chiamanti) */ }
 function telUpdate(dt){
-  const ms=Date.now()-TEL.launch;
-  const days=Math.floor(ms/86400000);
-  const s=Math.floor(ms/1000)%60, m=Math.floor(ms/60000)%60, h=Math.floor(ms/3600000)%24;
-  const p=n=>String(n).padStart(2,'0');
-  $t.day.textContent='DAY '+fmt.format(days);
-  $t.clk.textContent=p(h)+':'+p(m)+':'+p(s);
-  $t.co.textContent=fmt.format(TEL.companions);
-  const rem=Math.max(0,BANG_DUR-ms), cd=Math.floor(rem/1000);   // BIG BANG: tempo che manca (launch + 3 mesi)
-  $t.bang.textContent = rem>0 ? (Math.floor(cd/86400)+'d '+p(Math.floor(cd/3600)%24)+':'+p(Math.floor(cd/60)%60)+':'+p(cd%60)) : 'NOW';
-  // il pannello si risveglia quando un contatore cambia (un corpo, una stella del pubblico…) e si abbassa quando è tutto fermo
-  if(!telEl) telEl=document.getElementById('tel');
-  const sum=TEL.planets+TEL.stars+TEL.meteors+TEL.moons+TEL.blackholes+TEL.companions;
-  if(sum!==telPrevSum){ telPrevSum=sum; telSurge(); }
-  if(telSurgeT>0){ telSurgeT-=dt; if(telSurgeT<=0 && telEl) telEl.classList.remove('surge'); }
-  else if(telEl){ telIdleT+=dt; if(telIdleT>9 && telEl.classList.contains('show')) telEl.classList.add('idle'); }
+  // DAY/BIG BANG/COMPANIONS rimossi dalla UI Space Radio. Resta solo qualche LOG ambientale dell'uomo, e SOLO quando la voce documentario tace (niente capsule da clobberare).
   logT-=dt;
-  if(logT<=0){ logT=40+Math.random()*60;
-    $t.log.textContent=LOGS[(Math.random()*LOGS.length)|0]+'  (T+'+days+'g)';
-    $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); telSurge();
+  if(logT<=0){ logT=80+Math.random()*100;
+    if($t.log && (typeof audio==='undefined' || !audio.voiceBusy)){
+      const days=Math.floor((Date.now()-TEL.launch)/86400000);
+      $t.log.textContent=LOGS[(Math.random()*LOGS.length)|0]+'  (T+'+days+'g)';
+      $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),11000);
+    }
   }
+}
+// ===== ACCENTO DINAMICO della UI =====
+// Una palette CONTROLLATA di 6 famiglie; il sistema sceglie quella più vicina al mood della scena (director.grade),
+// NON un colore qualunque. Cambia solo l'accento (bordi/waveform/ON AIR/glow); struttura/font/testo/sfondi fissi.
+const ACCENT_FAMS=[   // NIENTE rosso: solo toni freddi + ambra (oro) per le scene calde
+  {name:'violet',  hue:265, rgb:[170,140,235]},   // default
+  {name:'magenta', hue:320, rgb:[225,140,200]},
+  {name:'blue',    hue:222, rgb:[130,165,240]},
+  {name:'cyan',    hue:188, rgb:[120,205,215]},
+  {name:'amber',   hue:38,  rgb:[235,185,120]},    // scene calde/rossastre → oro, MAI rosso
+];
+let _accFam='violet', _accT=0; const _accTarget=[170,140,235], _accCur=[170,140,235], _accHsl={h:0,s:0,l:0};
+function _rgbaStr(c,a){ return 'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+a+')'; }
+function applyAccent(fam){ const f=ACCENT_FAMS.find(x=>x.name===fam)||ACCENT_FAMS[0]; _accFam=f.name;
+  _accTarget[0]=f.rgb[0]; _accTarget[1]=f.rgb[1]; _accTarget[2]=f.rgb[2];
+  const r=document.documentElement.style; r.setProperty('--red',_rgbaStr(f.rgb,1)); r.setProperty('--red-soft',_rgbaStr(f.rgb,0.62)); r.setProperty('--red-dim',_rgbaStr(f.rgb,0.26)); }
+function updateAccent(dt){
+  _accT+=dt; if(_accT>=14){ _accT=0;   // ricalcola la famiglia ogni ~14s (NON ogni frame); il fade lo fa la transizione CSS
+    if(typeof director!=='undefined' && director.grade){ director.grade.getHSL(_accHsl);
+      if(_accHsl.s>=0.12){ const h=_accHsl.h*360; let best=_accFam, bd=999;   // scena quasi grigia → non cambiare
+        for(const f of ACCENT_FAMS){ let d=Math.abs(h-f.hue); d=Math.min(d,360-d); if(d<bd){ bd=d; best=f.name; } }
+        if(best!==_accFam) applyAccent(best); } } }
+  const k=Math.min(1,dt*0.6); for(let i=0;i<3;i++) _accCur[i]+=(_accTarget[i]-_accCur[i])*k;   // lerp morbido per il waveform (canvas)
 }
 const $t={};
 
@@ -325,14 +410,14 @@ function tex(url){ const t=texL.load(url, ()=>{ if(t===ASSETS.milkyway){ mwReady
 const mw=tex('assets/milkyway_8k.jpg'); mw.colorSpace=THREE.SRGBColorSpace; mw.mapping=THREE.EquirectangularReflectionMapping; mw.anisotropy=MAXANISO; ASSETS.milkyway=mw;
 // pianeti reali: {file, hue, ring, sun, gray}
 const PMETA=[
-  {f:'2k_jupiter',hue:0.10,bump:1.4}, {f:'2k_saturn',hue:0.12,ring:true,bump:1.4}, {f:'2k_mars',hue:0.05,bump:5.0},
-  {f:'2k_neptune',hue:0.60,bump:1.2}, {f:'2k_venus_surface',hue:0.09,bump:2.0}, {f:'2k_earth_daymap',hue:0.58,earth:true,bump:1.0},
-  {f:'2k_mercury',hue:0.07,bump:6.0}, {f:'2k_uranus',hue:0.50,bump:0.8}, {f:'2k_moon',hue:0.0,gray:true,bump:7.0},
-  {f:'2k_sun',hue:0.08,sun:true,bump:0},
+  {f:'4k_jupiter',hue:0.10,bump:1.4}, {f:'4k_saturn',hue:0.12,ring:true,bump:1.4}, {f:'4k_mars',hue:0.05,bump:7.5},
+  {f:'2k_neptune',hue:0.60,bump:1.2}, {f:'4k_venus_surface',hue:0.09,bump:3.0}, {f:'4k_earth_daymap',hue:0.58,earth:true,bump:1.5},
+  {f:'4k_mercury',hue:0.07,bump:9.0}, {f:'2k_uranus',hue:0.50,bump:0.8}, {f:'4k_moon',hue:0.0,gray:true,bump:10.0},
+  {f:'4k_sun',hue:0.08,sun:true,bump:0},
 ];
 ASSETS.pt=PMETA.map(m=>{ const t=tex('assets/'+m.f+'.jpg'); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO; return t; });
 const SUN_IDX=PMETA.findIndex(m=>m.sun), MOON_IDX=PMETA.findIndex(m=>m.gray);
-ASSETS.clouds=tex('assets/earth_clouds.jpg'); ASSETS.clouds.colorSpace=THREE.SRGBColorSpace; ASSETS.clouds.anisotropy=MAXANISO;
+ASSETS.clouds=tex('assets/4k_earth_clouds.jpg'); ASSETS.clouds.colorSpace=THREE.SRGBColorSpace; ASSETS.clouds.anisotropy=MAXANISO;
 ASSETS.ring=tex('assets/2k_saturn_ring_alpha.png'); ASSETS.ring.colorSpace=THREE.SRGBColorSpace;
 ASSETS.rock=tex('assets/rock.jpg'); ASSETS.rock.colorSpace=THREE.SRGBColorSpace; ASSETS.rock.wrapS=ASSETS.rock.wrapT=THREE.RepeatWrapping; ASSETS.rock.anisotropy=MAXANISO;
 ASSETS.flare0=tex('assets/lensflare0.png');
@@ -449,10 +534,11 @@ function updateGalaxies(dt,speed){ if(!galaxies) return;
 /* ---------------- scene globals ---------------- */
 let sky,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
-let starLayers=[], fastDust=null, nebSheets=[], bloomDiv=2;
+// LIVE: l'auto-scaler è OFF (PIX fisso a 2) → base bloom più nitida (1440p anziché 1080p → upscale a 4K 1.5× invece di 2×). Non-live resta a 1/2.
+let starLayers=[], fastDust=null, nebSheets=[], bloomDiv=(/[?&]live=1/.test(location.search)?1.5:2);
 const planets=[], nearStars=[], wisps=[];
 let asteroids, astData=[];
-const DUST_N=2600,DZN=240,DZF=-260,DSP=130, AST_N=90;   // DZN ampio → polvere visibile anche "dietro" con la camera che orbita
+const DUST_N=300,DZN=240,DZF=-260,DSP=130, AST_N=90;   // polvere ancora ridotta (1200→300) → poche palline soffuse
 let lensflare, mystery, parallel, supernova, blackhole, lensPass, smaaPass;
 let nebulaField, comet, cluster, derelict, cometTail;
 let pulsar, redgiant, binary, remnant;
@@ -462,6 +548,8 @@ let nebBoost=0, galaxies, godray;
 // NUOVI CORPI (varietà): istanze + timer individuali
 let lavaWorld, shattered, whitedwarf, variablestar, ringarc, station, lightEcho, bolide, gwRipple, whalePod;
 let lavaTimer=240, shatteredTimer=300, whitedwarfTimer=120, variablestarTimer=110, ringarcTimer=260, stationTimer=200, lightEchoTimer=300, bolideTimer=150, gwTimer=360, whalePodTimer=220;
+let solarEclipse, lunarEclipse;
+let solarEclipseTimer=520+Math.random()*300, lunarEclipseTimer=620+Math.random()*300;   // eventi rari (anche da comando)
 let _echoPending=0;   // eco di luce ~14s dopo una supernova (catena causa→effetto)
 const _white=new THREE.Color(0xffffff), _nebCol=new THREE.Color(), _warm=new THREE.Color(0xfff0d8);
 const manFloatTime={value:0}, manFloatAmt={value:1}, manArmOpen={value:0}, manArmBack={value:0};
@@ -473,9 +561,10 @@ const manEnvDir={value:new THREE.Vector3(0,0,1)};     // direzione "finestra" de
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
 // VARIETÀ DI MOVIMENTO a livello di corpo (rotazioni/derive: NON deformano la mesh)
 let barrelTarget=0, barrelCur=0, barrelAxis=0, barrelHold=40;  // capriola lenta su asse alternato (0=Z roll, 1=X tumble); barrelHold=cooldown
-let spinRateCur=0.06, spinRateTarget=0.06, spinRetargetT=22;   // velocità di rotazione Y variabile e dolce
-let manTumble=0, tumbleRateCur=0.08, tumbleRateTarget=0.08, tumbleRetargetT=16;   // CAPOVOLTA continua sull'asse X: il corpo ruzzola a 360° (caduta libera reale, lento e variabile)
+let spinRateCur=0.03, spinRateTarget=0.03, spinRetargetT=22;   // velocità di rotazione Y variabile e dolce (DIMEZZATA: capriola più lenta)
+let manTumble=0, tumbleRateCur=0.04, tumbleRateTarget=0.04, tumbleRetargetT=16;   // CAPOVOLTA continua asse X (DIMEZZATA: ruzzola più lento, caduta libera calma)
 let sling=0, bhClose=false;    // fionda gravitazionale: spinta dopo un buco nero
+let fallMul=1, fallTarget=1, fallPhaseT=90, fallAuto=false, fallFast=false;   // CADUTA LENTA di default (niente fasi warp): drift calmo da documentario. cadutaFall('auto') riattiva i cicli veloci, cadutaFall(x) override manuale
 // --- REAZIONE SOBRIA al colpo/sfioramento (solo passaggi NATURALI ravvicinati) ---
 let hitFlash=0, hitTremor=0, hitTumble=0;          // scalari decadenti del colpo meteora (one-shot)
 let hitVisor=0;                                     // 0..1 inviato allo shader del visore (flash + buffeting)
@@ -488,27 +577,49 @@ let manMixer=null;
 let built=false, exposureCur=1.0;
 
 // strato di campo stellare volumetrico: punti che scorrono +z e riciclano (parallasse → 3D)
-function makeStarLayer(count,zN,zF,half,sizeScale,scrollMul,tint,K,fade){
-  const pos=new Float32Array(count*3),aph=new Float32Array(count),asz=new Float32Array(count),ac=new Float32Array(count*3),_cc=new THREE.Color();
+function makeStarLayer(count,zN,zF,half,sizeScale,scrollMul,tint,K,fade,twAmt){
+  const pos=new Float32Array(count*3),aph=new Float32Array(count),asz=new Float32Array(count),ac=new Float32Array(count*3),ats=new Float32Array(count),ata=new Float32Array(count),_cc=new THREE.Color();
   for(let i=0;i<count;i++){ pos[i*3]=(Math.random()*2-1)*half; pos[i*3+1]=(Math.random()*2-1)*half; pos[i*3+2]=zN+Math.random()*(zF-zN);
-    aph[i]=Math.random()*6.28318; asz[i]=(0.4+Math.random()*Math.random()*3.2)*sizeScale;
+    aph[i]=Math.random()*6.28318; const _r=Math.random(); asz[i]=(_r<0.12 ? 2.4+Math.random()*3.8 : 0.32+Math.random()*Math.random()*2.4)*sizeScale;   // VARIETÀ: ~12% GRANDI (2.4-6.2), il resto minuscole
+    ats[i]=0.8+Math.random()*1.8;                                       // cadenza blink PER-STELLA: 0.8..2.6 → ritmi diversi (desincronizzate, periodo ~1-4s)
+    ata[i]=0.55+0.45*Math.random();                                     // TUTTE luccicano bene (0.55..1.0), con varietà → tante microstelle vive
     const u=Math.random(); let h,st,lt;                                  // classe stellare pesata: tante fredde, rare blu brillanti
     if(u<0.62){h=0.06;st=0.55;lt=0.62;} else if(u<0.86){h=0.11;st=0.35;lt=0.78;} else if(u<0.97){h=0.0;st=0.0;lt=0.92;} else {h=0.6;st=0.5;lt=0.9;}
     _cc.setHSL(h,st,lt); _cc.lerp(_white,0.25); ac[i*3]=_cc.r; ac[i*3+1]=_cc.g; ac[i*3+2]=_cc.b; }
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('aPhase',new THREE.BufferAttribute(aph,1));
   g.setAttribute('aSize',new THREE.BufferAttribute(asz,1)); g.setAttribute('aColor',new THREE.BufferAttribute(ac,3));
+  g.setAttribute('aTwSpd',new THREE.BufferAttribute(ats,1)); g.setAttribute('aTwAmt',new THREE.BufferAttribute(ata,1));
   const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
-    uniforms:{uTime:{value:0},uPix:{value:PIX},uTint:{value:tint},uK:{value:K},uZN:{value:zN},uZF:{value:zF},uFade:{value:fade},uTw:{value:1.6/(1.0+scrollMul)}},
-    vertexShader:`attribute float aPhase;attribute float aSize;attribute vec3 aColor;uniform float uTime,uPix,uK,uZN,uZF,uFade,uTw;varying float vTw;varying vec3 vC;varying float vF;
-      void main(){ vC=aColor; vTw=0.25+0.75*pow(0.5+0.5*sin(uTime*uTw+aPhase),2.2);
+    uniforms:{uTime:{value:0},uPix:{value:PIX},uTint:{value:tint},uK:{value:K},uZN:{value:zN},uZF:{value:zF},uFade:{value:fade},uTw:{value:2.0/(1.0+scrollMul)},uTwA:{value:twAmt}},
+    vertexShader:`attribute float aPhase;attribute float aSize;attribute vec3 aColor;attribute float aTwSpd;attribute float aTwAmt;uniform float uTime,uPix,uK,uZN,uZF,uFade,uTw,uTwA;varying float vTw;varying vec3 vC;varying float vF;varying float vAComp;
+      void main(){ vC=aColor;
+      float a1=uTime*uTw*aTwSpd;                                          // clock PER-STELLA (uTime = shaderTime wrappato → 24/7 ok)
+      float w=0.5+0.35*sin(a1+aPhase)+0.15*sin(a1*1.7+aPhase*2.1);        // 0..1 IRREGOLARE e per-stella (fase+velocità casuali → desincronizzate)
+      float onoff=smoothstep(0.28,0.72,w);                               // curva a S → "ACCENDE/SPEGNE" netto, non un respiro molle
+      float amt=clamp(aTwAmt*uTwA,0.40,1.30);                            // PAVIMENTO alto → TANTE microstelle luccicano in modo VISIBILE
+      float lo=1.0-0.80*amt;                                             // spenta (dim)
+      float hi=1.0+0.45*amt;                                             // accesa (brillante, sfora >1 → fiorisce nel bloom = luminosa)
+      vTw=mix(lo,hi,onoff);                                              // tante lucine che si accendono/spengono, ognuna a tempo suo (non tutte insieme)
+      vTw=clamp(vTw,0.04,2.2);
       vF=smoothstep(uZN,uZN+uFade,position.z)*smoothstep(uZF,uZF-uFade,position.z);   // dissolvenza ai bordi della banda → ricicla senza pop
-      vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv; gl_PointSize=aSize*uPix*(0.6+0.6*vTw)*(uK/max(-mv.z,1.0)); }`,
-    fragmentShader:`varying float vTw;varying vec3 vC;varying float vF;uniform float uTint;
-      void main(){ vec2 d=gl_PointCoord-0.5; float r=dot(d,d); float a=smoothstep(0.25,0.0,r);
+      vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+      float psGeom=aSize*uPix*(0.55+0.4*vTw)*(uK/max(-mv.z,1.0));         // taglia geometrica: il twinkle pesa MENO sulla size → niente throbbing
+      float psFloor=1.7*uPix;                                            // PAVIMENTO in pixel fisici: a 4K mai sub-pixel → stelle definite, non aliasate
+      float ps=max(psGeom,psFloor);
+      vAComp=clamp(psGeom/psFloor,0.70,1.0);                            // le stelle di FONDO (sub-pixel) restano molto LUMINOSE (min 0.70) → tante microstelle brillanti che luccicano
+      vAComp=mix(1.0,vAComp,step(psGeom,psFloor));                       // compensa SOLO quando si è clampato (le vicine già grandi restano piene)
+      gl_PointSize=ps; }`,
+    fragmentShader:`varying float vTw;varying vec3 vC;varying float vF;varying float vAComp;uniform float uTint;
+      void main(){ vec2 d=gl_PointCoord-0.5; float dist=length(d);
+      float halo=smoothstep(0.5,0.0,dist);                               // alone morbido
+      float core=smoothstep(0.22,0.0,dist);                              // nucleo un filo più pieno → riempie il pavimento di ~3px
+      float peak=smoothstep(0.05,0.0,dist);                              // PUNTA bianca-rovente: pinpoint nitido al centro
+      float a=halo*0.30+core*1.2+peak*0.95;                              // nuclei ANCORA più LUMINOSI (microstelle brillanti)
       float L=dot(vC,vec3(0.299,0.587,0.114));
       vec3 col=mix(vC, vec3(0.62,0.72,1.0)*L, uTint); col*=mix(1.0,0.7,uTint);   // prospettiva aerea: lontane fredde e fioche
-      gl_FragColor=vec4(col, a*vTw*vF); }`});
+      col+=peak*vTw*0.9;                                                 // sul picco la punta vira al bianco → pinpoint più brillante e nitido
+      gl_FragColor=vec4(col, a*vTw*vF*vAComp); }`});
   const pts=new THREE.Points(g,mat); pts.frustumCulled=false; pts.renderOrder=-9; scene.add(pts);
   return {pts,mat,pos,count,half,zN,zF,mul:scrollMul};
 }
@@ -525,10 +636,10 @@ function build(){
 
   // CAMPO STELLARE VOLUMETRICO a 3 strati di profondità → parallasse (senso di 3D con camera ferma)
   starLayers=[
-    makeStarLayer(520, -900, -120, 360, 0.8, 1.0, 0.0, 430, 260),   // vicine: poche, veloci (parallasse forte)
-    makeStarLayer(1800,-2600,-700, 1400,0.8, 0.5, 0.35,360, 520),   // medie
-    makeStarLayer(3200,-6500,-2400,4000,0.5, 0.18,0.7, 300, 1200),  // lontane: tante, fioche, lente, fredde
-    makeStarLayer(2600,-11000,-6200,7000,0.42,0.09,0.85,260,2200),  // abissali: pochissimo moto, freddissime, quasi fondale (parallasse massima)
+    makeStarLayer(1000,-900, -120, 360, 0.8, 1.0, 0.0, 430, 260, 1.0),    // vicine: poche, veloci (parallasse forte)
+    makeStarLayer(3800,-2600,-700, 1400,0.8, 0.5, 0.35,360, 520, 1.0),    // medie
+    makeStarLayer(8500,-6500,-2400,4000,0.5, 0.18,0.7, 300, 1200,1.0),    // lontane (SFONDO): TANTISSIME microstelle fitte → sfondo definito e luminoso, tutte luccicano
+    makeStarLayer(7000,-11000,-6200,7000,0.42,0.09,0.85,260,2200,0.95),   // abissali: fondale fittissimo di micro-stelle luminose
   ];
   // lastre di nebulosa a profondità sfalsate: strati di foschia che scorrono → volume attraversato
   nebSheets=[];
@@ -547,8 +658,8 @@ function build(){
     scene.add(m); nebSheets.push({m,mat});
   }
   // polvere ravvicinata VELOCE: pochi grani grandi che sfrecciano davanti (parallasse forte)
-  { const N=90, fp=new Float32Array(N*3), fs=new Float32Array(N);
-    const fre=(i,z)=>{ fp[i*3]=(Math.random()*2-1)*42; fp[i*3+1]=(Math.random()*2-1)*42; fp[i*3+2]=z; fs[i]=1.0+Math.random()*1.8; };
+  { const N=22, fp=new Float32Array(N*3), fs=new Float32Array(N);   // MENO grani (palline bianche fluttuanti ridotte: 90→22)
+    const fre=(i,z)=>{ fp[i*3]=(Math.random()*2-1)*42; fp[i*3+1]=(Math.random()*2-1)*42; fp[i*3+2]=z; fs[i]=0.8+Math.random()*1.4; };
     for(let i=0;i<N;i++) fre(i,-60+Math.random()*120);
     const fg=new THREE.BufferGeometry(); fg.setAttribute('position',new THREE.BufferAttribute(fp,3)); fg.setAttribute('aSize',new THREE.BufferAttribute(fs,1));
     const fmat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
@@ -557,7 +668,7 @@ function build(){
         void main(){ vec4 mv=modelViewMatrix*vec4(position,1.0); vF=smoothstep(60.0,40.0,position.z)*smoothstep(-60.0,-40.0,position.z);
         gl_Position=projectionMatrix*mv; gl_PointSize=aSize*uPix*(220.0/max(-mv.z,1.0)); }`,
       fragmentShader:`uniform vec3 uColor;uniform float uAmt;varying float vF;
-        void main(){ vec2 d=gl_PointCoord-0.5; float r=dot(d,d); float a=smoothstep(0.25,0.0,r); gl_FragColor=vec4(uColor, a*vF*uAmt*0.38); }`});
+        void main(){ vec2 d=gl_PointCoord-0.5; float r=dot(d,d); float a=smoothstep(0.25,0.0,r); gl_FragColor=vec4(uColor, a*vF*uAmt*0.24); }`});
     fastDust=new THREE.Points(fg,fmat); fastDust.frustumCulled=false; fastDust.userData={pos:fp,re:fre,N}; scene.add(fastDust); }
 
   keyLight=new THREE.DirectionalLight(0xfff1de,3.0); scene.add(keyLight);
@@ -620,7 +731,7 @@ function build(){
     };
     o.material.needsUpdate=true; o.frustumCulled=false; } });  // tuta opaca + arti animati + rim/visore
   manRig=new THREE.Group(); manRig.add(man); scene.add(manRig);
-  // (la scritta "I FALL" ora è quella del modello stesso; il decal bianco è stato rimosso)
+  // (la scritta "I FALL" è quella del modello stesso, sulla schiena)
   // se il modello è riggato (es. da Mixamo) riproduci la sua animazione e spegni quella procedurale
   if(ASSETS.astronautAnims && ASSETS.astronautAnims.length){ manMixer=new THREE.AnimationMixer(man);
     ASSETS.astronautAnims.forEach(c=>manMixer.clipAction(c).play()); manFloatAmt.value=0; console.log('astronaut: animazione Mixamo attiva ('+ASSETS.astronautAnims.length+' clip)'); }
@@ -642,15 +753,42 @@ function build(){
     fragmentShader:`uniform float uTime;uniform vec3 uColor;uniform float uAmt;varying float vS;varying float vF;
       void main(){vec2 d=gl_PointCoord-0.5;float r=dot(d,d);float a=smoothstep(0.25,0.0,r);
       float tw=0.6+0.4*sin(uTime*1.5+vS*40.0);vec3 c=mix(uColor,vec3(1.0),vS*0.5);float vary=mix(0.55,1.0,vS);
-      gl_FragColor=vec4(c,a*vF*tw*uAmt*0.6*vary);}`});
+      gl_FragColor=vec4(c,a*vF*tw*uAmt*0.42*vary);}`});
   dust=new THREE.Points(dustGeo,dustMat); dust.frustumCulled=false; dust.userData.re=dre; scene.add(dust);
 
-  for(let i=0;i<(IS_MOBILE?5:7);i++) planets.push(new Planet());
-  // pre-popola: alcuni pianeti già in volo a profondità diverse → l'universo non è vuoto all'avvio (i ≥2 sono mondi lontani defilati)
-  for(let i=0;i<Math.min(4,planets.length);i++){ planets[i].spawn(false,null,i>=2); planets[i].mesh.position.z=-300-Math.random()*1700; }
+  for(let i=0;i<(IS_MOBILE?6:9);i++) planets.push(new Planet());
+  // pre-popola: alcuni pianeti già in volo a profondità diverse → l'universo non è vuoto all'avvio (i ≥2 sono mondi lontani di sfondo, sparsi sul guscio)
+  for(let i=0;i<Math.min(6,planets.length);i++){ const _d=i>=2; planets[i].spawn(false,null,_d); planets[i].mesh.position.z = _d ? (-2200-Math.random()*900) : (-300-Math.random()*1700); }
   for(let i=0;i<46;i++) nearStars.push(new NearStar());
   // debug: forza un pianeta/sole ravvicinato (utile per test; innocuo in produzione)
   window.cadutaDebugPlanet=(sun,idx)=>{ const fp=planets.find(p=>!p.active)||planets[0]; fp.spawn(!!sun,idx); fp.mesh.position.set(sun?70:38,6,-240); return 'ok'; };
+  // diagnostica: posizione SCHERMO (NDC -1..1) di ogni pianeta attivo → per verificare la distribuzione sul quadro
+  window.cadutaPlanetSpread=()=>{ const v=new THREE.Vector3(); return planets.filter(p=>p.active&&p.mesh.visible).map(p=>{ v.copy(p.mesh.position).project(camera); return {d:p._distant?1:0,sx:+v.x.toFixed(2),sy:+v.y.toFixed(2),z:Math.round(p.mesh.position.z),r:Math.round(p.mesh.scale.x),op:+p.mat.opacity.toFixed(2)}; }); };
+  // diagnostica voce documentario: stato libreria/cadenza
+  window.cadutaVoiceStatus=()=>audio?{lib:audio.voiceLib.length,capsule:audio.capIdx.length,identitarie:audio.soulIdx.length,perCategoria:Object.fromEntries(Object.entries(audio.capByCat||{}).map(([k,v])=>[k,v.length])),busy:audio.voiceBusy,prossimaIn:Math.max(0,(audio.voiceEvery-audio.voiceT)|0)+'s',refrainIn:Math.max(0,(audio.soulEvery-audio.soulT)|0)+'s',ultime:(audio.voiceRecent||[]).slice(-6).map(i=>(audio.voiceLib[i]||{}).id||i)}:'audio non pronto';
+  window.cadutaSpeak=(tag)=>{ if(!audio)return'audio non pronto'; if(tag) audio.enqueueVoice(tag); audio.voiceT=audio.voiceEvery; return tag?('prossima capsula → '+tag):'capsula forzata ora'; };   // forza subito una capsula (opz. con tag fenomeno)
+  window.cadutaAccent=(f)=>{ if(f) applyAccent(f); return {famiglia:_accFam, disponibili:ACCENT_FAMS.map(x=>x.name)}; };   // forza/ispeziona la famiglia d'accento dinamico
+  window.cadutaScene=(name)=>{ const p=PRESETS.find(x=>x.name===name); if(!p) return PRESETS.map(x=>x.name);   // salta a un mood (test/anteprima)
+    director.from=Object.assign({},director.cur); director.from.grade=director.grade.getHex(); director.from.key=director.key.getHex();
+    director.to=Object.assign({},p); director.t=0; director.dur=2; director.hold=600; return 'scena → '+name; };
+  // probe NON distruttivo: verifica che i pesi delle categorie diano ~50/25/15/10 (salva e ripristina lo stato voce)
+  window.cadutaVoiceProbe=(N)=>{ if(!audio)return'audio non pronto'; N=N||8000;
+    const sv={lib:audio.voiceLib,cap:audio.capIdx,soul:audio.soulIdx,by:audio.capByCat,rec:audio.voiceRecent,tag:audio._preferTag,bad:audio.voiceBad,pc:audio.playCount};
+    audio.voiceBad=new Set();
+    const CATS=Object.keys(VOICE_CW); const lib=[]; const mk=(cat,kind,tag)=>lib.push({file:'x.mp3',text:'t',cat,kind:kind||'capsule',tag:tag||'',id:cat+'_'+lib.length});
+    CATS.forEach(c=>{ for(let i=0;i<12;i++) mk(c,'capsule',(c==='cosmos'&&i<3)?'blackhole':''); });
+    for(let i=0;i<6;i++) mk('chronicle','identity'); for(let i=0;i<16;i++) mk('chronicle','chronicle');
+    audio.voiceLib=lib; audio.voiceRecent=[]; audio._preferTag=null; audio.playCount={}; audio._indexVoice();
+    const b={}; CATS.forEach(c=>b[c]=0); for(let n=0;n<N;n++){ b[audio.voiceLib[audio._pickCapsule()].cat]++; }   // mix (contatori a 0 → uniforme → ~equo)
+    audio.enqueueVoice('blackhole'); const bias=audio.voiceLib[audio._pickCapsule()];
+    // copertura: con il counter, ogni capsula parte UNA volta prima di ripetersi (primo giro), poi riparte fresco
+    audio.playCount={}; const M=audio.capIdx.length; const seen=new Set(); let firstRepeat=-1;
+    for(let n=0;n<M;n++){ const i=audio._pickCapsule(); const id=audio._cid(i); if(seen.has(id)&&firstRepeat<0) firstRepeat=n; seen.add(id); audio.playCount[id]=(audio.playCount[id]||0)+1; }
+    const seen2=new Set(); let secondFresh=true; for(let n=0;n<M;n++){ const i=audio._pickCapsule(); const id=audio._cid(i); if(seen2.has(id)) secondFresh=false; seen2.add(id); audio.playCount[id]=(audio.playCount[id]||0)+1; }
+    const soul=audio.voiceLib[audio._pickSoul()];
+    const r={ capsule:M, soul:audio.soulIdx.length, mixPct:Object.fromEntries(CATS.map(c=>[c,+(b[c]/N*100).toFixed(1)])), biasTag:bias.tag, soulKind:soul.kind,
+      coperturaPrimoGiro:(seen.size===M&&firstRepeat<0), secondoGiroSenzaRipetizioni:secondFresh };
+    audio.voiceLib=sv.lib; audio.capIdx=sv.cap; audio.soulIdx=sv.soul; audio.capByCat=sv.by; audio.voiceRecent=sv.rec; audio._preferTag=sv.tag; audio.voiceBad=sv.bad; audio.playCount=sv.pc; return r; };
   window.cadutaDebugEvent=(w)=>{ if(w==='mystery') mystery.spawn(); else if(w==='parallel') parallel.spawn(); else if(w==='nova') supernova.flash();
     else if(w==='blackhole'){ blackhole.spawn(); blackhole.group.position.set(40,4,-230); }
     else if(w==='comet'){ comet.spawn(); comet.g.position.set(-70,15,-300); }
@@ -679,6 +817,10 @@ function build(){
     else if(w==='bolide'){ bolide.spawn(); bolide.pts.position.set(20,30,-150); }
     else if(w==='gw'){ gwRipple.spawn(); }
     else if(w==='whales'){ whalePod.spawn(); whalePod.g.position.set(60,6,-400); }
+    else if(w==='eclipsesolar'||w==='eclipse'){ solarEclipse.spawn(); }
+    else if(w==='eclipselunar'){ lunarEclipse.spawn(); }
+    else if(w==='supernova'){ supernova.flash(); }
+    else if(w==='meteors'){ window._forceShower='Cosmic Rain'; shower='Cosmic Rain'; }
     return 'ok'; };
   window.cadutaInspect=()=>({ rg:{active:redgiant.active,vis:redgiant.g.visible,pos:redgiant.g.position.toArray().map(n=>Math.round(n)),ms:redgiant.mesh.scale.x,uOp:redgiant.mat.uniforms.uOp.value,glowOp:redgiant.glow.material.opacity},
     pul:{active:pulsar.active,vis:pulsar.g.visible,pos:pulsar.g.position.toArray().map(n=>Math.round(n))} });
@@ -732,6 +874,7 @@ function build(){
   pulsar=new Pulsar(); redgiant=new RedGiant(); binary=new Binary(); remnant=new Remnant();
   signal=new TheSignal(); spores=new SporeBloom(); magnetar=new Magnetar(); dyson=new DysonSwarm(); aurora=new AuroraCurtain(); duststorm=new DustStorm();
   lavaWorld=new LavaWorld(); shattered=new ShatteredWorld(ag,astMat); whitedwarf=new WhiteDwarf(); variablestar=new VariableStar(); ringarc=new RingArc(); station=new StationTumble(); lightEcho=new LightEcho(); bolide=new BolideSplit(); gwRipple=new GWRipple(); whalePod=new WhalePod();
+  solarEclipse=new SolarEclipse(); lunarEclipse=new LunarEclipse();
   for(let i=0;i<2;i++) ownedPlanets.push(new OwnedPlanet());   // pianeti permanenti (acquisti): pool che ruota sul catalogo
   loadPermanent();
   galaxies=[]; const gHues=[0.6,0.08,0.58,0.52,0.12];
@@ -743,13 +886,14 @@ function build(){
   composer=new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene,camera));
   lensPass=new ShaderPass(BHLensShader); composer.addPass(lensPass);   // lensing del buco nero (prima del bloom)
-  bloomPass=new UnrealBloomPass(new THREE.Vector2(Math.floor(WIDTH*PIX/bloomDiv),Math.floor(HEIGHT*PIX/bloomDiv)),0.7,0.80,0.86); // 1/2 del framebuffer reale (device px) + threshold alto: bloom solo sui veri highlight
+  bloomPass=new UnrealBloomPass(new THREE.Vector2(Math.floor(WIDTH*PIX/bloomDiv),Math.floor(HEIGHT*PIX/bloomDiv)),0.82,0.62,0.82); // base bloom + radius più STRETTO (alone definito, non veil) + threshold un filo più alto
   composer.addPass(bloomPass);
   cinePass=new ShaderPass(CineShader); composer.addPass(cinePass);
   composer.addPass(new OutputPass());
   // SMAA rimosso: l'MSAA del renderer (antialias:true) copre già i bordi; passata risparmiata
 
-  ['day','clk','co','log','bang'].forEach(k=>$t[k]=document.getElementById('t-'+k));
+  ['log'].forEach(k=>$t[k]=document.getElementById('t-'+k));   // UI Space Radio: solo la caption centrale resta come #t-log
+  $t.nowTitle=document.getElementById('now-title'); $t.nowTag=document.getElementById('now-tag'); $t.nextTitle=document.getElementById('next-title'); $t.nextEta=document.getElementById('next-eta');
   onResize();
   // stelle "default" del pubblico (sostituite dal vero catalogo in Fase B)
   seedCompanions();
@@ -763,6 +907,11 @@ function build(){
 
 /* ---------------- pianeti (avvicinamento lungo, niente pop-in) ---------------- */
 const SPAWN_Z=-2900;
+// --- MONDI LONTANI = guscio di sfondo (come le galassie): bersaglio-schermo ai bordi, deriva lenta, riciclo ---
+// riempiono TUTTO il quadro senza affollare il centro. half-extent visibili all'ancora del guscio (schermo→mondo).
+const DREC=-1200, DREC_DEPTH=9-DREC;                  // piano di riciclo/ancora dei mondi lontani (camera z=9)
+let HV_REC=Math.tan(baseFov*Math.PI/360)*DREC_DEPTH;  // semi-altezza visibile all'ancora (ricalcolata nel resize)
+let HH_REC=HV_REC*(WIDTH/HEIGHT);                     // semi-larghezza (dipende dall'aspect)
 // inietta nel MeshStandardMaterial dei pianeti: rilievo procedurale (craterizzazione reale alla
 // luce radente), luci-città lato notte (Terra), glint speculare degli oceani, atmosfera/terminatore
 // caldo, rim di scattering, planetshine, limb-darkening + granulazione del Sole. Flag via uniform
@@ -808,9 +957,13 @@ function planetOnBeforeCompile(uni){
            outgoingLight*=clamp(1.0-_selfShadow,0.35,1.0);            // avvalla le quote basse al radente
            outgoingLight*=mix(1.0,smoothstep(-0.04,0.14,_ndl),0.7*uHasAtmo*step(0.001,uBump)); // terminatore più netto
            outgoingLight=mix(outgoingLight,outgoingLight*vec3(1.18,0.72,0.5),_term*0.5*uHasAtmo);
-           float _fres=pow(1.0-_mu,3.0);
-           outgoingLight+=uRim*_fres*smoothstep(-0.05,0.5,_ndl)*0.45*uHasAtmo;
+           float _fres=pow(1.0-_mu,2.4);
+           outgoingLight+=uRim*_fres*smoothstep(-0.05,0.5,_ndl)*0.62*uHasAtmo;
            outgoingLight+=uNight*smoothstep(0.1,-0.4,_ndl)*0.05;
+           // LUMINOSITÀ migliorata: lato illuminato più brillante + glint speculare del sole (non sul Sole)
+           outgoingLight*=1.0+smoothstep(-0.05,0.55,_ndl)*0.30*(1.0-uIsSun);
+           vec3 _Hh=normalize(normalize(uSunDir)+_V); float _spc=pow(max(dot(_N,_Hh),0.0),22.0);
+           outgoingLight+=vec3(1.0,0.96,0.88)*_spc*smoothstep(0.0,0.30,_ndl)*0.22*(1.0-uIsSun)*(0.45+0.55*uHasAtmo);
            if(uIsSun>0.5){ float _limb=1.0-0.55*(1.0-_mu)-0.20*(1.0-_mu*_mu);
              float _gran=0.85+0.15*fbm(vLPos*9.0+vec3(uTime*0.05)); outgoingLight*=clamp(_limb,0.0,1.0)*_gran;
              outgoingLight+=vec3(1.0,0.85,0.6)*pow(1.0-_mu,6.0)*0.4; }
@@ -834,7 +987,7 @@ class Planet{
       fragmentShader:`varying vec3 vN;varying vec3 vW;uniform vec3 uColor,uColor2,uLight;uniform float uOp;
         void main(){ vec3 N=normalize(vN); vec3 V=normalize(cameraPosition-vW);
           float vd=max(dot(V,N),0.0); float ndl=dot(N,normalize(uLight));
-          float limb=pow(1.0-vd,2.5);
+          float limb=pow(1.0-vd,2.0);
           // scattering a due colori: lo strato alto vira al freddo del cielo, il terminatore al caldo del tramonto.
           vec3 sky=mix(uColor, uColor2, smoothstep(0.0,0.7,vd));            // blu-cielo verso il centro, tinta regione al limbo
           vec3 col=mix(uColor*0.22, sky, smoothstep(-0.12,0.42,ndl));      // limbo notturno più scuro (profondità, non glare)
@@ -842,7 +995,7 @@ class Planet{
           float dayHaze=pow(1.0-vd,4.0)*smoothstep(-0.1,0.6,ndl)*0.28;     // foschia lato giorno (prospettiva aerea)
           float term=smoothstep(-0.32,0.06,ndl)*(1.0-smoothstep(0.06,0.5,ndl)); // anello sottile al confine giorno/notte
           float a=(limb*smoothstep(-0.35,0.2,ndl)+dayHaze+term*0.18)*uOp;
-          gl_FragColor=vec4(col*(limb+dayHaze+term*0.22)*1.18, a); }`});
+          gl_FragColor=vec4(col*(limb+dayHaze+term*0.22)*1.5, a); }`});
     this.atmo=new THREE.Mesh(new THREE.SphereGeometry(1.025,48,32),this.atmoMat); this.mesh.add(this.atmo);
     // strato nuvole (per la Terra) — ruota più veloce → parallasse e profondità
     this.cloudMat=new THREE.MeshStandardMaterial({map:ASSETS.clouds,alphaMap:ASSETS.clouds,transparent:true,depthWrite:false,roughness:1,metalness:0,envMapIntensity:0.3,opacity:1});
@@ -861,21 +1014,49 @@ class Planet{
     this.ring=new THREE.Mesh(new THREE.RingGeometry(1.3,2.3,128,1),this.ringMat); this.ring.visible=false; this.mesh.add(this.ring);
     this.moons=[]; for(let i=0;i<2;i++){ const mm=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),new THREE.MeshStandardMaterial({map:ASSETS.pt[MOON_IDX],roughness:1,metalness:0,envMapIntensity:0.2,transparent:true,opacity:1})); mm.visible=false; this.mesh.add(mm); this.moons.push({mesh:mm,orb:0,rad:0,sp:0,ph:0}); }
     this.active=false; this.spin=0; this.isSun=false; this.nMoons=0; this.counted=false; this._graze=false;
+    this._driftK=1; this._distant=false; this._sx=0; this._sy=0; this._ang=0;   // campi tier sfondo/hero (mai undefined su un corpo pooled non spawnato)
+  }
+  // bersaglio-schermo verso i bordi (buco centrale) + anti-cluster vs altri mondi lontani attivi — solo a spawn/riciclo, niente alloc
+  _pickRimTarget(){
+    let bestSx=0,bestSy=0,bestScore=-1;
+    for(let k=0;k<4;k++){ const u=Math.random()*2-1, v=Math.random()*2-1;
+      const csx=(u<0?-1:1)*(0.45+Math.abs(u)*0.55), csy=(v<0?-1:1)*(0.40+Math.abs(v)*0.58);   // |sx|∈[0.45,1], |sy|∈[0.40,0.98] → mai al centro, raggiunge gli angoli
+      let sc=Infinity; for(const q of planets){ if(!q.active||q===this||!q._distant) continue; const dx=csx-q._sx, dy=csy-q._sy; const d2=dx*dx+dy*dy; if(d2<sc) sc=d2; }
+      if(sc>bestScore){ bestScore=sc; bestSx=csx; bestSy=csy; } }
+    this._sx=bestSx; this._sy=bestSy;
+  }
+  // posa il mondo lontano sul guscio: bersaglio→mondo all'ancora (cresce verso l'angolo avvicinandosi), z profondo, deriva lenta
+  _scatterDistant(){ this._pickRimTarget(); this.mesh.position.set(this._sx*HH_REC, this._sy*HV_REC, -3300-Math.random()*200); this._driftK=0.15+Math.random()*0.06; }
+  // angolo hero che massimizza il distacco dai fratelli hero attivi → niente pila centrale (giganti restano ai lati)
+  _pickHeroAng(giant){
+    let bestA=0,bestGap=-1;
+    for(let k=0;k<5;k++){ const ca=giant?((Math.random()<0.5?0.0:Math.PI)+(Math.random()*2-1)*0.6):Math.random()*Math.PI*2;
+      let g=Math.PI; for(const q of planets){ if(!q.active||q===this||q._distant) continue; const d2=Math.abs(((ca-q._ang+Math.PI*3)%(Math.PI*2))-Math.PI); if(d2<g) g=d2; }
+      if(g>bestGap){ bestGap=g; bestA=ca; } }
+    return bestA;
   }
   spawn(forceSun,forceIdx,distant){
     this.active=true; this.counted=false;
     let idx; if(forceIdx!=null) idx=forceIdx; else if(forceSun) idx=SUN_IDX; else if(Math.random()<0.08) idx=SUN_IDX; else { do{ idx=(Math.random()*PMETA.length)|0; }while(idx===SUN_IDX); }
     const meta=PMETA[idx]; this.isSun=!!meta.sun;
     const _distant=!!distant && !this.isSun;                          // MONDO LONTANO: piccolo, defilato, spoglio (economico) → riempie il cielo senza affollare il centro
-    const r=this.isSun?(64+Math.random()*36):(_distant?(9+Math.random()*15):(22+Math.random()*40)); this.mesh.scale.setScalar(r);
-    const ang=Math.random()*Math.PI*2;
+    const _szR=Math.random(); const _giant=!this.isSun&&!_distant&&_szR<0.3; const _szMul=this.isSun?1.6:(_distant?1.0:(_giant?4.0+Math.random()*2.5:(_szR<0.5?0.5+Math.random()*0.55:1.4+Math.random()*1.6)));   // ~30% GIGANTI (4-6.5×, ai lati), ~20% piccoli, resto medi
+    const r=(this.isSun?(64+Math.random()*36):(_distant?(16+Math.random()*38):(22+Math.random()*40)))*_szMul; this.mesh.scale.setScalar(r);   // mondi LONTANI più grandi (16-54) → leggibili come pianeti, non puntini
     // passaggio ravvicinato NATURALE e raro (armato da grazeNext): riempie il quadro ma sfiora SOLO l'alta atmosfera.
     // garanzia: superficie solida a (dist-r), tetto atmosfera a r*1.025; con dist=r*1.18+14+rand*8 → clearance 0.155*r+14 > 0 SEMPRE.
     const _flyby=grazeNext && !this.isSun && !forceSun && forceIdx==null && !_distant;
-    let dist=_flyby?(r*1.18+14+Math.random()*8):(_distant?(r*1.45+150+Math.random()*340):(r*1.45+65+Math.random()*100));   // i lontani: offset laterale ampio → sparsi, defilati
-    this._graze=_flyby;
-    const _yJit=_flyby?(Math.random()*2-1)*Math.min(r*0.5,30):(_distant?(Math.random()*2-1)*100:(Math.random()*2-1)*40);   // i lontani spaziano più in alto/basso
-    this.mesh.position.set(Math.cos(ang)*dist,_yJit,SPAWN_Z-Math.random()*(_flyby?260:(_distant?700:400)));
+    this._graze=_flyby; this._distant=_distant;
+    if(_distant){
+      this._scatterDistant();   // guscio di sfondo: bersaglio-schermo ai bordi (anti-cluster), z profondo, deriva lenta → su TUTTO il quadro
+    } else {
+      // HERO (passaggio ravvicinato): angolo anti-cluster + y = sin(ang)*dist ACCOPPIATA all'angolo (FIX: prima la y era una fascia orizzontale fissa)
+      const ang=_flyby?(_giant?((Math.random()<0.5?0.0:Math.PI)+(Math.random()*2-1)*0.6):Math.random()*Math.PI*2):this._pickHeroAng(_giant);
+      this._ang=ang;
+      const dist=_flyby?(r*1.18+14+Math.random()*8):(r*1.45+65+Math.random()*100);
+      const _yJit=_flyby?(Math.random()*2-1)*Math.min(r*0.5,30):Math.sin(ang)*dist;
+      this.mesh.position.set(Math.cos(ang)*dist,_yJit,SPAWN_Z-Math.random()*(_flyby?260:400));
+      this._driftK=1;
+    }
     if(_flyby){ this.atmoMat.uniforms.uOp.value=1; }   // l'atmosfera deve leggersi piena durante lo sfioramento
     this.mesh.rotation.set(Math.random()*0.5-0.25,Math.random()*Math.PI*2,Math.random()*0.3-0.15);
     this.spin=(Math.random()*2-1)*0.007;
@@ -901,11 +1082,20 @@ class Planet{
   }
   update(dt,speed){
     if(!this.active) return;
-    this.mesh.position.z+=speed*dt; this.mesh.rotation.y+=this.spin*dt;
-    const z=this.mesh.position.z, outEnd=340+this.mesh.scale.x*2.0;
-    const opIn=THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1);        // dissolvenza dal profondo
-    const opOut=THREE.MathUtils.clamp((outEnd-z)/(this.mesh.scale.x*2.6+200),0,1); // dissolvenza in uscita (niente pop)
-    const op=Math.min(opIn,opOut);
+    this.mesh.position.z+=speed*dt*this._driftK; this.mesh.rotation.y+=this.spin*dt;   // i mondi lontani derivano lenti (_driftK<1) → restano come sfondo; hero a velocità piena (_driftK=1)
+    const z=this.mesh.position.z;
+    let op;
+    if(this._distant){
+      if(z>DREC){ this._scatterDistant(); }   // riciclo sul guscio lontano (come galaxyRespawn): solo position.set, niente alloc
+      // dissolvenza a due lati ancorata al guscio: ~0 sia al bordo profondo (-3300) sia al piano di riciclo (-1200) → niente pop
+      const fadeIn=THREE.MathUtils.clamp((z+3300)/700,0,1), fadeOut=THREE.MathUtils.clamp((DREC-z)/700,0,1);
+      op=Math.min(fadeIn,fadeOut);
+    } else {
+      const outEnd=340+this.mesh.scale.x*2.0;
+      const opIn=THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1);        // dissolvenza dal profondo
+      const opOut=THREE.MathUtils.clamp((outEnd-z)/(this.mesh.scale.x*2.6+200),0,1); // dissolvenza in uscita (niente pop)
+      op=Math.min(opIn,opOut);
+    }
     this.mat.opacity=op; this.atmoMat.uniforms.uOp.value=op; this.ringMat.uniforms.uOp.value=op;
     if(this.clouds.visible){ this.clouds.rotation.y+=dt*0.018; this.cloudMat.opacity=op; }
     this.atmoMat.uniforms.uLight.value.copy(sunDir);
@@ -914,8 +1104,8 @@ class Planet{
       this.ringMat.uniforms.uLightL.value.copy(_s); }
     this.pUni.uSunDir.value.copy(sunDir); this.pUni.uTime.value=shaderTime; this.pUni.uNight.value.copy(director.grade);   // shaderTime è già wrappato (niente drift di precisione 24/7)
     for(let i=0;i<this.nMoons;i++){ const mo=this.moons[i]; mo.ph+=mo.sp*dt; mo.mesh.material.opacity=op; mo.mesh.position.set(Math.cos(mo.ph)*mo.rad,Math.sin(mo.ph*0.6)*0.4,Math.sin(mo.ph)*mo.rad); }
-    if(!this.counted && z>-30){ this.counted=true; TEL.planets++; TEL.moons+=this.nMoons; }
-    if(z>outEnd){
+    if(!this.counted && !this._distant && z>-30){ this.counted=true; TEL.planets++; TEL.moons+=this.nMoons; }   // i mondi lontani di sfondo non contano nella telemetria
+    if(!this._distant && z>340+this.mesh.scale.x*2.0){
       this.active=false; this.mesh.visible=false;
       if(this.isSun&&lensflare&&lensflare.parent===this.mesh){ this.mesh.remove(lensflare); lensflare.visible=false; }
     }
@@ -948,6 +1138,8 @@ class NearStar{
     if(!this.active) return;
     this.spr.position.z+=speed*dt*1.05;
     const z=this.spr.position.z;
+    { const _pz=(this._pz!==undefined)?this._pz:z; this._pz=z;   // STELLA che sfiora l'astronauta → capriola
+      if(_pz<0 && z>=0 && Math.hypot(this.spr.position.x,this.spr.position.y)<18 && astHitCD<=0){ astHitCD=0.4; hitFlipTarget+=6.28318*(4+(Math.random()*2|0)); hitFlash=Math.max(hitFlash,0.4); } }
     const fade=THREE.MathUtils.clamp((z+1700)/520,0,1)*THREE.MathUtils.clamp((22-z)/16,0,1);
     this.spr.material.opacity=fade*(this.named?1.0:0.9);
     if(this.label){ const near=THREE.MathUtils.clamp((z+120)/120,0,1)*THREE.MathUtils.clamp((10-z)/40,0,1); this.label.material.opacity=near; }
@@ -961,8 +1153,9 @@ function seedCompanions(){
   companionPool.push(...seeds); TEL.companions=Math.max(TEL.companions, seeds.length);
 }
 // Fase B: window.cadutaAddStar(name) accende subito una stella del pubblico
-window.cadutaAddStar=(name)=>{ if(!name) return; companionPool.push(String(name).slice(0,40)); TEL.companions++; flipTarget+=6.28318; };  // arriva qualcuno → l'uomo fa una capriola verticale a braccia aperte
+window.cadutaAddStar=(name)=>{ if(!name) return; companionPool.push(String(name).slice(0,40)); TEL.companions++; flipTarget+=6.28318*2.5; };  // arriva qualcuno → capriola verticale più ampia (2.5 giri)
 window.cadutaDebugHit=(n)=>{ hitFlipTarget+=6.28318*(n||4); hitFlash=Math.max(hitFlash,0.6); return 'BURST x'+(n||4); };  // test: capriole verticali da impatto (console)
+  window.cadutaFall=(m)=>{ if(m===undefined||m==='auto'){ fallAuto=true; return 'fase di caduta: AUTO (cicli 2-5 min)'; } fallAuto=false; fallTarget=fallMul=(+m||1); return 'velocità di caduta ×'+fallMul+' (manuale; cadutaFall("auto") per riattivare le fasi)'; };
 
 /* ---------------- asteroidi ---------------- */
 const _m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_e=new THREE.Euler(),_s=new THREE.Vector3(),_p=new THREE.Vector3();
@@ -1014,7 +1207,8 @@ class Supernova{
   flash(reason){ this.active=true; this.t=0; _echoPending=14+Math.random()*4;   // dopo la nova arriva l'eco di luce
     const ang=Math.random()*Math.PI*2,rad=200+Math.random()*400;
     this.spr.position.set(Math.cos(ang)*rad,(Math.random()*2-1)*150,-1500); this.spr.scale.setScalar(40); this.spr.visible=true;
-    $t.log.textContent=(reason||'— a star has died.'); $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),14000); }
+    $t.log.textContent=(reason||'— a star has died.'); $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),14000);
+    if(typeof audio!=='undefined'&&audio.enqueueVoice) audio.enqueueVoice('supernova'); }
   update(dt){ if(!this.active) return; this.t+=dt; const k=this.t<1.2?(this.t/1.2):Math.max(0,1-(this.t-1.2)/10);
     this.spr.material.opacity=k*2.0; this.spr.scale.setScalar(40+this.t*120);
     if(this.t>12){ this.active=false; this.spr.visible=false; } }
@@ -1274,6 +1468,100 @@ class RedGiant{
     if(z>outEnd){ this.active=false; this.g.visible=false; } }
 }
 
+/* ---------------- ECLISSI SOLARE spettacolare: LONTANA, lunga, sole di plasma reale, luna scura che occlude, tanta luce alla totalità ---------------- */
+class SolarEclipse{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
+    // SOLE realistico: sfera di plasma che ribolle (granulazione + macchie)
+    this.sunMat=new THREE.ShaderMaterial({transparent:true,depthWrite:true,uniforms:{uTime:{value:0},uOp:{value:0}},
+      vertexShader:`varying vec3 vp;void main(){vp=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:NOISE_GLSL+`varying vec3 vp;uniform float uTime,uOp;
+        void main(){ float n=fbm(vp*3.2+vec3(0.0,uTime*0.06,0.0)); float n2=fbm(vp*9.0-uTime*0.05);
+          vec3 c=mix(vec3(1.0,0.80,0.34),vec3(1.0,0.96,0.74),n); c=mix(c,vec3(1.0,0.52,0.18),n2*0.45);
+          float gran=0.85+0.55*n; gl_FragColor=vec4(c*gran*1.5,uOp); }`});
+    this.sun=new THREE.Mesh(new THREE.SphereGeometry(1,56,40),this.sunMat); this.sun.renderOrder=1; this.g.add(this.sun);
+    this.sunGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xffe7ad),opacity:0})); this.sunGlow.renderOrder=2; this.g.add(this.sunGlow);
+    // LUNA scura: sfera quasi nera, OPACA → occlude il sole per profondità (vera eclissi)
+    this.moonMat=new THREE.ShaderMaterial({transparent:true,depthWrite:true,uniforms:{uOp:{value:0}},
+      vertexShader:`varying vec3 vp;void main(){vp=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:NOISE_GLSL+`varying vec3 vp;uniform float uOp;
+        void main(){ float cr=fbm(vp*7.0)*0.06; gl_FragColor=vec4(vec3(0.006)+cr, uOp); }`});   // luna MOLTO scura, appena craterizzata
+    this.moon=new THREE.Mesh(new THREE.SphereGeometry(1,48,32),this.moonMat); this.moon.renderOrder=3; this.g.add(this.moon);
+    // CORONA (depthTest off → sempre sopra): alone esterno + anello brillante + raggi
+    this.coronaGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xfff4e2),opacity:0})); this.coronaGlow.renderOrder=6; this.g.add(this.coronaGlow);
+    this.coronaRing=new THREE.Mesh(new THREE.RingGeometry(1.0,1.55,120), new THREE.MeshBasicMaterial({color:0xfff7ea,transparent:true,depthWrite:false,depthTest:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,opacity:0})); this.coronaRing.renderOrder=7; this.g.add(this.coronaRing);
+    this.rays=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xfff2da),opacity:0,rotation:0})); this.rays.renderOrder=5; this.g.add(this.rays);
+    this.active=false; this.t=0; this.dur=0; this.R=1; this._counted=false; this._c=new THREE.Color();
+  }
+  spawn(){
+    this.active=true; this.t=0; this._counted=false;
+    this.R=80+Math.random()*45; this.dur=62+Math.random()*22;          // GRANDE + LUNGA (si assiste a lungo)
+    this.sun.scale.setScalar(this.R*0.94); this.moon.scale.setScalar(this.R);   // luna un filo più grande → copre tutto il sole
+    this.sunGlow.scale.setScalar(this.R*4.6); this.coronaGlow.scale.setScalar(this.R*4.8); this.coronaRing.scale.setScalar(this.R); this.rays.scale.setScalar(this.R*6.0);
+    const side=(Math.random()<0.5?-1:1);
+    this.g.position.set(side*(110+Math.random()*120),(Math.random()*2-1)*60,-2000-Math.random()*500);   // IN LONTANANZA, davanti → la si vede arrivare
+    this.sun.position.set(0,0,0); this.moon.position.set(0,0,this.R*0.7);   // luna verso camera → occlude il sole
+    this.sunMat.uniforms.uOp.value=0; this.moonMat.uniforms.uOp.value=0; this.g.visible=true;
+    $t.log.textContent='— a solar eclipse, far ahead. The moon swallows the sun; the corona blazes.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),16000);
+    if(typeof audio!=='undefined'&&audio.enqueueVoice) audio.enqueueVoice('eclipsesolar');
+  }
+  update(dt,speed){
+    if(!this.active) return;
+    this.g.position.z+=speed*dt*0.3; this.t+=dt;                        // si avvicina LENTO → resta lontana e visibile a lungo
+    this.sunMat.uniforms.uTime.value=(this.sunMat.uniforms.uTime.value+dt)%100000;
+    const op=Math.min(THREE.MathUtils.clamp(this.t/4.0,0,1), THREE.MathUtils.clamp((this.dur+6-this.t)/5.0,0,1));   // dissolvenza A TEMPO (evento), niente pop
+    const p=THREE.MathUtils.clamp(this.t/this.dur,0,1), mx=(p*2-1)*this.R*2.7; this.moon.position.x=mx;
+    const cover=THREE.MathUtils.clamp(1-Math.abs(mx)/(this.R*1.0),0,1), tot=Math.pow(cover,2.0);   // 1 = totalità
+    this.sunMat.uniforms.uOp.value=op; this.moonMat.uniforms.uOp.value=op;
+    this.sunGlow.material.opacity=op*0.8*(1.0-tot*0.92);               // alla totalità l'alone del sole svanisce…
+    this.coronaGlow.material.opacity=op*(0.02+0.14*tot);              // …resta la CORONA: alone esterno FIOCO (non riempie il centro)…
+    this.coronaRing.material.opacity=0;             // ANELLO rimosso (richiesta): niente cerchio attorno al sole durante l'eclissi
+    this.rays.material.opacity=op*0.3*tot; this.rays.material.rotation+=dt*0.05;   // raggi di corona tenui che ruotano lentissimo
+    this.coronaGlow.material.color.copy(this._c.set(0xfff4e2)).lerp(director.key,0.18);
+    if(!this._counted && this.t>this.dur*0.45){ this._counted=true; TEL.stars++; }
+    if(this.t>this.dur+6){ this.active=false; this.g.visible=false; }
+  }
+}
+/* ---------------- ECLISSI LUNARE (la luna entra nell'ombra → rosso sangue) ---------------- */
+class LunarEclipse{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
+    this.mat=new THREE.ShaderMaterial({transparent:true,uniforms:{uTime:{value:0},uOp:{value:0},uEcl:{value:0},uSun:{value:new THREE.Vector3(0.45,0.32,0.83)}},
+      vertexShader:`varying vec3 vp;varying vec3 vn;void main(){vp=position;vn=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:NOISE_GLSL+`varying vec3 vp;varying vec3 vn;uniform float uTime,uOp,uEcl;uniform vec3 uSun;
+        void main(){ float cr=fbm(vp*5.0)*0.5+fbm(vp*15.0)*0.3;
+          vec3 base=mix(vec3(0.64,0.64,0.68),vec3(0.40,0.40,0.45),cr);          // superficie lunare grigia
+          vec3 blood=mix(vec3(0.52,0.09,0.04),vec3(0.85,0.26,0.12),cr);         // rosso rame in eclissi
+          vec3 c=mix(base,blood,uEcl);
+          float ndl=max(dot(vn,normalize(uSun)),0.0);
+          float lit=mix(mix(0.18,1.0,ndl), 0.45+0.55*ndl, uEcl);                // in eclissi la luce è più uniforme (rifratta)
+          gl_FragColor=vec4(c*lit*(0.7+0.5*cr), uOp); }`});
+    this.mesh=new THREE.Mesh(new THREE.SphereGeometry(1,64,48),this.mat); this.g.add(this.mesh);
+    this.glow=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xff5026),opacity:0})); this.g.add(this.glow);
+    this.active=false; this.t=0; this.dur=0; this.R=1; this.spin=0; this._counted=false;
+  }
+  spawn(){
+    this.active=true; this.t=0; this._counted=false;
+    this.R=55+Math.random()*35; this.dur=55+Math.random()*22;          // GRANDE + LUNGA
+    this.mesh.scale.setScalar(this.R); this.glow.scale.setScalar(this.R*3.2);
+    const side=(Math.random()<0.5?-1:1);
+    this.g.position.set(side*(90+Math.random()*110),(Math.random()*2-1)*55,-1750-Math.random()*450);   // IN LONTANANZA → si assiste alla luna di sangue
+    this.spin=(Math.random()*2-1)*0.04; this.mat.uniforms.uEcl.value=0; this.g.visible=true;
+    $t.log.textContent='— a lunar eclipse, far ahead. The moon turns the colour of old blood.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),16000);
+    if(typeof audio!=='undefined'&&audio.enqueueVoice) audio.enqueueVoice('eclipselunar');
+  }
+  update(dt,speed){
+    if(!this.active) return;
+    this.g.position.z+=speed*dt*0.3; this.t+=dt; this.mesh.rotation.y+=this.spin*dt;   // si avvicina LENTO → resta lontana e visibile a lungo
+    this.mat.uniforms.uTime.value=(this.mat.uniforms.uTime.value+dt)%100000;
+    const op=Math.min(THREE.MathUtils.clamp(this.t/4.0,0,1), THREE.MathUtils.clamp((this.dur+6-this.t)/5.0,0,1)); this.mat.uniforms.uOp.value=op;   // dissolvenza A TEMPO (evento)
+    const p=THREE.MathUtils.clamp(this.t/this.dur,0,1), ecl=Math.sin(p*Math.PI); this.mat.uniforms.uEcl.value=ecl*ecl;
+    this.glow.material.opacity=op*ecl*ecl*0.7;
+    if(!this._counted && this.t>this.dur*0.45){ this._counted=true; TEL.stars++; }
+    if(this.t>this.dur+6){ this.active=false; this.g.visible=false; }
+  }
+}
+
 /* ---------------- SISTEMA BINARIO ---------------- */
 class Binary{
   constructor(){ this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
@@ -1520,35 +1808,50 @@ function currentShower(){ if(window._forceShower) return window._forceShower; co
 
 /* ---------------- passata cinematografica ---------------- */
 const CineShader={
-  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.026},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.5},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)}},
+  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.020},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.7},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)},uSharp:{value:0.30},uPix:{value:1.0},uRocket:{value:0}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,1.0);}`,
-  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uContrast,uGW;uniform vec2 uRes,uGWDir;uniform vec3 uGrade;varying vec2 vUv;
+  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uContrast,uGW,uSharp,uPix,uRocket;uniform vec2 uRes,uGWDir;uniform vec3 uGrade;varying vec2 vUv;
     float rnd(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
     void main(){ vec2 uv=vUv;
       if(uGW>0.0){ float ph=dot(uv,uGWDir)*42.0 - uTime*6.0; uv += uGWDir*sin(ph)*uGW; }   // onda gravitazionale: increspa tutto il campo
       vec2 d=uv-0.5; float r2=dot(d,d);
+      // --- NITIDEZZA (unsharp-mask): 4 tap a croce a UN texel REALE (uRes*uPix → vero 4K). Riusa la passata, niente fill extra. ---
+      vec3 c0=texture2D(tDiffuse,uv).rgb;
+      if(uSharp>0.001){ vec2 tx=1.0/(uRes*uPix);
+        vec3 cn=texture2D(tDiffuse,uv+vec2(0.0,tx.y)).rgb, cs=texture2D(tDiffuse,uv-vec2(0.0,tx.y)).rgb;
+        vec3 ce=texture2D(tDiffuse,uv+vec2(tx.x,0.0)).rgb, cw=texture2D(tDiffuse,uv-vec2(tx.x,0.0)).rgb;
+        vec3 hi=c0-(cn+cs+ce+cw)*0.25; float Ls=dot(c0,vec3(0.2126,0.7152,0.0722));
+        float hiAtt=1.0-smoothstep(0.78,1.25,Ls);                      // non ri-anella i core già bloomati
+        float ramp=smoothstep(0.02,0.05,Ls);                          // sharpen anche sul fondale fioco (luma ~0.07-0.30) → Via Lattea più definita; resta zero nel near-black
+        c0=clamp(c0+clamp(hi,-0.12,0.12)*uSharp*hiAtt*ramp,0.0,8.0); }
       vec2 off=d*r2*r2*0.020*uAberr;                                   // aberrazione cromatica concentrata ai bordi
-      vec3 col=vec3(texture2D(tDiffuse,uv+off).r,texture2D(tDiffuse,uv).g,texture2D(tDiffuse,uv-off).b);
+      vec3 col=vec3(texture2D(tDiffuse,uv+off).r,c0.g,texture2D(tDiffuse,uv-off).b);
       // DOF a basso costo: ammorbidisce SOLO i bordi (centro nitido). Raggio in pixel via uRes → indip. dalla risoluzione
-      float dofK=smoothstep(0.18,0.95,r2*2.3)*uDof;
+      float dofK=smoothstep(0.34,1.05,r2*2.3)*uDof;
       if(dofK>0.001){ vec2 px=(1.0/uRes)*(1.2+1.6*dofK);              // ~1-3 px ai bordi estremi
         vec3 b=texture2D(tDiffuse,uv+vec2(px.x,px.y)).rgb+texture2D(tDiffuse,uv+vec2(-px.x,px.y)).rgb
               +texture2D(tDiffuse,uv+vec2(px.x,-px.y)).rgb+texture2D(tDiffuse,uv+vec2(-px.x,-px.y)).rgb;
-        col=mix(col,(col+b)*0.2,dofK*0.6); }                          // miscela tenue: profondità, non sfocatura vera
+        col=mix(col,(col+b)*0.2,dofK*0.42); }                         // miscela tenue: profondità, non sfocatura vera (centro nitido più ampio a 4K)
+      // ── WARP: scie radiali (iperspazio) quando si precipita — centro nitido, stelle stirate verso i bordi ──
+      if(uRocket>0.01){ vec2 cdir=uv-0.5; float crd=dot(cdir,cdir);
+        float jit=fract(sin(dot(uv,vec2(12.9898,78.233)))*43758.5453);   // dither → scie lunghe senza banding
+        vec2 stp=cdir*uRocket*0.40; vec3 wAcc=vec3(0.0); float wT=0.0;
+        for(int wi=0;wi<12;wi++){ float wtt=(float(wi)+jit)/12.0; vec3 ws=texture2D(tDiffuse,uv-stp*wtt).rgb; float ww=1.0-wtt*0.55; wAcc+=ws*ww; wT+=ww; }
+        wAcc/=wT; col=mix(col,max(col,wAcc),uRocket*smoothstep(0.012,0.16,crd)); }
       float ga=uGradeAmt*4.0;
       vec3 lift=(uGrade-0.5)*0.08*ga;                                  // split-tone tenue: ombre verso la tinta regione
       col=col*(1.0+lift)+lift*0.35;
       float L=dot(col,vec3(0.2126,0.7152,0.0722));
       float satHi=1.0-smoothstep(0.6,1.4,L)*0.4;                       // alte luci desaturate (i core bloomati restano luce)
-      col=mix(vec3(L),col,mix(1.0,1.06,ga)*satHi);                     // saturazione contenuta
+      col=mix(vec3(L),col,mix(1.0,1.14,ga)*satHi);                     // saturazione contenuta
       // curva filmica gentile: contrasto nei toni medi, spalla che PROTEGGE i core bloomati (restano luce)
-      vec3 contr=clamp((col-0.42)*mix(1.0,1.085,uContrast)+0.42,0.0,4.0);
+      vec3 contr=clamp((col-0.42)*mix(1.0,1.16,uContrast)+0.42,0.0,4.0);
       float shoulder=1.0-smoothstep(0.85,1.6,L)*0.6;                   // sopra ~0.85 (highlight) il contrasto si annulla
       col=mix(col,contr,shoulder);                                    // contrasto solo dove non sono highlight
       col*=0.945;                                                      // deep-space: appena meno acceso (era 0.94)
       col=max(col,0.0);
       // veil anamorfico tenue: 2 tap orizzontali, solo sugli highlight, tinta regione → striscia di luce discreta
-      if(uStreak>0.001){ vec2 sx=vec2((1.0/uRes.x)*9.0,0.0);
+      if(uStreak>0.001){ vec2 sx=vec2((1.0/uRes.x)*6.0,0.0);
         float hl=smoothstep(0.78,1.3,L);
         vec3 st=texture2D(tDiffuse,uv+sx).rgb+texture2D(tDiffuse,uv-sx).rgb;
         col+=st*0.5*hl*uStreak*0.06*mix(uGrade*2.0,vec3(1.0),0.7); }   // additivo minimo: non schiarisce le ombre
@@ -1563,7 +1866,7 @@ const CineShader={
 
 function applyDirector(){
   const c=director.cur;
-  if(sky) sky.material.color.setScalar(c.skyBright*0.86);   // Via Lattea di sfondo un po' meno accesa
+  if(sky) sky.material.color.setScalar(Math.max(0.62,c.skyBright)*0.86);   // Via Lattea di sfondo — PAVIMENTO 0.62: mai troppo scura (alza solo abisso/vuoto)
   if(keyLight){ keyLight.color.copy(_white).lerp(director.key,0.5); keyLight.intensity=c.kInt; }   // tinta regione attenuata
   if(cinePass) cinePass.uniforms.uGrade.value.copy(director.grade);
 }
@@ -1942,6 +2245,7 @@ const tmpLook=new THREE.Vector3(), planetFocus=new THREE.Vector3(), _bhProj=new 
 // auto-scaler
 let fpsAcc=0,fpsN=0,fpsTimer=0,tier=0,tierCooldown=0;
 function autoscale(dt,fps){
+  if(typeof _rec4k!=='undefined' && _rec4k) return;                    // REC 4K in corso → non toccare la risoluzione
   if(window.obsstudio || /[?&]live=1/.test(location.search)) return;   // LIVE/cloud: GPU dedicata → qualità sempre al massimo, mai downscale (l'fps in cattura è fuorviante)
   fpsTimer+=dt; if(fpsTimer<2) return; fpsTimer=0;
   if(tierCooldown>0){ tierCooldown-=2; return; }                 // dopo un cambio aspetta ~8s → niente flip-flop (i micro-hitch venivano dalla realloc dei target ad ogni cambio)
@@ -1966,6 +2270,7 @@ function animate(){
   if(!built || !contextOK) return;
   let _raw=clock.getDelta(); const _stall=_raw>0.25; let dt=Math.min(Math.max(_raw,1/240),0.05);
   if(!started) return;
+  if(_rec4k && renderer.domElement.width!==_recW) _ef4kForce();        // REC 4K: ri-forza la risoluzione ad ogni frame (resta vero 4K qualunque cosa accada)
   // NB: si renderizza SEMPRE, anche se document.hidden (OBS può riportare "hidden" anche in onda → mai schermo nero)
   if(_stall){ shaderTime=(shaderTime+dt)%SWRAP; try{ director.step(0.001); composer.render(); telUpdate(dt); _lastFrameTs=Date.now(); }catch(err){ _frameErrs++; _errWindow=8; if(_frameErrs>180){ try{telSave();}catch(_){} safeReload(); } } return; }  // ripresa dopo throttle rAF (orologio vivo, heartbeat solo se il render riesce)
   try {
@@ -1979,7 +2284,7 @@ function animate(){
     bhNear=THREE.MathUtils.clamp(1-(d-blackhole.group.scale.x*1.6)/300,0,1);
     timeScale=1-bhNear*0.72;
     if(bhNear>0.55) bhClose=true;   // siamo entrati nel pozzo gravitazionale
-    if(bhNear>0.35){ if($t.clk) $t.clk.classList.add('dilate'); if(!dilLogged){ dilLogged=true; $t.log.textContent='— TIME DILATION. The clocks no longer agree.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } }
+    if(bhNear>0.35){ if($t.clk) $t.clk.classList.add('dilate'); if(!dilLogged){ dilLogged=true; $t.log.textContent='— TIME DILATION. The clocks no longer agree.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); if(typeof audio!=='undefined'&&audio.enqueueVoice) audio.enqueueVoice('blackhole'); } }
     else { if($t.clk) $t.clk.classList.remove('dilate'); dilLogged=false; }
   } else { if($t.clk) $t.clk.classList.remove('dilate'); dilLogged=false; }
   // FIONDA GRAVITAZIONALE: eravamo vicini al buco nero e ora ne siamo sfuggiti → spinta di ~5s
@@ -1987,7 +2292,14 @@ function animate(){
     $t.log.textContent='— slingshot. The hole flings us into the deep.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),10000); }
   if(sling>0) sling=Math.max(0,sling-dt);
   const _se=sling*0.2, slingE=_se*_se;                          // kick forte all'inizio, decadimento in ~5s
-  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4);
+  // ── FASE DI CADUTA: cicli lento<->veloce graduali, cambio ogni 2-5 min (musica e cue "razzo" seguono) ──
+  if(fallAuto){ fallPhaseT-=dt;
+    if(fallPhaseT<=0){ fallFast=!fallFast; fallTarget=fallFast?(20+Math.random()*12):1; fallPhaseT=45+Math.random()*60;   // veloce ancora più spinto (20-32×); fasi più corte (~45-105s)
+      if($t.log){ $t.log.textContent=fallFast?'— acceleration. the fall quickens.':'— drifting. the fall slows.'; $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),9000); } } }
+  fallMul += (fallTarget-fallMul)*Math.min(1,dt*0.08);                  // rampa graduale (~25-30s) verso il target — fasi più corte ma transizioni morbide
+  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul;
+  const rocketE=THREE.MathUtils.clamp((fallMul-1)/9,0,1);               // 0..1: i cue "RAZZO" crescono (gradualmente) con la velocità di caduta
+  if(audio.music && audio.music.setSpeedMul) audio.music.setSpeedMul(1+rocketE*0.6);   // la musica accelera nelle fasi veloci
 
   TEL.velKmS=speed*KMS_FACTOR; TEL.km += TEL.velKmS*dt;
   persistT+=dt; if(persistT>5){ persistT=0; telSave(); }
@@ -2005,7 +2317,7 @@ function animate(){
 
   // esposizione adattiva (morbida)
   exposureCur += (director.cur.exposure - exposureCur)*Math.min(1,dt*0.6);
-  renderer.toneMappingExposure=exposureCur*0.95;   // esposizione leggermente più bassa → immagine più profonda
+  renderer.toneMappingExposure=Math.max(0.90,exposureCur*0.95);   // PAVIMENTO esposizione 0.90 → mai troppo scura (alza solo abisso/vuoto; le scene normali sono già sopra)
 
   sky.rotation.y+=dt*0.0016; sky.rotation.x=Math.sin(shaderTime*0.004)*0.05;
   // campo stellare volumetrico: ogni strato scorre a velocità diversa (parallasse) e ricicla senza pop
@@ -2020,8 +2332,8 @@ function animate(){
     if(zs>-300){ s.m.position.set((Math.random()*2-1)*900,(Math.random()*2-1)*500,-6000); s.mat.uniforms.uSeed.value=Math.random()*10; } }
 
   // polvere (+ stiramento in raffica)
-  dustMat.uniforms.uTime.value=shaderTime; dustMat.uniforms.uAmt.value=director.cur.dust;
-  dustMat.uniforms.uStretch.value=1+THREE.MathUtils.clamp(speed/40,0,1)*0.45+director.surge*1.6+slingE*3.2;   // leggero stiramento già a velocità di crociera + scie lunghe in fionda
+  dustMat.uniforms.uTime.value=shaderTime; dustMat.uniforms.uAmt.value=director.cur.dust*0.5;   // opacità polvere dimezzata
+  dustMat.uniforms.uStretch.value=1+THREE.MathUtils.clamp(speed/40,0,1)*0.45+director.surge*1.6+slingE*3.2+rocketE*2.5;   // + scie lunghe "warp" quando si precipita come un razzo
   dustMat.uniforms.uColor.value.copy(director.grade).lerp(_white,0.6);
   const dz=speed*dt*1.6;
   for(let i=0;i<DUST_N;i++){ dustPos[i*3+2]+=dz; if(dustPos[i*3+2]>DZN) dust.userData.re(i,DZF); }
@@ -2033,7 +2345,9 @@ function animate(){
     fastDust.geometry.attributes.position.needsUpdate=true; }
 
   // pianeti
-  planetTimer-=dt; if(planetTimer<=0){ planetTimer=3.5+Math.random()*4; const fp=planets.find(p=>!p.active); if(fp&&Math.random()<director.cur.planet*1.4+0.14){ grazeNext=(Math.random()<0.05); fp.spawn(false,null,Math.random()<0.45); grazeNext=false; } }   // più pianeti + base più alta (niente vuoto); ~45% mondi lontani defilati; ~5% flyby
+  planetTimer-=dt;
+  if(!planets.some(p=>p.active&&!p._distant)){ const fp=planets.find(p=>!p.active); if(fp){ fp.spawn(false,null,false); planetTimer=3.5+Math.random()*4; } }   // GARANZIA: sempre almeno 1 pianeta HERO (passaggio ravvicinato) — i mondi di sfondo non bastano
+  else if(planetTimer<=0){ planetTimer=3.5+Math.random()*4; const fp=planets.find(p=>!p.active); if(fp&&Math.random()<director.cur.planet*1.4+0.14){ grazeNext=(Math.random()<0.16); let _nd=0; for(const p of planets) if(p.active&&p._distant) _nd++; fp.spawn(false,null, _nd<5 && Math.random()<0.62); grazeNext=false; } }   // spawn probabilistico + flyby; cap 5 mondi di sfondo → restano slot per i passaggi hero
   let nearestPlanet=null,nearScore=0,nearSun=null,nearSunK=0;
   for(const p of planets){ p.update(dt,speed); if(!p.active) continue; const z=p.mesh.position.z;
     if(p.isSun){ if(z>-1400&&z<90){ const k=p.mesh.scale.x/Math.max(70,-z+160); if(k>nearSunK){nearSunK=k;nearSun=p;} } }
@@ -2045,9 +2359,9 @@ function animate(){
   // hint di raggio di luce: appare SOLO con un Sole naturale molto vicino, tinto sulla regione, intensità bassa
   if(godray){ const gk=nearSun?THREE.MathUtils.clamp(nearSunK*4.0-0.4,0,1):0;
     if(gk>0.001){ godray.visible=true; godray.position.copy(nearSun.mesh.position); godray.position.z+=12;
-      const gs=nearSun.mesh.scale.x*(2.2+gk*1.6); godray.scale.set(gs,gs,1);
+      const gs=nearSun.mesh.scale.x*(2.4+gk*2.2); godray.scale.set(gs,gs,1);
       godray.material.color.copy(director.key).lerp(_warm,0.4);
-      godray.material.opacity=godray.material.opacity+(gk*0.22 - godray.material.opacity)*Math.min(1,dt*2.0); }
+      godray.material.opacity=godray.material.opacity+(gk*0.34 - godray.material.opacity)*Math.min(1,dt*2.0); }
     else if(godray.material.opacity>0.002){ godray.material.opacity+= -godray.material.opacity*Math.min(1,dt*2.0); }
     else { godray.material.opacity=0; godray.visible=false; } }
   // (B) BUFFETING: se il pianeta più vicino è un raro flyby ravvicinato, calcola quanto siamo dentro la ghiera d'atmosfera
@@ -2057,7 +2371,7 @@ function animate(){
     const shellTop=r*1.025+10, shellBot=r*1.025;                  // ghiera: dal bordo atmosfera fino a 10 unità sopra
     planetBuffet=THREE.MathUtils.clamp((shellTop-_d)/(shellTop-shellBot),0,1);  // 0 fuori, →1 vicino al bordo atmosfera (mai dentro la sfera)
     planetBuffet=planetBuffet*planetBuffet*(3-2*planetBuffet);    // smoothstep: ingresso/uscita morbidi (niente pop)
-    if(planetBuffet>0.2 && !grazeFired){ grazeFired=true; hitFlipTarget += 6.28318*(3+(Math.random()*2|0)); hitFlash=Math.max(hitFlash,0.4); }  // TOCCATO il pianeta → BURST di capriole
+    if(planetBuffet>0.2 && !grazeFired){ grazeFired=true; hitFlipTarget += 6.28318*(5+(Math.random()*3|0)); hitFlash=Math.max(hitFlash,0.4); }  // TOCCATO il pianeta → BURST di capriole
   }
   if(planetBuffet<0.05) grazeFired=false;                          // riarma il trigger per il prossimo sfioramento
 
@@ -2077,14 +2391,14 @@ function animate(){
       if(pz<0&&a.z>=0){ const _hd=Math.hypot(a.x,a.y);
         if(_hd<10) TEL.meteors++;                                   // conteggio sfiorati invariato
         // PASSAGGIO RAVVICINATO GENUINO (mai una rotta scriptata): reazione sobria one-shot
-        if(_hd<2.6 && astHitCD<=0){ astHitCD=0.8;                  // anti doppio-trigger fra istanze
+        if(_hd<4.5 && astHitCD<=0){ astHitCD=0.4;                  // soglia d'impatto più larga + cooldown più corto
           const _ks=THREE.MathUtils.clamp(a.s/4.0,0.35,1.0);       // sasso grande → reazione un filo più decisa (ma sempre sobria)
           const _inv=1/Math.max(_hd,0.4);
           _hitImp.set(-a.x*_inv,-a.y*_inv,0).multiplyScalar(0.14*_ks);  // spinta LONTANO dalla direzione d'impatto (x/y), piccola
           hitFlash =Math.max(hitFlash ,0.5*_ks);                   // bagliore sul visore
           hitTremor=Math.max(hitTremor,0.06*_ks);                  // ampiezza del tremito
           hitTumble=Math.max(hitTumble,0.10*_ks);                  // micro-capriola extra
-          hitFlipTarget += 6.28318*(3+(Math.random()*2|0));        // BURST: 3-4 capriole verticali veloci su se stesso
+          hitFlipTarget += 6.28318*(5+(Math.random()*3|0));        // BURST: 3-4 capriole verticali veloci su se stesso
         } }
       if(a.z>80) astRe(i,-700-Math.random()*500);
       _e.set(a.rx,a.ry,a.rz);_q.setFromEuler(_e);_p.set(a.x,a.y,a.z);_s.setScalar(a.s);_m.compose(_p,_q,_s);asteroids.setMatrixAt(i,_m); }
@@ -2134,6 +2448,8 @@ function animate(){
   bolideTimer-=dt; if(bolideTimer<=0 && !bolide.active){ bolideTimer=130+Math.random()*200; bolide.spawn(); } bolide.update(dt,speed);
   gwTimer-=dt; if(gwTimer<=0 && !gwRipple.active){ gwTimer=360+Math.random()*420; gwRipple.spawn(); } gwRipple.update(dt);
   whalePodTimer-=dt; if(whalePodTimer<=0 && !whalePod.active){ whalePodTimer=240+Math.random()*260; whalePod.spawn(); } whalePod.update(dt,speed);
+  solarEclipseTimer-=dt; if(solarEclipseTimer<=0 && !solarEclipse.active){ solarEclipseTimer=520+Math.random()*360; solarEclipse.spawn(); } solarEclipse.update(dt,speed);
+  lunarEclipseTimer-=dt; if(lunarEclipseTimer<=0 && !lunarEclipse.active){ lunarEclipseTimer=620+Math.random()*360; lunarEclipse.spawn(); } lunarEclipse.update(dt,speed);
   // PIANETI PERMANENTI: ne mostra uno alla volta, ruotando sul catalogo acquistato
   ownedTimer-=dt; if(ownedTimer<=0){ ownedTimer=30+Math.random()*40; const free=ownedPlanets.find(p=>!p.active); if(free && permPlanets.length){ free.spawn(permPlanets[ownedIdx%permPlanets.length]); ownedIdx++; } }
   for(const p of ownedPlanets) p.update(dt,speed);
@@ -2159,18 +2475,18 @@ function animate(){
   flipCur += (flipTarget-flipCur)*Math.min(1,dt*timeScale*2.4);
   const _flipping=(flipTarget-flipCur)>0.05;
   manArmOpen.value += ((_flipping?1:0)-manArmOpen.value)*Math.min(1,dt*4.0);   // braccia si aprono/chiudono dolcemente
-  manArmBack.value += ((sling>0?1:0)-manArmBack.value)*Math.min(1,dt*5.0);     // FIONDA: braccia/gambe scaraventate indietro
+  manArmBack.value += (((sling>0||rocketE>0.25)?1:0)-manArmBack.value)*Math.min(1,dt*5.0);     // braccia/gambe indietro: fionda O caduta-razzo (posa streamlined)
   if(flipCur>=6.28318 && flipTarget>=6.28318){ flipCur-=6.28318; flipTarget-=6.28318; }  // tieni gli angoli piccoli (24/7)
   // velocità di rotazione Y che varia dolcemente nel tempo (a volte quasi ferma, a volte un giro più deciso)
-  spinRetargetT-=dt*timeScale; if(spinRetargetT<=0){ spinRetargetT=20+Math.random()*30; spinRateTarget=0.04+Math.random()*0.10; }
+  spinRetargetT-=dt*timeScale; if(spinRetargetT<=0){ spinRetargetT=20+Math.random()*30; spinRateTarget=0.02+Math.random()*0.05; }   // capriola più lenta
   spinRateCur += (spinRateTarget-spinRateCur)*Math.min(1,dt*0.25);
-  manSpin=(manSpin+dt*timeScale*spinRateCur)%6.28318;                 // rotazione continua su se stesso, ritmo variabile
+  manSpin=(manSpin+dt*timeScale*spinRateCur*(1+rocketE*1.6))%6.28318;                 // rotazione su se stesso, più decisa alla velocità di caduta
   // CAPOVOLTA continua sull'asse X: la caduta libera fa ruzzolare il corpo a 360° (lento, ritmo variabile)
-  tumbleRetargetT-=dt*timeScale; if(tumbleRetargetT<=0){ tumbleRetargetT=16+Math.random()*24; tumbleRateTarget=0.05+Math.random()*0.10; }
+  tumbleRetargetT-=dt*timeScale; if(tumbleRetargetT<=0){ tumbleRetargetT=16+Math.random()*24; tumbleRateTarget=0.025+Math.random()*0.05; }   // capovolta più lenta
   tumbleRateCur += (tumbleRateTarget-tumbleRateCur)*Math.min(1,dt*0.25);
-  manTumble=(manTumble+dt*timeScale*tumbleRateCur)%6.28318;
+  manTumble=(manTumble+dt*timeScale*tumbleRateCur*(1+rocketE*2.4))%6.28318;   // tumble più deciso alla velocità di caduta
   // BURST capriole all'impatto: gira veloce sull'asse X (3-4 giri), decelera e atterra DRITTO (target = multiplo di 2π → reset invisibile)
-  if(hitFlipTarget>0){ const _rem=hitFlipTarget-hitFlip; hitFlip += dt*timeScale*Math.max(3.0,Math.min(8.0,_rem*3.0)); if(hitFlip>=hitFlipTarget-0.02){ hitFlip=0; hitFlipTarget=0; } }
+  if(hitFlipTarget>0){ const _rem=hitFlipTarget-hitFlip; hitFlip += dt*timeScale*(1+rocketE*2.0)*Math.max(0.8,Math.min(9.0,_rem*2.4)); if(hitFlip>=hitFlipTarget-0.04){ hitFlip=0; hitFlipTarget=0; } }   // capriola: ease-out graduale (no stop secco) + velocità in base alla caduta
   // CAPRIOLA LENTA occasionale su asse alternato (barrel roll completo, dolce, non un giro brusco)
   if(barrelTarget<=barrelCur+0.01 && barrelHold<=0){ if(Math.random()<dt*0.012){ barrelCur%=6.28318; barrelTarget=barrelCur+6.28318; barrelAxis=Math.random()<0.5?0:1; barrelHold=30+Math.random()*60; } }   // wrap a inizio giro → barrelCur resta limitato (24/7, niente drift di precisione)
   else barrelHold-=dt*timeScale;
@@ -2184,7 +2500,7 @@ function animate(){
   const _bDriftX=Math.sin(mt*1.3)*planetBuffet*0.10, _bDriftY=Math.sin(mt*1.07+2.1)*planetBuffet*0.08;   // ondulazione lenta da atmosfera
   manRig.position.y = Math.sin(mt*0.05)*0.14 + _hitImp.y + _bDriftY;
   manRig.position.x = Math.sin(mt*0.04+0.5)*0.12 + _hitImp.x + _bDriftX;
-  manRig.position.z = -slingE*1.6 + _hitImp.z*0.5;                    // scaraventato in avanti (+ impulso colpo, trascurabile)
+  manRig.position.z = -slingE*1.6 - rocketE*1.5 + _hitImp.z*0.5;                    // scaraventato in avanti (fionda + spinta razzo)
 
   // --- CAMERA: fissa dietro l'uomo, respiro lievissimo di quota/distanza ---
   const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*2.0;
@@ -2192,19 +2508,18 @@ function animate(){
   const _el=1.0 + Math.sin(camPhase*0.045)*0.22;                       // quota che respira (ridotta)
   camera.position.set(Math.sin(_az)*camDist, _el, Math.cos(_az)*camDist);
   let lx=manRig.position.x*0.4, ly2=manRig.position.y*0.5+0.15;
-  if(nearestPlanet){ const inf=THREE.MathUtils.clamp(nearScore*1.4,0,0.5); planetFocus.copy(nearestPlanet.mesh.position); lx+=THREE.MathUtils.clamp(planetFocus.x*0.02,-1.2,1.2)*inf; ly2+=THREE.MathUtils.clamp(planetFocus.y*0.02,-0.6,0.6)*inf; }
-  // il bersaglio insegue dolcemente → niente STACCHI quando il "pianeta più vicino" entra/esce o cambia (panoramica morbida)
+  // NIENTE panoramica verso i pianeti: la camera resta SEMPRE sull'astronauta → nessun cambio d'inquadratura (richiesta utente)
   camLookX += (lx-camLookX)*Math.min(1,dt*2.2);
   camLookY += (ly2-camLookY)*Math.min(1,dt*2.2);
   tmpLook.set(camLookX,camLookY,0); camera.lookAt(tmpLook);
-  camera.rotation.z+=Math.sin(camPhase*0.03)*0.012;
-  camera.fov=baseFov+Math.sin(camPhase*0.045)*1.6 + director.surge*3.5 + slingE*7.0; camera.updateProjectionMatrix();   // FOV si allarga durante la fionda
+  camera.rotation.z+=Math.sin(camPhase*0.03)*0.010;
+  camera.fov=baseFov+Math.sin(camPhase*0.045)*1.0 + slingE*3.0 + rocketE*7.0; camera.updateProjectionMatrix();   // FOV si allarga DOLCEMENTE con la velocità (niente vibrazione "tamburo")
 
-  cinePass.uniforms.uTime.value=shaderTime;
-  bloomPass.strength=0.5+director.cur.aB*0.38+director.surge*0.24;   // bloom più contenuto (meno "acceso")
+  cinePass.uniforms.uTime.value=shaderTime; cinePass.uniforms.uRocket.value=rocketE;
+  bloomPass.strength=Math.min(1.05, 0.5+director.cur.aB*0.38+director.surge*0.24);   // bloom più contenuto (meno "acceso") + cap: niente over-bloom su supernova+surge col radius stretto
 
   composer.render();
-  telUpdate(dt);
+  telUpdate(dt); updateAccent(dt);   // accento UI segue il mood della scena (transizione lenta)
   const audioMood={ planet: nearestPlanet?Math.min(nearScore*2,1):0, dread:1-timeScale, nova:supernova.active?1:0 };
   audio.update(dt,director,audioMood);
 
@@ -2262,7 +2577,7 @@ class AdaptiveMusicDeck{
   constructor(ctx,dest,onTrack){
     this.ctx=ctx; this.onTrack=onTrack; this.library=[]; this.bag=[]; this.mood='galassia';
     this.started=false; this.loaded=false; this.enabled=true; this.active=-1; this.breakUntil=0;
-    this.rate=0.94; this.targetRate=0.94; this.level=0.74; this.blocked=false;
+    this.rate=0.94; this.targetRate=0.94; this.speedMul=1; this.level=0.74; this.blocked=false;
     this.hp=ctx.createBiquadFilter(); this.hp.type='highpass'; this.hp.frequency.value=32; this.hp.Q.value=0.35;
     this.lp=ctx.createBiquadFilter(); this.lp.type='lowpass'; this.lp.frequency.value=18000; this.lp.Q.value=0.25;
     this.bus=ctx.createGain(); this.bus.gain.value=0.82;
@@ -2272,6 +2587,8 @@ class AdaptiveMusicDeck{
     if(PRELOADED_MUSIC_LIBRARY&&PRELOADED_MUSIC_LIBRARY.length){ this.library=PRELOADED_MUSIC_LIBRARY.slice();this.loaded=true;this._refill(); }
     else this._load();
   }
+  setSpeedMul(m){ m=Math.max(0.6,Math.min(2.2,m)); if(Math.abs(m-this.speedMul)<0.015) return; this.speedMul=m;
+    for(const d of this.decks){ if(d.track){ d.el.playbackRate=this.rate*this.speedMul; d.el.defaultPlaybackRate=this.rate*this.speedMul; } } }   // la musica segue la velocità della fase (pitch preservato)
   _makeDeck(){
     const el=new Audio(); el.preload='metadata'; el.playsInline=true; el.preservesPitch=true; el.webkitPreservesPitch=true;
     const gain=this.ctx.createGain(); gain.gain.value=0;
@@ -2326,7 +2643,7 @@ class AdaptiveMusicDeck{
   _playInto(index,track,fade){
     const d=this.decks[index]; if(d.track) this._clear(d);
     d.track=track; d.closing=false; d.stopAt=0; d.pauseAt=0; d.fadeLead=18+Math.random()*16;
-    d.el.src='assets/music/'+track.file; d.el.playbackRate=this.rate; d.el.defaultPlaybackRate=this.rate;
+    d.el.src='assets/music/'+track.file; d.el.playbackRate=this.rate*this.speedMul; d.el.defaultPlaybackRate=this.rate*this.speedMul;   // +10% velocità audio (preservesPitch → niente chipmunk)
     d.el.preservesPitch=true; d.el.webkitPreservesPitch=true; d.el.load();
     d.gain.gain.value=0;
     const p=d.el.play(); if(p&&p.catch) p.catch(e=>{this.blocked=true;console.warn('[music] play in attesa di interazione:',track.title,e);});
@@ -2360,7 +2677,7 @@ class AdaptiveMusicDeck{
     this.targetRate=Math.max(0.82,Math.min(1.06,0.88+sn*0.16-(m.dread||0)*0.08+(m.nova||0)*0.015));
     this.rate+=(this.targetRate-this.rate)*Math.min(1,dt/9);
     for(const d of this.decks){
-      if(d.track){ d.el.playbackRate=this.rate; d.el.defaultPlaybackRate=this.rate; }
+      if(d.track){ d.el.playbackRate=this.rate*this.speedMul; d.el.defaultPlaybackRate=this.rate*this.speedMul; }
       if(d.stopAt&&now>=d.stopAt) this._clear(d);
       else if(d.pauseAt&&now>=d.pauseAt){d.pauseAt=0;try{d.el.pause();}catch(_){}}
     }
@@ -2381,6 +2698,10 @@ class AdaptiveMusicDeck{
     return Math.max(0,Math.min(1,presence));
   }
 }
+// 9 categorie EQUE (~11% l'una). In _indexVoice si normalizza sulle categorie EFFETTIVAMENTE presenti (ignote → 0.02).
+const VOICE_CW={cosmos:0.111,physics:0.111,living_planet:0.111,restless_earth:0.111,human_body:0.111,deep_past:0.111,places:0.111,frontiers:0.111,philosophy:0.112};
+// etichetta a schermo del GENERE quando parte una capsula (label per categoria)
+const VOICE_CATLABEL={cosmos:'The Cosmos',physics:'Strange Physics',living_planet:'The Living Planet',restless_earth:'Restless Earth',human_body:'Body & Mind',deep_past:'The Deep Past',places:"Earth's Places",frontiers:'Frontiers',philosophy:'Philosophy'};
 class AmbientEngine{
   constructor(){ this.ready=false; this.useSamples=false; this._organVoices=[]; }
   start(){ if(this.ready) return; const Ctx=window.AudioContext||window.webkitAudioContext; this.ctx=new Ctx(); const ctx=this.ctx;
@@ -2567,21 +2888,67 @@ class AmbientEngine{
     else { o.type='triangle'; o.frequency.value=this._f(this.root-5);
       g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.055,t+0.04); g.gain.exponentialRampToValueAtTime(0.0001,t+3.0); o.start(t); o.stop(t+3.1); } }   // swell grave caldo (whales/aurora/world/nebula)
   _initNarrator(){ const ctx=this.ctx;   // VOCE NARRANTE: file MP3 in assets/voice/ + manifest voice.json — inerte/innocua se assenti
-    this.voiceLib=[]; this.voiceBag=[]; this.voiceBad=new Set(); this.voiceBusy=false; this.voiceLast=-1; this.voiceT=0; this.voiceEvery=120; this.voiceBadClearT=0; this._voiceTok=0;   // prima frase ~2 min, poi ~4.5-6 min
+    this.voiceLib=[]; this.voiceBad=new Set(); this.voiceBusy=false; this.voiceLast=-1; this.voiceT=0; this.voiceEvery=8; this.voiceBadClearT=0; this._voiceTok=0;   // prima capsula ~8s, poi stacco ~10s tra una e l'altra
+    this.playCount={}; try{ if(typeof localStorage!=='undefined'){ const _s=localStorage.getItem('ce_vcount'); if(_s) this.playCount=JSON.parse(_s)||{}; } }catch(e){}   // counter "meno ascoltate prima" (persistente tra i reload 24/7)
+    // DOCUMENTARIO a CAPSULE: kind 'capsule' (contenuto pesato per categoria) + strato identitario 'identity'/'chronicle'/'philosophy' (refrain ogni 20-30 min)
+    this.capIdx=[]; this.soulIdx=[]; this.capByCat={}; this.voiceRecent=[];
+    this.soulT=0; this.soulEvery=1200+Math.random()*600;          // refrain identitario ogni 20-30 min
+    this._preferTag=null; this._preferT=0;                        // bias evento: la prossima capsula preferisce un fenomeno appena apparso (~3 min)
+    // (i pesi delle categorie sono in VOICE_CAPW, costante di modulo → disponibili anche prima del gesto audio)
     this.voiceEl=new Audio(); this.voiceEl.preload='auto';
     try{ this.voiceSrc=ctx.createMediaElementSource(this.voiceEl); }catch(e){ this.voiceSrc=null; }
     this.voiceGain=ctx.createGain(); this.voiceGain.gain.value=0.9;
     if(this.voiceSrc) this.voiceSrc.connect(this.voiceGain);
     this.voiceGain.connect(this.limiter);   // voce ASCIUTTA, instradata DOPO il duck → resta chiara e sopra al bed abbassato
     this.voiceVerb=ctx.createGain(); this.voiceVerb.gain.value=0.16; this.voiceGain.connect(this.voiceVerb).connect(this.verb);   // un velo di spazio (riverbero)
-    fetch('assets/voice/voice.json',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(j=>{ this.voiceLib=Array.isArray(j)?j.filter(x=>x&&x.file):[]; if(this.voiceLib.length) console.log('[voice]',this.voiceLib.length,'righe narranti caricate'); }).catch(()=>{}); }
-  _voicePick(){ const av=[]; for(let i=0;i<this.voiceLib.length;i++) if(!this.voiceBad.has(i)) av.push(i); if(!av.length) return -1;
-    if(!this.voiceBag.length){ this.voiceBag=av.slice(); for(let i=this.voiceBag.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [this.voiceBag[i],this.voiceBag[j]]=[this.voiceBag[j],this.voiceBag[i]]; } }   // giro completo (no-repeat) poi rimescola
-    let idx=this.voiceBag.pop(); if(idx===this.voiceLast && this.voiceBag.length){ const a=this.voiceBag.pop(); this.voiceBag.unshift(idx); idx=a; } return idx; }
-  _speak(){ if(this.voiceBusy||!this.voiceLib.length) return; const idx=this._voicePick(); if(idx<0) return; const line=this.voiceLib[idx],el=this.voiceEl,tok=++this._voiceTok; this.voiceBusy=true; this.voiceLast=idx;
-    const restore=()=>{ clearTimeout(this._voiceTimer); el.onplaying=el.onended=el.onerror=null; if(this.duckGain) this.duckGain.gain.setTargetAtTime(1.0,this.ctx.currentTime,0.7); if(typeof $t!=='undefined'&&$t&&$t.log) $t.log.classList.remove('on'); this.voiceBusy=false; };
+    this.nextIdx=-1;   // NEXT SIGNAL: prossima capsula pre-scelta
+    try{ this.voiceAnalyser=ctx.createAnalyser(); this.voiceAnalyser.fftSize=128; this.voiceAnalyser.smoothingTimeConstant=0.7; this.voiceGain.connect(this.voiceAnalyser); this._waveData=new Uint8Array(this.voiceAnalyser.frequencyBinCount); }catch(e){}   // tap per il waveform audio-reattivo
+    fetch('assets/voice/voice.json',{cache:'no-store'}).then(r=>r.ok?r.json():[]).then(j=>{ this.voiceLib=Array.isArray(j)?j.filter(x=>x&&x.file):[]; this._indexVoice(); if(this.voiceLib.length) console.log('[voice]',this.voiceLib.length,'righe ('+this.capIdx.length+' capsule, '+this.soulIdx.length+' identitarie)'); }).catch(()=>{}); }
+  _indexVoice(){ this.capIdx=[]; this.soulIdx=[]; this.capByCat={};   // partiziona la libreria in capsule (per categoria) e strato identitario
+    for(let i=0;i<this.voiceLib.length;i++){ const v=this.voiceLib[i], k=v.kind||'chronicle';
+      if(k==='capsule'){ this.capIdx.push(i); const c=v.cat||'strange'; (this.capByCat[c]||(this.capByCat[c]=[])).push(i); }
+      else this.soulIdx.push(i); }   // identity | chronicle | philosophy → strato "anima"
+    const cats=Object.keys(this.capByCat); let tot=0; const w=cats.map(c=>{ const x=(VOICE_CW[c]!=null?VOICE_CW[c]:0.02); tot+=x; return [c,x]; });
+    this._catPick=[]; let acc=0; for(const e of w){ acc+=e[1]/(tot||1); this._catPick.push([e[0],acc]); } }   // cumulativo normalizzato SOLO sulle categorie presenti → proporzioni corrette qualunque sia il mix
+  enqueueVoice(tag){ if(tag){ this._preferTag=tag; this._preferT=0; } }   // un fenomeno è apparso: la prossima capsula lo preferisce (valido ~3 min)
+  _notRecent(arr){ const out=arr.filter(i=>!this.voiceBad.has(i)&&this.voiceRecent.indexOf(i)<0); return out.length?out:arr.filter(i=>!this.voiceBad.has(i)); }
+  _cid(i){ const v=this.voiceLib[i]; return v&&v.id!=null?v.id:i; }
+  _remember(idx){ this.voiceRecent.push(idx); const cap=Math.max(6,Math.min(28,(this.voiceLib.length*0.45)|0)); while(this.voiceRecent.length>cap) this.voiceRecent.shift(); this.voiceLast=idx;
+    if(!this.playCount) this.playCount={}; const id=this._cid(idx); this.playCount[id]=(this.playCount[id]||0)+1; this._saveCounts(); }   // +1 al contatore della riga ascoltata
+  _saveCounts(){ try{ if(typeof localStorage!=='undefined') localStorage.setItem('ce_vcount', JSON.stringify(this.playCount)); }catch(e){} }
+  _pickCapsule(){ if(!this.capIdx.length) return this._pickSoul();
+    let pool=this.capIdx.filter(i=>!this.voiceBad.has(i)); if(!pool.length) pool=this.capIdx.slice();
+    if(this._preferTag){ const m=pool.filter(i=>this.voiceLib[i].tag===this._preferTag); if(m.length){ this._preferTag=null; pool=m; } }   // bias evento: tra le taggate, comunque la MENO ascoltata
+    const pc=this.playCount||{}; let min=Infinity; for(const i of pool){ const c=pc[this._cid(i)]||0; if(c<min) min=c; }   // ROTAZIONE: tutte partono una volta prima di ripetersi → scegli random tra quelle col contatore MINIMO
+    let tier=pool.filter(i=>(pc[this._cid(i)]||0)===min);
+    if(tier.length>1){ const t2=tier.filter(i=>i!==this.voiceLast); if(t2.length) tier=t2; }   // niente ripetizione immediata
+    return tier[(Math.random()*tier.length)|0]; }
+  _pickSoul(){ const src=this.soulIdx.length?this.soulIdx:this.capIdx; if(!src.length) return -1; const av=this._notRecent(src); return av.length?av[(Math.random()*av.length)|0]:-1; }
+  _caption(line){ const t=line.text||''; if(line.attribution) return t+'  — '+line.attribution; const k=line.kind||'chronicle'; return (k==='capsule'||k==='philosophy')?t:('“'+t+'”'); }   // cronaca/refrain tra virgolette (la voce dell'uomo); capsule documentario senza
+  _setNow(line){ if(typeof $t==='undefined'||!$t) return; const isCap=(line.kind==='capsule'||line.kind==='philosophy');   // pannello NOW TRANSMITTING
+    if($t.nowTitle) $t.nowTitle.textContent = isCap ? (line.title || VOICE_CATLABEL[line.cat] || 'Transmission') : 'Eternal Fall';
+    if($t.nowTag)   $t.nowTag.textContent   = isCap ? (line.tagline || VOICE_CATLABEL[line.cat] || '') : '— a voice still falling'; }
+  _showNext(){ if(typeof $t==='undefined'||!$t||!$t.nextTitle) return; const v=this.voiceLib[this.nextIdx];   // pannello NEXT SIGNAL
+    $t.nextTitle.textContent = v ? (v.title || VOICE_CATLABEL[v.cat] || 'Signal') : '—'; }
+  _updateEta(){ if(typeof $t==='undefined'||!$t||!$t.nextEta||!this.capIdx.length) return;   // countdown al prossimo argomento
+    let sec; if(this.voiceBusy && this.voiceEl && isFinite(this.voiceEl.duration) && this.voiceEl.duration>0){ sec=Math.max(0,this.voiceEl.duration-this.voiceEl.currentTime)+this.voiceEvery; }
+    else { sec=Math.max(0,this.voiceEvery-this.voiceT); }
+    const s=Math.ceil(sec), txt=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+    if(txt!==this._etaTxt){ this._etaTxt=txt; $t.nextEta.textContent=txt; } }
+  drawWave(){ const c=this._waveCanvas||(this._waveCanvas=(typeof document!=='undefined'?document.getElementById('wave'):null)); if(!c) return;
+    const x=this._waveCtx||(this._waveCtx=c.getContext('2d')); if(!x) return; const W=c.width,H=c.height; x.clearRect(0,0,W,H);
+    if(this.voiceAnalyser && this._waveData) this.voiceAnalyser.getByteFrequencyData(this._waveData);
+    const N=40, bw=W/N; this._waveT=(this._waveT||0)+0.045; x.fillStyle='rgb('+(_accCur[0]|0)+','+(_accCur[1]|0)+','+(_accCur[2]|0)+')';   // accento dinamico
+    for(let i=0;i<N;i++){ let v=this._waveData?(this._waveData[i+1]||0)/255:0;   // reattivo alla voce
+      const idle=0.10+0.09*Math.abs(Math.sin(this._waveT+i*0.5));                 // pavimento "respiro" quando tace
+      v=Math.max(v, this.voiceBusy?v:idle); const h=Math.max(2, v*v*H);
+      x.globalAlpha=0.55+0.4*v; x.fillRect(i*bw+1, (H-h)/2, Math.max(1,bw-2), h); }
+    x.globalAlpha=1; }
+  _speak(idx){ if(this.voiceBusy||!this.voiceLib.length) return; if(idx==null) idx=this._pickCapsule(); if(idx<0||idx>=this.voiceLib.length) return; const line=this.voiceLib[idx],el=this.voiceEl,tok=++this._voiceTok; this.voiceBusy=true; this._remember(idx);
+    const restore=()=>{ clearTimeout(this._voiceTimer); el.onplaying=el.onended=el.onerror=null; if(this.duckGain) this.duckGain.gain.setTargetAtTime(1.0,this.ctx.currentTime,0.7); if(typeof $t!=='undefined'&&$t){ if($t.log)$t.log.classList.remove('on'); if($t.genre)$t.genre.classList.remove('on'); } this.voiceBusy=false; };
     this._voiceTimer=setTimeout(restore,30000);   // safety: nulla resta appeso
-    el.onplaying=()=>{ if(tok!==this._voiceTok) return; if(this.duckGain) this.duckGain.gain.setTargetAtTime(0.45,this.ctx.currentTime,0.4); if(typeof $t!=='undefined'&&$t&&$t.log){ $t.log.textContent='“'+(line.text||'')+'”'; $t.log.classList.add('on'); } };   // duck + sottotitolo
+    el.onplaying=()=>{ if(tok!==this._voiceTok) return; if(this.duckGain) this.duckGain.gain.setTargetAtTime(0.45,this.ctx.currentTime,0.4);
+      if(typeof $t!=='undefined'&&$t){ if($t.log){ $t.log.textContent=this._caption(line); $t.log.classList.add('on'); } this._setNow(line); } };   // duck + caption + NOW TRANSMITTING
     el.onended=()=>{ if(tok===this._voiceTok) restore(); };
     el.onerror=()=>{ if(tok!==this._voiceTok) return; this.voiceBad.add(idx); restore(); };   // file mancante/corrotto → salta, riprova tra ~8 min
     try{ el.src='assets/voice/'+line.file; el.load(); }catch(e){}
@@ -2615,7 +2982,18 @@ class AmbientEngine{
     if(this.rhyBase>0||this.rhyCur>0.01){ this.beatT+=dt; while(this.beatT>=this.beatEvery){ this.beatT-=this.beatEvery; this._beatStep(); } }   // clock a tempo fisso (orologio cosmico): passo accurato anche con frame lenti
     this.movT+=dt; if(this.movT>=this.movEvery){ this.movT=0; this.movEvery=150+Math.random()*150; let n=this.movIdx; while(n===this.movIdx) n=this.movPick[(Math.random()*this.movPick.length)|0]; this._applyMovement(n,14+Math.random()*8); }   // deriva lenta: ogni ~2.5-5min un nuovo movimento, transizione morbida
     this.voiceBadClearT=(this.voiceBadClearT||0)+dt; if(this.voiceBadClearT>=480){ this.voiceBadClearT=0; if(this.voiceBad) this.voiceBad.clear(); }   // ~ogni 8 min ridà una chance ai file voce (anche se aggiunti durante la live)
-    if(this.voiceLib&&this.voiceLib.length){ this.voiceT+=dt; if(!this.voiceBusy&&this.voiceT>=this.voiceEvery){ this.voiceT=0; this.voiceEvery=270+Math.random()*90; this._speak(); } }   // VOCE NARRANTE ~ogni 5 min (con jitter)
+    if(this.voiceLib&&this.voiceLib.length){
+      if(this._preferTag){ this._preferT+=dt; if(this._preferT>180) this._preferTag=null; }   // il bias evento scade dopo ~3 min
+      this.soulT+=dt;
+      if(this.capIdx.length && this.nextIdx<0){ this.nextIdx=this._pickCapsule(); this._showNext(); }   // inizializza NEXT SIGNAL
+      if(!this.voiceBusy){ this.voiceT+=dt;   // il timer conta SOLO nel vuoto fra una capsula e l'altra → lo stacco parte a fine capsula
+        if(this.voiceT>=this.voiceEvery){ this.voiceT=0;
+          if(this.capIdx.length){ this.voiceEvery=9+Math.random()*2;   // DOCUMENTARIO continuo: ~10s di stacco tra una capsula e la successiva
+            if(this.soulT>=this.soulEvery && this.soulIdx.length){ this.soulT=0; this.soulEvery=1200+Math.random()*600; this._speak(this._pickSoul()); }   // ogni 20-30 min torna un refrain identitario (non tocca NEXT)
+            else { if(this.nextIdx<0) this.nextIdx=this._pickCapsule(); const cur=this.nextIdx; this._speak(cur); this.nextIdx=this._pickCapsule(); this._showNext(); }   // suona la prossima pre-scelta, poi pre-sceglie la successiva
+          } else { this.voiceEvery=270+Math.random()*90; this._speak(this._pickSoul()); } } }   // nessuna capsula ancora → comportamento attuale (~5 min, solo cronaca)
+      this.drawWave(); this._updateEta();   // waveform audio-reattivo + countdown prossimo argomento, ogni frame
+    }
   }
 }
 const audio=new AmbientEngine();
@@ -2623,6 +3001,62 @@ window.cadutaMusicNext=()=>!!(audio.music&&audio.music.next());
 window.cadutaMusicPause=()=>!!(audio.music&&audio.music.setEnabled(false));
 window.cadutaMusicPlay=()=>!!(audio.music&&audio.music.setEnabled(true));
 window.cadutaMusicStatus=()=>audio.music?audio.music.status():{enabled:false,title:'audio non avviato'};
+
+/* ---------------- REGISTRAZIONE clip 4K (locale): forza 3840x2160, 16:9 pieno, scena pulita; musica a parte ---------------- */
+let _rec4k=false,_recW=3840,_recH=2160;
+window.cadutaListTracks=()=>{ try{ return (audio.music.library||[]).map((t,i)=>i+': '+t.title); }catch(e){ return 'audio non avviato (premi ENTER prima)'; } };
+window.cadutaPlayTrack=(i)=>{ try{ const m=audio.music, lib=m.library; if(!lib||!lib[i]) return 'traccia '+i+' inesistente (usa cadutaListTracks())'; m.started=true; m.enabled=true; try{audio.ctx.resume();}catch(_){} m._playInto(m.active<0?0:1-m.active, lib[i], 2.5); return 'play: '+lib[i].title; }catch(e){ return 'err '+e.message; } };
+// SICUREZZA: gli strumenti di registrazione si attivano SOLO con ?rec=1 nell'URL → sul live (?live=1 senza rec) sono inerti, zero impatto
+const _recOK=()=>/[?&]rec=1/.test(location.search);
+// forza la REGIONE/sfondo (es. 'nebulosa' = viola) e la blocca per la ripresa
+window.cadutaRegion=(name)=>{ if(!_recOK()) return 'aggiungi &rec=1 all\'URL'; const p=PRESETS.find(x=>x.name===name); if(!p) return 'regioni: '+PRESETS.map(x=>x.name).join(', ');
+    const c=Object.assign({},p); director.from=Object.assign({},c); director.to=Object.assign({},c); director.cur=Object.assign({},c); director.grade.set(c.grade); director.key.set(c.key); director.t=0; director.dur=1; director.hold=99999; return 'regione: '+name; };
+// mette in scena (evento opzionale + regione opzionale), pronto da filmare. Es: cadutaCinema('blackhole',{region:'nebulosa'})
+window.cadutaCinema=(event,opts={})=>{ if(!_recOK()) return 'aggiungi &rec=1 all\'URL'; try{
+    if(opts.region) window.cadutaRegion(opts.region);
+    if(event){ window.cadutaDebugEvent(event);
+      const e=event==='eclipsesolar'?solarEclipse:event==='eclipselunar'?lunarEclipse:null;
+      if(e){ e.g.position.set(opts.x||0, opts.y!=null?opts.y:6, opts.z||-560); e.t=(opts.phase!=null?opts.phase:0.3)*e.dur; } }   // eclissi: vicina, centrata, poco prima della totalità
+    return 'scena pronta: '+(event||'(semplice)')+(opts.region?(' · '+opts.region):'');
+  }catch(err){ return 'err '+err.message; } };
+// registra UNA clip del CANVAS (solo scena, niente overlay) — video puro, la musica si aggiunge dopo
+function _efRecClip(sec,name){ return new Promise(res=>{ try{
+    const stream=renderer.domElement.captureStream(60);
+    const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
+    const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:55000000}), chunks=[];
+    rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(chunks,{type:mime})); a.download=name+'.webm'; document.body.appendChild(a); a.click(); a.remove(); console.log('[clip] scaricata',name); res(); };
+    rec.start(); console.log('[clip] REC',name,sec+'s @',renderer.domElement.width+'x'+renderer.domElement.height); setTimeout(()=>{try{rec.stop();}catch(_){res();}}, sec*1000);
+  }catch(err){ console.warn('[clip] err',err.message); res(); } }); }
+function _ef4kForce(){ renderer.setPixelRatio(1); renderer.setSize(_recW,_recH,false); camera.aspect=_recW/_recH; camera.updateProjectionMatrix();
+  if(composer){ composer.setPixelRatio(1); composer.setSize(_recW,_recH); if(bloomPass) bloomPass.setSize(Math.floor(_recW/bloomDiv),Math.floor(_recH/bloomDiv)); if(cinePass){ cinePass.uniforms.uRes.value.set(_recW,_recH); cinePass.uniforms.uPix.value=1; } }
+  for(const L of starLayers) L.mat.uniforms.uPix.value=1; if(typeof dustMat!=='undefined'&&dustMat) dustMat.uniforms.uPix.value=1; if(fastDust) fastDust.material.uniforms.uPix.value=1; }
+// BATCH 4K: forza 3840x2160 e registra in fila N clip. SOLO con ?rec=1. Scene = stringa evento, oppure {event,region}.
+window.cadutaBatch=async(opts={})=>{
+  if(!_recOK()) return 'apri l\'URL con &rec=1 per registrare (es. ?live=1&rec=1) — bloccato sul live';
+  const sec=opts.seconds||45, gap=opts.gap||5, vertical=!!opts.vertical;
+  // default CURATO: poche eclissi (1), tante scene SEMPLICI e con sfondo VIOLA (nebulosa)
+  const scenes=opts.scenes||[
+    {region:'nebulosa'}, {region:'nebulosa',event:'aurora'}, {region:'galassia'},
+    {region:'nebulosa',event:'whales'}, {region:'galassia',event:'blackhole'}, {region:'nebulosa',event:'comet'},
+    {region:'nebulosa'}, {region:'gelo',event:'aurora'}, {region:'nebulosa',event:'eclipsesolar'}, {region:'galassia',event:'dyson'}
+  ];
+  const oldPix=PIX; _recW=vertical?2160:3840; _recH=vertical?3840:2160;
+  _rec4k=true; PIX=1; _ef4kForce();   // FORZA 4K (il loop animate lo ri-forza ad ogni frame; autoscale/onResize bloccati)
+  console.log('[batch] 4K',_recW+'x'+_recH,'·',scenes.length,'clip da '+sec+'s · NON cambiare scheda per ~'+Math.ceil(scenes.length*(sec+gap+2)/60)+' min');
+  await new Promise(r=>setTimeout(r,700));
+  for(let i=0;i<scenes.length;i++){
+    const sc = typeof scenes[i]==='string' ? {event:scenes[i]} : (scenes[i]||{});
+    if(sc.event) window.cadutaCinema(sc.event,{region:sc.region}); else if(sc.region) window.cadutaRegion(sc.region);
+    const tag=(sc.event||'semplice')+(sc.region?('-'+sc.region):'');
+    await new Promise(r=>setTimeout(r,gap*1000));
+    await _efRecClip(sec, 'ef4k_'+String(i+1).padStart(2,'0')+'_'+tag);
+    await new Promise(r=>setTimeout(r,1800));
+  }
+  _rec4k=false; PIX=oldPix; renderer.setPixelRatio(PIX); if(composer) composer.setPixelRatio(PIX); director.hold=20; director.t=director.dur; onResize(); for(const L of starLayers) L.mat.uniforms.uPix.value=PIX;
+  console.log('[batch] FATTO ·', scenes.length, 'clip 4K nei Download');
+  return 'batch 4K avviato ('+scenes.length+' clip @ '+_recW+'x'+_recH+')';
+};
 
 /* ---------------- catalogo del pubblico (Fase B: /api/stars) ---------------- */
 let lastCatalogTs=0;
@@ -2636,8 +3070,12 @@ const CMD_EVENTS={
   nebula:   ()=> { nebBoost=Math.max(nebBoost,0.9); return true; },
   blackhole:()=> (blackhole && !blackhole.active) ? (blackhole.spawn(),true) : false,
   world:    ()=> { const o=[lavaWorld,shattered,ringarc].filter(x=>x&&!x.active); if(o.length){ o[(Math.random()*o.length)|0].spawn(); return true; } const p=planets.find(p=>!p.active); if(p){ p.spawn(false,null,false); return true; } return false; },
+  eclipsesolar:()=> (solarEclipse && !solarEclipse.active) ? (solarEclipse.spawn(),true) : false,
+  eclipselunar:()=> (lunarEclipse && !lunarEclipse.active) ? (lunarEclipse.spawn(),true) : false,
+  supernova:   ()=> (supernova && !supernova.active) ? (supernova.flash(),true) : false,
+  meteors:     ()=> { window._forceShower='Cosmic Rain'; shower='Cosmic Rain'; setTimeout(()=>{ if(window._forceShower==='Cosmic Rain') window._forceShower=null; },90000); return true; },
 };
-const CMD_CUE={star:'star',message:'star',light:'star',comet:'comet',wish:'comet',whales:'deep',aurora:'deep',world:'deep',nebula:'deep',blackhole:'dark'};
+const CMD_CUE={star:'star',message:'star',light:'star',comet:'comet',wish:'comet',whales:'deep',aurora:'deep',world:'deep',nebula:'deep',blackhole:'dark',eclipse:'dark',supernova:'dark',meteors:'comet'};
 window.cadutaCommand=(cmd,arg,user)=>{
   cmd=String(cmd||'').toLowerCase();
   if(cmd==='musicnext') return window.cadutaMusicNext();
@@ -2646,7 +3084,8 @@ window.cadutaCommand=(cmd,arg,user)=>{
   if(CMD_CUE[cmd] && audio && audio._cue) audio._cue(CMD_CUE[cmd]);   // cue sonoro discreto = feedback al pubblico
   if(cmd==='star'||cmd==='message'){ const label=String(arg||user||'').slice(0,40).trim(); if(label) window.cadutaAddStar(label); return true; }
   if(cmd==='light'){ const who=String(arg||user||'qualcuno').slice(0,38).trim(); window.cadutaAddStar('🕯 '+who); return true; }
-  if(cmd==='help'){ if($t&&$t.log){ $t.log.textContent='command: !star !light !message !comet !wish !whales !aurora !world !nebula !blackhole'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } return true; }
+  if(cmd==='eclipse'){ const a=String(arg||'').toLowerCase(); const k=/lun/.test(a)?'eclipselunar':'eclipsesolar'; if(cmdQueue.length<CMD_QMAX) cmdQueue.push(k); return true; }   // !eclipse solar / !eclipse lunar
+  if(cmd==='help'){ if($t&&$t.log){ $t.log.textContent='command: !star !light !message !comet !wish !whales !aurora !eclipse solar !eclipse lunar !supernova !meteors !world !nebula !blackhole'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } return true; }
   if(CMD_EVENTS[cmd]){ if(cmdQueue.length<CMD_QMAX) cmdQueue.push(cmd); return true; }   // evento → in coda
   return false;
 };
@@ -2671,18 +3110,19 @@ setInterval(()=>{ if(started) pollCatalog(); }, 10000);
 
 /* ---------------- resize / fullscreen / avvio ---------------- */
 function onResize(){
+  if(typeof _rec4k!=='undefined' && _rec4k) return;                    // REC 4K in corso → non ribaltare la risoluzione forzata
   WIDTH=window.innerWidth; HEIGHT=window.innerHeight;
   renderer.setSize(WIDTH,HEIGHT); camera.aspect=WIDTH/HEIGHT; baseFov=fovForAspect(); camera.fov=baseFov; camera.updateProjectionMatrix();
-  if(composer){ composer.setSize(WIDTH,HEIGHT); bloomPass.setSize(Math.floor(WIDTH*PIX/bloomDiv),Math.floor(HEIGHT*PIX/bloomDiv)); cinePass.uniforms.uRes.value.set(WIDTH,HEIGHT); if(smaaPass) smaaPass.setSize(WIDTH,HEIGHT); }
+  HV_REC=Math.tan(baseFov*Math.PI/360)*DREC_DEPTH; HH_REC=HV_REC*(WIDTH/HEIGHT);   // guscio mondi-lontani: half-extent coerenti con aspect/FOV correnti
+  if(composer){ composer.setSize(WIDTH,HEIGHT); bloomPass.setSize(Math.floor(WIDTH*PIX/bloomDiv),Math.floor(HEIGHT*PIX/bloomDiv)); cinePass.uniforms.uRes.value.set(WIDTH,HEIGHT); cinePass.uniforms.uPix.value=PIX; if(smaaPass) smaaPass.setSize(WIDTH,HEIGHT); }
 }
 window.addEventListener('resize', onResize);
 
-const gate=document.getElementById('gate'), hud=document.getElementById('hud'), tel=document.getElementById('tel'), cmds=document.getElementById('cmds');
+const gate=document.getElementById('gate'), hudUi=document.getElementById('hud-ui');
 function begin(){ if(started||!built) return; started=true; audio.start();
-  gate.classList.add('hidden'); tel.classList.add('show'); if(cmds) cmds.classList.add('show'); setTimeout(()=>gate.style.display='none',2600); setTimeout(()=>hud.classList.add('dim'),8000); }
+  gate.classList.add('hidden'); if(hudUi) hudUi.classList.add('show'); setTimeout(()=>gate.style.display='none',2600); }
 enterBtn.addEventListener('click', begin);
 window.addEventListener('keydown', e=>{ if(e.key==='f'||e.key==='F'){ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); } });
-let hudTimer; window.addEventListener('mousemove', ()=>{ if(!started) return; hud.classList.remove('dim'); clearTimeout(hudTimer); hudTimer=setTimeout(()=>hud.classList.add('dim'),3000); });
 
 animate();
 
