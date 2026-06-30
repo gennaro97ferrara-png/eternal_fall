@@ -106,10 +106,12 @@
   #hud-ui.show{ opacity:1; }
   /* brand */
   #brand{ position:absolute; top:5.5vh; left:3.8vw; }
-  #brand .t{ font-family:var(--disp); font-weight:200; font-size:clamp(28px,5.4vw,82px); line-height:0.96; letter-spacing:0.14em; text-transform:uppercase; color:#f3f3fb; }
-  #brand .s{ font-family:var(--disp); font-weight:300; font-size:clamp(11px,1.7vw,22px); letter-spacing:0.62em; text-transform:uppercase;
-    color:var(--lbl); margin-top:0.7em; border-top:1px solid var(--line2); padding-top:0.6em; display:inline-block; }
-  #brand .onair{ display:flex; align-items:center; gap:0.7em; margin-top:1.7em; font-size:clamp(10px,1.3vw,16px); letter-spacing:0.38em; color:var(--lbl); }
+  #brand::before{ content:''; position:absolute; inset:-1.6em -4.5em -1.4em -1.8em; z-index:-1; pointer-events:none; border-radius:22px;
+    background:radial-gradient(118% 96% at 15% 36%, rgba(3,3,9,0.62), rgba(3,3,9,0.26) 56%, rgba(3,3,9,0) 80%); }   /* scrim morbido: testo leggibile anche su sfondi chiari/rumorosi */
+  #brand .t{ font-family:var(--disp); font-weight:200; font-size:clamp(24px,4.7vw,72px); line-height:0.96; letter-spacing:0.13em; text-transform:uppercase; color:#f6f6fc; text-shadow:0 2px 14px rgba(0,0,0,0.7); }   /* titolo -12% */
+  #brand .s{ font-family:var(--disp); font-weight:400; font-size:clamp(11px,1.65vw,21px); letter-spacing:0.6em; text-transform:uppercase;
+    color:rgba(241,242,251,0.84); margin-top:0.7em; border-top:1px solid var(--line2); padding-top:0.6em; display:inline-block; text-shadow:0 1px 8px rgba(0,0,0,0.92); }
+  #brand .onair{ display:flex; align-items:center; gap:0.7em; margin-top:1.5em; font-size:clamp(10px,1.3vw,16px); letter-spacing:0.38em; color:rgba(241,242,251,0.9); text-shadow:0 1px 8px rgba(0,0,0,0.92); }
   #brand #mwave{ display:block; width:clamp(130px,14vw,210px); height:clamp(16px,2.4vh,30px); margin-top:1em; opacity:0.8; }   /* barra MUSICA (effetto radio) */
   .rdot{ width:0.62em; height:0.62em; border-radius:50%; background:var(--red); box-shadow:0 0 8px 1px var(--red-soft); animation:rpulse 2.4s ease-in-out infinite; flex:none; }
   @keyframes rpulse{ 0%,100%{ opacity:1 } 50%{ opacity:0.35 } }
@@ -124,7 +126,9 @@
     padding:1.2em 1.4em; background:rgba(10,9,16,0.42); backdrop-filter:blur(4px); }
   #nowpanel{ left:3.8vw; } #nextpanel{ right:3.8vw; }
   .rpanel .lbl{ display:flex; align-items:center; gap:0.7em; color:var(--lbl); font-size:clamp(9px,1.02vw,13px); letter-spacing:0.32em; text-transform:uppercase; }
-  .rpanel .lbl::before{ content:''; width:1.7em; height:2px; background:var(--red); flex:none; }   /* tick d'accento */
+  .rpanel .lbl::before{ content:''; width:1.7em; height:2px; background:var(--red); flex:none; transform-origin:left center; }   /* tick d'accento */
+  @keyframes tickpulse{ 0%,100%{ opacity:1; transform:scaleX(1); } 50%{ opacity:0.35; transform:scaleX(0.55); } }
+  #nowpanel .lbl::before{ animation:tickpulse 1.9s ease-in-out infinite; }   /* segno di vita: NOW TRANSMITTING pulsa */
   .rpanel .big{ font-family:var(--disp); font-weight:700; font-size:clamp(19px,2.5vw,40px); line-height:1.04; letter-spacing:0.005em; text-transform:uppercase; color:#f3f3fb; margin-top:0.62em; min-height:1em; }
   .rpanel .sml{ font-size:clamp(10px,1.1vw,15px); color:var(--sub); margin-top:0.55em; min-height:1.1em; letter-spacing:0.02em; }
   #wave{ display:block; width:100%; height:clamp(18px,3vh,34px); margin-top:1em; opacity:0.9; }
@@ -133,8 +137,9 @@
   #nextpanel .dots{ height:5px; margin-top:1em; background:repeating-linear-gradient(to right,var(--red-soft) 0 2px,transparent 2px 10px); opacity:0.5; border-radius:2px; }
   /* caption centrale pulita (niente parentesi) */
   #t-log{ position:absolute; left:50%; bottom:17vh; transform:translateX(-50%); max-width:34vw; text-align:center;   /* sta nel varco tra i pannelli → non sborda */
-    font-style:italic; font-weight:300; font-size:clamp(13px,1.5vw,23px); line-height:1.5; color:#ececf6; opacity:0; transition:opacity 1.2s ease; }
-  #t-log.on{ opacity:0.92; }
+    font-style:italic; font-weight:400; font-size:clamp(14px,1.55vw,24px); line-height:1.5; color:#f7f7ff; opacity:0; transition:opacity 1.2s ease;
+    text-shadow:0 1px 12px rgba(0,0,0,0.96),0 0 26px rgba(0,0,0,0.75); }   /* più presenza/leggibilità */
+  #t-log.on{ opacity:1; }
   /* chat bar */
   #chatbar{ position:absolute; left:3.8vw; right:3.8vw; bottom:4.4vh; display:flex; align-items:center; gap:1.5em; border:1px solid var(--line);
     border-radius:12px; padding:0.75em 1.5em; background:rgba(10,9,16,0.38); backdrop-filter:blur(4px); font-size:clamp(10px,1.15vw,15px); letter-spacing:0.16em; color:var(--lbl); }
@@ -174,8 +179,8 @@
 
   <div id="nextpanel" class="rpanel">
     <div class="lbl">NEXT SIGNAL</div>
-    <div class="big" id="next-title">—</div>
-    <div class="eta"><span class="k">NEXT IN</span> <span id="next-eta">—</span></div>
+    <div class="big" id="next-title">Scanning…</div>
+    <div class="eta" id="next-eta">SCANNING SIGNAL</div>
     <div class="dots"></div>
   </div>
 
@@ -875,10 +880,10 @@ function build(){
   godray.center.set(0.5,0.5); godray.frustumCulled=false; godray.renderOrder=-8; godray.visible=false; scene.add(godray);
 
   lensflare=new Lensflare();
-  lensflare.addElement(new LensflareElement(ASSETS.flare0,420,0,new THREE.Color(0xffffff)));
-  lensflare.addElement(new LensflareElement(ASSETS.flare3,60,0.6));
-  lensflare.addElement(new LensflareElement(ASSETS.flare3,90,0.9));
-  lensflare.addElement(new LensflareElement(ASSETS.flare3,140,1.0));
+  lensflare.addElement(new LensflareElement(ASSETS.flare0,260,0,new THREE.Color(0xffffff)));   // alone centrale ridotto: non brucia il centro
+  lensflare.addElement(new LensflareElement(ASSETS.flare3,45,0.6));
+  lensflare.addElement(new LensflareElement(ASSETS.flare3,65,0.9));
+  lensflare.addElement(new LensflareElement(ASSETS.flare3,95,1.0));
   lensflare.visible=false;
 
   // mistero lontano + viaggiatore parallelo + supernova + buco nero
@@ -899,7 +904,7 @@ function build(){
   composer=new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene,camera));
   lensPass=new ShaderPass(BHLensShader); composer.addPass(lensPass);   // lensing del buco nero (prima del bloom)
-  bloomPass=new UnrealBloomPass(new THREE.Vector2(Math.floor(WIDTH*PIX/bloomDiv),Math.floor(HEIGHT*PIX/bloomDiv)),0.82,0.62,0.82); // base bloom + radius più STRETTO (alone definito, non veil) + threshold un filo più alto
+  bloomPass=new UnrealBloomPass(new THREE.Vector2(Math.floor(WIDTH*PIX/bloomDiv),Math.floor(HEIGHT*PIX/bloomDiv)),0.6,0.6,0.86); // bloom ridotto + threshold più alto → centro non bruciato
   composer.addPass(bloomPass);
   cinePass=new ShaderPass(CineShader); composer.addPass(cinePass);
   composer.addPass(new OutputPass());
@@ -2529,7 +2534,7 @@ function animate(){
   camera.fov=baseFov+Math.sin(camPhase*0.045)*1.0 + slingE*3.0 + rocketE*7.0; camera.updateProjectionMatrix();   // FOV si allarga DOLCEMENTE con la velocità (niente vibrazione "tamburo")
 
   cinePass.uniforms.uTime.value=shaderTime; cinePass.uniforms.uRocket.value=rocketE;
-  bloomPass.strength=Math.min(1.05, 0.5+director.cur.aB*0.38+director.surge*0.24);   // bloom più contenuto (meno "acceso") + cap: niente over-bloom su supernova+surge col radius stretto
+  bloomPass.strength=Math.min(0.78, 0.36+director.cur.aB*0.30+director.surge*0.20);   // bloom ridotto + cap più basso → il centro non si brucia, dettagli/UI restano leggibili
 
   composer.render();
   telUpdate(dt); updateAccent(dt);   // accento UI segue il mood della scena (transizione lenta)
@@ -2947,11 +2952,12 @@ class AmbientEngine{
     if($t.nowTitle) $t.nowTitle.textContent = isCap ? (line.title || VOICE_CATLABEL[line.cat] || 'Transmission') : 'Eternal Fall';
     if($t.nowTag)   $t.nowTag.textContent   = isCap ? (line.tagline || VOICE_CATLABEL[line.cat] || '') : '— a voice still falling'; }
   _showNext(){ if(typeof $t==='undefined'||!$t||!$t.nextTitle) return; const v=this.voiceLib[this.nextIdx];   // pannello NEXT SIGNAL
-    $t.nextTitle.textContent = v ? (v.title || VOICE_CATLABEL[v.cat] || 'Signal') : '—'; }
-  _updateEta(){ if(typeof $t==='undefined'||!$t||!$t.nextEta||!this.capIdx.length) return;   // countdown al prossimo argomento
+    $t.nextTitle.textContent = v ? (v.title || VOICE_CATLABEL[v.cat] || 'Signal') : 'Scanning…'; }
+  _updateEta(){ if(typeof $t==='undefined'||!$t||!$t.nextEta) return;   // countdown al prossimo argomento (mai vuoto)
+    if(!this.capIdx.length){ if(this._etaTxt!=='SCANNING SIGNAL'){ this._etaTxt='SCANNING SIGNAL'; $t.nextEta.textContent='SCANNING SIGNAL'; } return; }
     let sec; if(this.voiceBusy && this.voiceEl && isFinite(this.voiceEl.duration) && this.voiceEl.duration>0){ sec=Math.max(0,this.voiceEl.duration-this.voiceEl.currentTime)+this.voiceEvery; }
     else { sec=Math.max(0,this.voiceEvery-this.voiceT); }
-    const s=Math.ceil(sec), txt=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+    const s=Math.ceil(sec), txt='NEXT IN '+Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
     if(txt!==this._etaTxt){ this._etaTxt=txt; $t.nextEta.textContent=txt; } }
   drawWave(){ const c=this._waveCanvas||(this._waveCanvas=(typeof document!=='undefined'?document.getElementById('wave'):null)); if(!c) return;
     const x=this._waveCtx||(this._waveCtx=c.getContext('2d')); if(!x) return; const W=c.width,H=c.height; x.clearRect(0,0,W,H);
