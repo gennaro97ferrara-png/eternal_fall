@@ -110,6 +110,7 @@
   #brand .s{ font-family:var(--disp); font-weight:300; font-size:clamp(11px,1.7vw,22px); letter-spacing:0.62em; text-transform:uppercase;
     color:var(--lbl); margin-top:0.7em; border-top:1px solid var(--line2); padding-top:0.6em; display:inline-block; }
   #brand .onair{ display:flex; align-items:center; gap:0.7em; margin-top:1.7em; font-size:clamp(10px,1.3vw,16px); letter-spacing:0.38em; color:var(--lbl); }
+  #brand #mwave{ display:block; width:clamp(130px,14vw,210px); height:clamp(16px,2.4vh,30px); margin-top:1em; opacity:0.8; }   /* barra MUSICA (effetto radio) */
   .rdot{ width:0.62em; height:0.62em; border-radius:50%; background:var(--red); box-shadow:0 0 8px 1px var(--red-soft); animation:rpulse 2.4s ease-in-out infinite; flex:none; }
   @keyframes rpulse{ 0%,100%{ opacity:1 } 50%{ opacity:0.35 } }
   /* live badge — cornice a parentesi (alto-dx) */
@@ -159,6 +160,7 @@
     <div class="t">ETERNAL FALL</div>
     <div class="s">SPACE RADIO</div>
     <div class="onair"><span class="rdot"></span>ON AIR</div>
+    <canvas id="mwave" width="340" height="48"></canvas>
   </div>
 
   <div id="livebadge"><span class="lv"><span class="rdot"></span>LIVE</span><span class="meta">24/7<br>DOCUMENTARY</span></div>
@@ -2710,6 +2712,7 @@ class AmbientEngine{
     this.verb=ctx.createConvolver(); this.verb.buffer=this._imp(9.0,1.9); this.wet=ctx.createGain(); this.wet.gain.value=0.66; this.dry=ctx.createGain(); this.dry.gain.value=0.56;   // coda lunghissima → spazio vasto
     this.verbHP=ctx.createBiquadFilter(); this.verbHP.type='highpass'; this.verbHP.frequency.value=95;   // tiene pulita la coda lunga del riverbero (niente fango dal sub) → spazio "vasto"
     this.master.connect(this.dry).connect(this.comp); this.master.connect(this.verbHP).connect(this.verb).connect(this.wet).connect(this.comp);
+    try{ this.musicAnalyser=ctx.createAnalyser(); this.musicAnalyser.fftSize=128; this.musicAnalyser.smoothingTimeConstant=0.82; this.comp.connect(this.musicAnalyser); this._mwaveData=new Uint8Array(this.musicAnalyser.frequencyBinCount); }catch(e){}   // tap per la barra MUSICA (colonna sonora, pre-duck) → effetto radio
     this.limiter=ctx.createDynamicsCompressor(); this.limiter.threshold.value=-1.5; this.limiter.knee.value=0; this.limiter.ratio.value=20; this.limiter.attack.value=0.002; this.limiter.release.value=0.06;   // brickwall di sicurezza: niente clipping in 24h anche su picchi coincidenti (battito + cue + brano)
     this.duckGain=ctx.createGain(); this.duckGain.gain.value=1;   // duck di musica+tappeto mentre parla la voce narrante (la voce entra DOPO il duck → resta chiara)
     this.comp.connect(this.duckGain).connect(this.limiter).connect(ctx.destination);
@@ -2944,6 +2947,15 @@ class AmbientEngine{
       v=Math.max(v, this.voiceBusy?v:idle); const h=Math.max(2, v*v*H);
       x.globalAlpha=0.55+0.4*v; x.fillRect(i*bw+1, (H-h)/2, Math.max(1,bw-2), h); }
     x.globalAlpha=1; }
+  drawMusic(){ const c=this._mCanvas||(this._mCanvas=(typeof document!=='undefined'?document.getElementById('mwave'):null)); if(!c) return;   // barra MUSICA (EQ dal basso) → effetto radio
+    const x=this._mCtx||(this._mCtx=c.getContext('2d')); if(!x) return; const W=c.width,H=c.height; x.clearRect(0,0,W,H);
+    if(this.musicAnalyser && this._mwaveData) this.musicAnalyser.getByteFrequencyData(this._mwaveData);
+    const N=28, bw=W/N; this._mT=(this._mT||0)+0.03; x.fillStyle='rgb('+(_accCur[0]|0)+','+(_accCur[1]|0)+','+(_accCur[2]|0)+')';
+    for(let i=0;i<N;i++){ let v=this._mwaveData?(this._mwaveData[i*2+1]||0)/255:0;   // spettro della colonna sonora
+      const idle=0.05+0.05*Math.abs(Math.sin(this._mT*0.8+i*0.45));                  // respiro lieve quando la musica è bassa
+      v=Math.max(v,idle); const h=Math.max(1.5, v*v*H);
+      x.globalAlpha=0.4+0.45*v; x.fillRect(i*bw+1, H-h, Math.max(1,bw-2), h); }       // ancorata in basso (EQ)
+    x.globalAlpha=1; }
   _speak(idx){ if(this.voiceBusy||!this.voiceLib.length) return; if(idx==null) idx=this._pickCapsule(); if(idx<0||idx>=this.voiceLib.length) return; const line=this.voiceLib[idx],el=this.voiceEl,tok=++this._voiceTok; this.voiceBusy=true; this._remember(idx);
     const restore=()=>{ clearTimeout(this._voiceTimer); el.onplaying=el.onended=el.onerror=null; if(this.duckGain) this.duckGain.gain.setTargetAtTime(1.0,this.ctx.currentTime,0.7); if(typeof $t!=='undefined'&&$t){ if($t.log)$t.log.classList.remove('on'); if($t.genre)$t.genre.classList.remove('on'); } this.voiceBusy=false; };
     this._voiceTimer=setTimeout(restore,30000);   // safety: nulla resta appeso
@@ -2992,7 +3004,7 @@ class AmbientEngine{
             if(this.soulT>=this.soulEvery && this.soulIdx.length){ this.soulT=0; this.soulEvery=1200+Math.random()*600; this._speak(this._pickSoul()); }   // ogni 20-30 min torna un refrain identitario (non tocca NEXT)
             else { if(this.nextIdx<0) this.nextIdx=this._pickCapsule(); const cur=this.nextIdx; this._speak(cur); this.nextIdx=this._pickCapsule(); this._showNext(); }   // suona la prossima pre-scelta, poi pre-sceglie la successiva
           } else { this.voiceEvery=270+Math.random()*90; this._speak(this._pickSoul()); } } }   // nessuna capsula ancora → comportamento attuale (~5 min, solo cronaca)
-      this.drawWave(); this._updateEta();   // waveform audio-reattivo + countdown prossimo argomento, ogni frame
+      this.drawWave(); this.drawMusic(); this._updateEta();   // waveform voce + barra musica + countdown prossimo argomento, ogni frame
     }
   }
 }
