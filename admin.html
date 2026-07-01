@@ -69,6 +69,10 @@
     <button onclick="cmd('wish')">✨ wish</button>
     <button onclick="cmd('whales')">🐋 whales</button>
     <button onclick="cmd('aurora')">🌌 aurora</button>
+    <button onclick="cmd('eclipse',0,'solar')">🌑 eclipse solar</button>
+    <button onclick="cmd('eclipse',0,'lunar')">🌕 eclipse lunar</button>
+    <button onclick="cmd('supernova')">💥 supernova</button>
+    <button onclick="cmd('meteors')">☄ meteors</button>
     <button onclick="cmd('world')">🪐 world</button>
     <button onclick="cmd('nebula')">☁ nebula</button>
     <button onclick="cmd('blackhole')">⚫ blackhole</button>
@@ -113,8 +117,8 @@ async function add(){
   const {ok,j}=await api('/api/admin/permanent',{method:'POST',body:JSON.stringify(body)});
   if(ok){ $('a_name').value=''; $('a_logo').value=''; load(); } else alert('errore: '+(j.error||''));
 }
-async function cmd(c, needArg){
-  const arg = needArg ? (($('c_arg').value||'').trim()) : '';
+async function cmd(c, needArg, fixedArg){
+  const arg = (fixedArg!=null) ? fixedArg : (needArg ? (($('c_arg').value||'').trim()) : '');
   if(needArg && !arg){ $('cmsg').textContent='scrivi prima un nome/testo qui sopra'; return; }
   const {ok,j}=await api('/api/admin/command?cmd='+encodeURIComponent(c)+'&arg='+encodeURIComponent(arg),{method:'POST'});
   $('cmsg').textContent = ok ? ('inviato: !'+c+(arg?(' '+arg):'')+' — comparirà nella live entro ~10s') : ('errore: '+(j.error||'(server vecchio? riavvialo)'));

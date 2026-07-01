@@ -7,10 +7,14 @@ set -uo pipefail
 APP=/home/ubuntu/eternal-fall
 # auto-elevazione a root: Xorg, PulseAudio --system e NvFBC lo richiedono
 [ "$(id -u)" -eq 0 ] || exec sudo env MODE="${MODE:-live}" bash "$0"
+# SINGLETON: una sola istanza del supervisore (evita supervisori multipli che si combattono)
+exec 9>/run/eternal.lock
+flock -n 9 || { echo "[$(date '+%H:%M:%S')] altra istanza già attiva → esco" >>/tmp/eternal.log; exit 0; }
 exec >>/tmp/eternal.log 2>&1
 log(){ echo "[$(date '+%H:%M:%S')] $*"; }
 MODE="${MODE:-live}"
-PORT=8099; RW=3840; RH=2160; FPS=60; KBPS=45000; DSF=2
+PORT=8099; RW=3840; RH=2160; FPS=60; DSF=2
+KBPS=${KBPS:-25000}   # bitrate kbps (25M: 4K ottimo + smooth; alzabile via env KBPS)
 export DISPLAY=:0 HOME=/root PULSE_SERVER=unix:/tmp/pulse/native
 # Forza EGL/GLX NVIDIA (evita Mesa/software)
 export __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json
@@ -77,6 +81,7 @@ start_xorg(){
 }
 start_server(){ ( cd "$APP" && node server.js >/tmp/server.log 2>&1 ) & SERVER_PID=$!; }
 start_chrome(){
+  pkill -f "user-data-dir=/tmp/chrome-profile" 2>/dev/null; sleep 1
   rm -f /tmp/chrome-profile/Singleton* 2>/dev/null
   # senza window manager --kiosk non massimizza: window-size esplicito = RENDER/DSF (×DSF = pixel fisici)
   local WIN_W=$(( RW / DSF )) WIN_H=$(( RH / DSF ))
@@ -87,13 +92,15 @@ start_chrome(){
     --kiosk --start-fullscreen --window-position=0,0 --window-size="${WIN_W},${WIN_H}" \
     --force-device-scale-factor="$DSF" --hide-scrollbars \
     --use-gl=angle --use-angle=gl-egl --ignore-gpu-blocklist --enable-gpu-rasterization \
+    --disable-gpu-compositing \
+    --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1 --remote-allow-origins=* \
     --autoplay-policy=no-user-gesture-required \
     "http://localhost:${PORT}/?live=1" >/tmp/chrome.log 2>&1 &
   CHROME_PID=$!
 }
 start_gsr(){
   # MAI due gsr sulla stessa stream key: YouTube accetta una sola connessione → "Broken pipe".
-  pkill -f gpu-screen-recorder 2>/dev/null; sleep 1
+  pkill -9 -f gpu-screen-recorder 2>/dev/null; sleep 5   # attesa: YouTube rilascia la vecchia connessione RTMP
   for _ in $(seq 1 40); do pactl list short sources 2>/dev/null | grep -q stream.monitor && break; sleep 0.5; done
   if [ "$MODE" = test ]; then OUTOPT="-c mp4 -o /tmp/live4k.mp4"; else OUTOPT="-c flv -o $RTMP"; fi
   # shellcheck disable=SC2086
@@ -115,10 +122,14 @@ if [ "$MODE" = test ]; then
 fi
 
 log "live 4K60 in onda. Supervisione attiva."
+# Supervisione basata sul CONTEGGIO processi (non sui PID): evita i doppioni/race che
+# generavano due gsr sulla stessa key → Broken pipe storm.
 while true; do
-  sleep 5
-  kill -0 "$SERVER_PID" 2>/dev/null || { log "server.js riavvio"; start_server; }
-  kill -0 "$CHROME_PID" 2>/dev/null || { log "Chrome riavvio"; start_chrome; sleep 6; }
-  kill -0 "$GSR_PID" 2>/dev/null || { log "gsr riconnetto"; sleep 3; start_gsr; }
-  kill -0 "$XORG_PID" 2>/dev/null || { log "Xorg riavvio"; start_xorg; sleep 5; start_chrome; sleep 6; start_gsr; }
+  sleep 8
+  pgrep -x Xorg >/dev/null 2>&1 || { log "Xorg giù → riavvio"; start_xorg; sleep 5; start_chrome; sleep 8; }
+  pgrep -f "node server.js" >/dev/null 2>&1 || { log "server giù → riavvio"; start_server; }
+  pgrep -f "user-data-dir=/tmp/chrome-profile" >/dev/null 2>&1 || { log "Chrome giù → riavvio"; start_chrome; sleep 8; }
+  ngsr=$(pgrep -c -f gpu-screen-recorder 2>/dev/null); ngsr=${ngsr:-0}   # pgrep -c stampa già 0 se nessun match; il vecchio "|| echo 0" generava "0\n0" → confronto rotto
+  if [ "${ngsr:-0}" -eq 0 ]; then log "gsr giù → riconnetto"; start_gsr
+  elif [ "${ngsr:-0}" -gt 1 ]; then log "gsr DOPPIO ($ngsr) → riallineo a uno"; start_gsr; fi
 done

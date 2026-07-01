@@ -42,6 +42,7 @@ const CFG = {
   CLIENT_SECRET: process.env.YT_OAUTH_CLIENT_SECRET || '',
   REFRESH_TOKEN: process.env.YT_OAUTH_REFRESH_TOKEN || '',
   CHAT: process.env.YT_CHAT !== '0',          // default on se configurabile
+  CHAT_MIN_MS: parseInt(process.env.YT_CHAT_MIN_MS || '30000', 10),  // intervallo MIN polling chat → tiene sotto la quota YouTube (24/7). Alzalo se vedi 403 quotaExceeded.
   SUBS: process.env.YT_SUBS !== '0',
   DEDUP_MS: parseInt(process.env.STAR_DEDUP_MS || '900000', 10), // un nome non si ripete entro 15 min
 };
@@ -71,7 +72,7 @@ function addStar(name, key) {
 const commands = [];                     // {cmd, arg, user, ts}
 const cmdCooldown = new Map();           // channelId -> lastTs
 const CMD_USER_CD = 60000;               // 60s per utente
-const CMD_FREE = new Set(['star', 'light', 'message', 'comet', 'wish', 'whales', 'aurora', 'help']);
+const CMD_FREE = new Set(['star', 'light', 'message', 'comet', 'wish', 'whales', 'aurora', 'eclipse', 'supernova', 'meteors', 'help']);
 const CMD_SUB  = new Set(['world', 'nebula', 'blackhole']);   // riservati a iscritti/membri/mod
 const CMD_ADMIN = new Set(['musicnext', 'musicpause', 'musicplay']);   // solo pannello regia, mai dalla chat
 const BADWORDS = (process.env.STAR_BADWORDS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -292,11 +293,11 @@ async function pollChat() {
   try {
     const id = await resolveLiveChatId();
     if (!id) { schedule(pollChat, 30000); return; }
-    let u = API + 'liveChatMessages?liveChatId=' + encodeURIComponent(id) + '&part=snippet,authorDetails&maxResults=200';
+    let u = API + 'liveChat/messages?liveChatId=' + encodeURIComponent(id) + '&part=snippet,authorDetails&maxResults=200';
     if (chatState.pageToken) u += '&pageToken=' + chatState.pageToken;
     const j = await httpsJSON('GET', withKey(u), await authHeaders());
     chatState.pageToken = j.nextPageToken || chatState.pageToken;
-    nextMs = Math.max(4000, j.pollingIntervalMillis || 8000);
+    nextMs = Math.max(CFG.CHAT_MIN_MS, j.pollingIntervalMillis || 8000);
     const items = j.items || [];
     // alla prima passata NON accendiamo lo storico: prendiamo solo i nuovi da qui in poi
     if (!chatState.primed) { chatState.primed = true; }
