@@ -20,7 +20,7 @@ import json, os, re, subprocess, sys, time, urllib.request
 ENV = "/root/eternal-fall/.env"
 CHANNEL = "UCynrYln7HHhT1hSeQdt7uDQ"
 LOG = "/tmp/ef-monitor.log"
-PERIOD = 60           # s tra i controlli
+PERIOD = 90           # s tra i controlli (tieni basso il consumo quota YouTube: 2 unita'/ciclo)
 RECONNECT_COOLDOWN = 180   # s minimi tra due riconnessioni forzate
 FFMPEG_MIN_AGE = 90        # non killare un ffmpeg piu' giovane di cosi'
 
@@ -57,10 +57,14 @@ def api(url):
     with urllib.request.urlopen(url, timeout=15) as r:
         return json.load(r)
 
+_uploads_pl = [None]   # cache: l'id della playlist uploads non cambia mai -> risparmia 1 unita' quota/ciclo
+
 def channel_state(key):
     """Ritorna (live_id|None, upcoming_id|None) via playlist uploads (bassa latenza)."""
-    ch = api("https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=%s&key=%s" % (CHANNEL, key))
-    up = ch["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+    if not _uploads_pl[0]:
+        ch = api("https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=%s&key=%s" % (CHANNEL, key))
+        _uploads_pl[0] = ch["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+    up = _uploads_pl[0]
     pl = api("https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId=%s&maxResults=8&key=%s" % (up, key))
     ids = ",".join(i["contentDetails"]["videoId"] for i in pl.get("items", []))
     if not ids: return None, None
