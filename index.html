@@ -553,7 +553,7 @@ function updateGalaxies(dt,speed){ if(!galaxies) return;
 /* ---------------- scene globals ---------------- */
 let sky,sky2,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
 // SFONDI multipli (varietà): Via Lattea + 8 nebulose equirettangolari (assets/skies/), crossfade lazy-load (1-2 texture in VRAM alla volta)
-const SKY_FILES=['milkyway_8k.jpg','skies/nebula_1.png','skies/nebula_2.png','skies/nebula_3.png','skies/nebula_4.png','skies/nebula_5.png','skies/nebula_6.png','skies/nebula_7.png','skies/nebula_8.png'];
+const SKY_FILES=['milkyway_8k.jpg','skies/nebula_1.png','skies/nebula_2.png','skies/nebula_3.png','skies/nebula_4.png','skies/nebula_5.png','skies/nebula_6.png','skies/nebula_7.png','skies/nebula_8.png'].concat(Array.from({length:50},(_,i)=>'skies/gen_'+String(i+1).padStart(2,'0')+'.jpg'));   // Via Lattea + 8 nebulose + 50 sfondi generati = 59 sfondi spettacolari che variano
 let skyIdx=0, skyT=0, skyEvery=5, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;   // primo sfondo bello (nebulosa) ~5s dopo l'avvio, poi rotazione 5-9 min
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
 // LIVE: l'auto-scaler è OFF (PIX fisso a 2) → base bloom più nitida (1440p anziché 1080p → upscale a 4K 1.5× invece di 2×). Non-live resta a 1/2.
@@ -1899,13 +1899,13 @@ function applyDirector(){
 }
 // SFONDI: crossfade verso una nebulosa diversa ogni ~5-9 min (lazy-load + dispose → 1-2 texture in VRAM)
 function cycleSky(target){ if(skyFading||skyLoading||!sky2) return; let n=(typeof target==='number')?((target%SKY_FILES.length)+SKY_FILES.length)%SKY_FILES.length:skyIdx;
-  if(typeof target!=='number' && SKY_FILES.length>2){ do{ n=1+((Math.random()*(SKY_FILES.length-1))|0); }while(n===skyIdx); } if(n===skyIdx) return; skyPendIdx=n; skyLoading=true;   // auto: ruota SOLO tra le nebulose belle (indici 1..8), mai la Via Lattea piatta (indice 0)
+  if(typeof target!=='number' && SKY_FILES.length>1){ do{ n=(Math.random()*SKY_FILES.length)|0; }while(n===skyIdx); } if(n===skyIdx) return; skyPendIdx=n; skyLoading=true;   // auto: ruota tra TUTTI i 59 sfondi (Via Lattea inclusa) evitando la ripetizione immediata
   texL.load('assets/'+SKY_FILES[n], t=>{ t.colorSpace=THREE.SRGBColorSpace; t.mapping=THREE.EquirectangularReflectionMapping; t.anisotropy=MAXANISO;
     sky2.material.map=t; sky2.material.needsUpdate=true; sky2.material.opacity=0; sky2.visible=true; skyFade=0; skyFading=true; skyLoading=false;
   }, undefined, ()=>{ skyLoading=false; });   // errore di rete → annulla, riprova al prossimo giro (niente crash)
 }
 function updateSky(dt){ if(!sky2) return;
-  skyT+=dt; if(skyT>=skyEvery){ skyT=0; skyEvery=300+Math.random()*240; cycleSky(); }
+  skyT+=dt; if(skyT>=skyEvery){ skyT=0; skyEvery=180+Math.random()*150; cycleSky(); }   // cambia sfondo ogni ~3-5.5 min (varietà)
   if(skyFading){ skyFade+=dt/3; const a=skyFade<1?(skyFade*skyFade*(3-2*skyFade)):1; sky2.material.opacity=a;
     if(skyFade>=1){ const old=sky.material.map; sky.material.map=sky2.material.map; sky.material.needsUpdate=true;
       sky2.material.opacity=0; sky2.material.map=null; sky2.visible=false; skyFading=false; skyIdx=skyPendIdx;
