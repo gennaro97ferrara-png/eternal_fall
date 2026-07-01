@@ -248,6 +248,7 @@ let WIDTH=window.innerWidth,HEIGHT=window.innerHeight;
 renderer.setSize(WIDTH,HEIGHT);
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.0;
+const IS_LIVE = !!(window.obsstudio || /[?&]live=1/.test(location.search));   // live/cattura: l'encode YouTube scurisce (RGB pieno→YUV) → alziamo la luminosità del render per compensare (mobile compreso)
 container.appendChild(renderer.domElement);
 
 // --- resilienza 24/7: recupero perdita del contesto WebGL + stato di visibilità ---
@@ -1891,7 +1892,7 @@ const CineShader={
 
 function applyDirector(){
   const c=director.cur;
-  if(sky){ sky.material.color.copy(director.grade).lerp(_white,0.74).multiplyScalar(Math.max(0.62,c.skyBright)*0.92);   // Via Lattea TINTA dal mood (varietà sfondo) + pavimento 0.62 (mai troppo scura) — in place, niente alloc
+  if(sky){ sky.material.color.copy(director.grade).lerp(_white,IS_LIVE?0.82:0.74).multiplyScalar(Math.max(IS_LIVE?0.80:0.62,c.skyBright)*(IS_LIVE?1.12:0.92));   // Via Lattea TINTA dal mood (varietà sfondo) + pavimento (mai troppo scura); su LIVE fondo più chiaro + tinta meno pesante per compensare l'encode — in place, niente alloc
     if(sky2 && sky2.visible) sky2.material.color.copy(sky.material.color); }   // durante il crossfade tingi anche lo sfondo entrante
   if(keyLight){ keyLight.color.copy(_white).lerp(director.key,0.5); keyLight.intensity=c.kInt; }   // tinta regione attenuata
   if(cinePass) cinePass.uniforms.uGrade.value.copy(director.grade);
@@ -2357,7 +2358,7 @@ function animate(){
 
   // esposizione adattiva (morbida)
   exposureCur += (director.cur.exposure - exposureCur)*Math.min(1,dt*0.6);
-  renderer.toneMappingExposure=Math.max(0.90,exposureCur*0.95);   // PAVIMENTO esposizione 0.90 → mai troppo scura (alza solo abisso/vuoto; le scene normali sono già sopra)
+  renderer.toneMappingExposure=Math.max(IS_LIVE?1.03:0.90,exposureCur*(IS_LIVE?1.08:0.95));   // PAVIMENTO esposizione → mai troppo scura; su LIVE pavimento più alto + lift ~13% (lo stream YouTube scurisce, mobile compreso)
 
   sky.rotation.y+=dt*0.0016; sky.rotation.x=Math.sin(shaderTime*0.004)*0.05;
   // campo stellare volumetrico: ogni strato scorre a velocità diversa (parallasse) e ricicla senza pop
