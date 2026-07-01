@@ -554,7 +554,7 @@ function updateGalaxies(dt,speed){ if(!galaxies) return;
 let sky,sky2,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
 // SFONDI multipli (varietà): Via Lattea + 8 nebulose equirettangolari (assets/skies/), crossfade lazy-load (1-2 texture in VRAM alla volta)
 const SKY_FILES=['milkyway_8k.jpg','skies/nebula_1.png','skies/nebula_2.png','skies/nebula_3.png','skies/nebula_4.png','skies/nebula_5.png','skies/nebula_6.png','skies/nebula_7.png','skies/nebula_8.png'];
-let skyIdx=0, skyT=200, skyEvery=300, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;
+let skyIdx=0, skyT=0, skyEvery=5, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;   // primo sfondo bello (nebulosa) ~5s dopo l'avvio, poi rotazione 5-9 min
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
 // LIVE: l'auto-scaler è OFF (PIX fisso a 2) → base bloom più nitida (1440p anziché 1080p → upscale a 4K 1.5× invece di 2×). Non-live resta a 1/2.
 let starLayers=[], fastDust=null, nebSheets=[], bloomDiv=(/[?&]live=1/.test(location.search)?1.5:2);
@@ -1892,14 +1892,14 @@ const CineShader={
 
 function applyDirector(){
   const c=director.cur;
-  if(sky){ sky.material.color.copy(director.grade).lerp(_white,IS_LIVE?0.82:0.74).multiplyScalar(Math.max(IS_LIVE?0.80:0.62,c.skyBright)*(IS_LIVE?1.12:0.92));   // Via Lattea TINTA dal mood (varietà sfondo) + pavimento (mai troppo scura); su LIVE fondo più chiaro + tinta meno pesante per compensare l'encode — in place, niente alloc
+  if(sky){ sky.material.color.copy(director.grade).lerp(_white,IS_LIVE?0.76:0.74).multiplyScalar(Math.max(IS_LIVE?0.72:0.62,c.skyBright)*(IS_LIVE?1.0:0.92));   // sfondo TINTO dal mood (varietà) + pavimento (mai troppo scuro); su LIVE un filo più chiaro ma SENZA slavare (niente clipping → nebulose ricche) — in place, niente alloc
     if(sky2 && sky2.visible) sky2.material.color.copy(sky.material.color); }   // durante il crossfade tingi anche lo sfondo entrante
   if(keyLight){ keyLight.color.copy(_white).lerp(director.key,0.5); keyLight.intensity=c.kInt; }   // tinta regione attenuata
   if(cinePass) cinePass.uniforms.uGrade.value.copy(director.grade);
 }
 // SFONDI: crossfade verso una nebulosa diversa ogni ~5-9 min (lazy-load + dispose → 1-2 texture in VRAM)
 function cycleSky(target){ if(skyFading||skyLoading||!sky2) return; let n=(typeof target==='number')?((target%SKY_FILES.length)+SKY_FILES.length)%SKY_FILES.length:skyIdx;
-  if(typeof target!=='number' && SKY_FILES.length>1){ while(n===skyIdx) n=(Math.random()*SKY_FILES.length)|0; } if(n===skyIdx) return; skyPendIdx=n; skyLoading=true;
+  if(typeof target!=='number' && SKY_FILES.length>2){ do{ n=1+((Math.random()*(SKY_FILES.length-1))|0); }while(n===skyIdx); } if(n===skyIdx) return; skyPendIdx=n; skyLoading=true;   // auto: ruota SOLO tra le nebulose belle (indici 1..8), mai la Via Lattea piatta (indice 0)
   texL.load('assets/'+SKY_FILES[n], t=>{ t.colorSpace=THREE.SRGBColorSpace; t.mapping=THREE.EquirectangularReflectionMapping; t.anisotropy=MAXANISO;
     sky2.material.map=t; sky2.material.needsUpdate=true; sky2.material.opacity=0; sky2.visible=true; skyFade=0; skyFading=true; skyLoading=false;
   }, undefined, ()=>{ skyLoading=false; });   // errore di rete → annulla, riprova al prossimo giro (niente crash)
@@ -2930,7 +2930,7 @@ class AmbientEngine{
     else { o.type='triangle'; o.frequency.value=this._f(this.root-5);
       g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.055,t+0.04); g.gain.exponentialRampToValueAtTime(0.0001,t+3.0); o.start(t); o.stop(t+3.1); } }   // swell grave caldo (whales/aurora/world/nebula)
   _initNarrator(){ const ctx=this.ctx;   // VOCE NARRANTE: file MP3 in assets/voice/ + manifest voice.json — inerte/innocua se assenti
-    this.voiceLib=[]; this.voiceBad=new Set(); this.voiceBusy=false; this.voiceLast=-1; this.voiceT=0; this.voiceEvery=8; this.voiceBadClearT=0; this._voiceTok=0;   // prima capsula ~8s, poi stacco ~10s tra una e l'altra
+    this.voiceLib=[]; this.voiceBad=new Set(); this.voiceBusy=false; this.voiceLast=-1; this.voiceT=0; this.voiceEvery=10; this.voiceBadClearT=0; this._voiceTok=0;   // prima capsula ~10s, poi stacco >=10s tra una e l'altra
     this.playCount={}; try{ if(typeof localStorage!=='undefined'){ const _s=localStorage.getItem('ce_vcount'); if(_s) this.playCount=JSON.parse(_s)||{}; } }catch(e){}   // counter "meno ascoltate prima" (persistente tra i reload 24/7)
     // DOCUMENTARIO a CAPSULE: kind 'capsule' (contenuto pesato per categoria) + strato identitario 'identity'/'chronicle'/'philosophy' (refrain ogni 20-30 min)
     this.capIdx=[]; this.soulIdx=[]; this.capByCat={}; this.voiceRecent=[];
@@ -3044,7 +3044,7 @@ class AmbientEngine{
       if(this.capIdx.length && this.nextIdx<0){ this.nextIdx=this._pickCapsule(); this._showNext(); }   // inizializza NEXT SIGNAL
       if(!this.voiceBusy){ this.voiceT+=dt;   // il timer conta SOLO nel vuoto fra una capsula e l'altra → lo stacco parte a fine capsula
         if(this.voiceT>=this.voiceEvery){ this.voiceT=0;
-          if(this.capIdx.length){ this.voiceEvery=9+Math.random()*2;   // DOCUMENTARIO continuo: ~10s di stacco tra una capsula e la successiva
+          if(this.capIdx.length){ this.voiceEvery=10.5+Math.random()*3;   // DOCUMENTARIO: ALMENO 10s di stacco tra una capsula e la successiva (10.5-13.5s)
             if(this.soulT>=this.soulEvery && this.soulIdx.length){ this.soulT=0; this.soulEvery=1200+Math.random()*600; this._speak(this._pickSoul()); }   // ogni 20-30 min torna un refrain identitario (non tocca NEXT)
             else { if(this.nextIdx<0) this.nextIdx=this._pickCapsule(); const cur=this.nextIdx; this._speak(cur); this.nextIdx=this._pickCapsule(); this._showNext(); }   // suona la prossima pre-scelta, poi pre-sceglie la successiva
           } else { this.voiceEvery=270+Math.random()*90; this._speak(this._pickSoul()); } } }   // nessuna capsula ancora → comportamento attuale (~5 min, solo cronaca)
