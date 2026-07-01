@@ -553,8 +553,10 @@ function updateGalaxies(dt,speed){ if(!galaxies) return;
 /* ---------------- scene globals ---------------- */
 let sky,sky2,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
 // SFONDI multipli (varietà): Via Lattea + 8 nebulose equirettangolari (assets/skies/), crossfade lazy-load (1-2 texture in VRAM alla volta)
-const SKY_FILES=['milkyway_8k.jpg','skies/nebula_1.png','skies/nebula_2.png','skies/nebula_3.png','skies/nebula_4.png','skies/nebula_5.png','skies/nebula_6.png','skies/nebula_7.png','skies/nebula_8.png'].concat(Array.from({length:50},(_,i)=>'skies/gen_'+String(i+1).padStart(2,'0')+'.jpg'));   // Via Lattea + 8 nebulose + 50 sfondi generati = 59 sfondi spettacolari che variano
-let skyIdx=0, skyT=0, skyEvery=5, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;   // primo sfondo bello (nebulosa) ~5s dopo l'avvio, poi rotazione 5-9 min
+const SKY_FILES=['milkyway_8k.jpg'].concat(Array.from({length:50},(_,i)=>'skies/gen_'+String(i+1).padStart(2,'0')+'.jpg'));   // Via Lattea grezza (iniziale) + 50 varianti reali ESO (come gen_25)
+const SKY_QV='?v=9';        // cache-buster degli sfondi: BUMPA questo numero ogni volta che rigeneri i gen_ (il browser cache-a per URL)
+const SKY_ROT_MIN=1;        // la rotazione pesca SOLO dai gen_ belli (indici 1..50), mai la Via Lattea grezza scura (0)
+let skyIdx=0, skyT=0, skyEvery=2, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;   // primo gen bello ~2s dopo l'avvio, poi rotazione 3-5.5 min
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
 // LIVE: l'auto-scaler è OFF (PIX fisso a 2) → base bloom più nitida (1440p anziché 1080p → upscale a 4K 1.5× invece di 2×). Non-live resta a 1/2.
 let starLayers=[], fastDust=null, nebSheets=[], bloomDiv=(/[?&]live=1/.test(location.search)?1.5:2);
@@ -793,7 +795,7 @@ function build(){
   window.cadutaVoiceStatus=()=>audio?{lib:audio.voiceLib.length,capsule:audio.capIdx.length,identitarie:audio.soulIdx.length,perCategoria:Object.fromEntries(Object.entries(audio.capByCat||{}).map(([k,v])=>[k,v.length])),busy:audio.voiceBusy,prossimaIn:Math.max(0,(audio.voiceEvery-audio.voiceT)|0)+'s',refrainIn:Math.max(0,(audio.soulEvery-audio.soulT)|0)+'s',ultime:(audio.voiceRecent||[]).slice(-6).map(i=>(audio.voiceLib[i]||{}).id||i)}:'audio non pronto';
   window.cadutaSpeak=(tag)=>{ if(!audio)return'audio non pronto'; if(tag) audio.enqueueVoice(tag); audio.voiceT=audio.voiceEvery; return tag?('prossima capsula → '+tag):'capsula forzata ora'; };   // forza subito una capsula (opz. con tag fenomeno)
   window.cadutaAccent=(f)=>{ if(f) applyAccent(f); return {famiglia:_accFam, disponibili:ACCENT_FAMS.map(x=>x.name)}; };   // forza/ispeziona la famiglia d'accento dinamico
-  window.cadutaSky=(i)=>{ cycleSky(typeof i==='number'?i:undefined); return {attuale:SKY_FILES[skyIdx], sfondi:SKY_FILES}; };   // cambia sfondo (test/anteprima)
+  window.cadutaSky=(i)=>{ if(typeof i==='number'){ skyFading=false; skyLoading=false; if(sky2)sky2.visible=false; } cycleSky(typeof i==='number'?i:undefined); return {caricando:SKY_FILES[skyPendIdx], attuale:SKY_FILES[skyIdx], sfondi:SKY_FILES.length}; };   // cambia sfondo (test/anteprima); bypassa il crossfade in corso
   window.cadutaScene=(name)=>{ const p=PRESETS.find(x=>x.name===name); if(!p) return PRESETS.map(x=>x.name);   // salta a un mood (test/anteprima)
     director.from=Object.assign({},director.cur); director.from.grade=director.grade.getHex(); director.from.key=director.key.getHex();
     director.to=Object.assign({},p); director.t=0; director.dur=2; director.hold=600; return 'scena → '+name; };
@@ -1892,15 +1894,15 @@ const CineShader={
 
 function applyDirector(){
   const c=director.cur;
-  if(sky){ sky.material.color.copy(director.grade).lerp(_white,IS_LIVE?0.76:0.74).multiplyScalar(Math.max(IS_LIVE?0.72:0.62,c.skyBright)*(IS_LIVE?1.0:0.92));   // sfondo TINTO dal mood (varietà) + pavimento (mai troppo scuro); su LIVE un filo più chiaro ma SENZA slavare (niente clipping → nebulose ricche) — in place, niente alloc
+  if(sky){ sky.material.color.copy(director.grade).lerp(_white,0.90).multiplyScalar(Math.max(IS_LIVE?0.98:0.92,c.skyBright)*(IS_LIVE?1.06:1.0));   // sfondo tinto SOLO 10% dal mood → i cieli ESO restano reali e LUMINOSI (come gen_25), non attenuati — in place, niente alloc
     if(sky2 && sky2.visible) sky2.material.color.copy(sky.material.color); }   // durante il crossfade tingi anche lo sfondo entrante
   if(keyLight){ keyLight.color.copy(_white).lerp(director.key,0.5); keyLight.intensity=c.kInt; }   // tinta regione attenuata
   if(cinePass) cinePass.uniforms.uGrade.value.copy(director.grade);
 }
 // SFONDI: crossfade verso una nebulosa diversa ogni ~5-9 min (lazy-load + dispose → 1-2 texture in VRAM)
 function cycleSky(target){ if(skyFading||skyLoading||!sky2) return; let n=(typeof target==='number')?((target%SKY_FILES.length)+SKY_FILES.length)%SKY_FILES.length:skyIdx;
-  if(typeof target!=='number' && SKY_FILES.length>1){ do{ n=(Math.random()*SKY_FILES.length)|0; }while(n===skyIdx); } if(n===skyIdx) return; skyPendIdx=n; skyLoading=true;   // auto: ruota tra TUTTI i 59 sfondi (Via Lattea inclusa) evitando la ripetizione immediata
-  texL.load('assets/'+SKY_FILES[n], t=>{ t.colorSpace=THREE.SRGBColorSpace; t.mapping=THREE.EquirectangularReflectionMapping; t.anisotropy=MAXANISO;
+  if(typeof target!=='number' && SKY_FILES.length>SKY_ROT_MIN+1){ do{ n=SKY_ROT_MIN+((Math.random()*(SKY_FILES.length-SKY_ROT_MIN))|0); }while(n===skyIdx); } if(n===skyIdx) return; skyPendIdx=n; skyLoading=true;   // auto: ruota SOLO tra i gen_ belli (come gen_25), mai la Via Lattea grezza scura
+  texL.load('assets/'+SKY_FILES[n]+SKY_QV, t=>{ t.colorSpace=THREE.SRGBColorSpace; t.mapping=THREE.EquirectangularReflectionMapping; t.anisotropy=MAXANISO;   // +SKY_QV = cache-buster (carica sempre il gen fresco)
     sky2.material.map=t; sky2.material.needsUpdate=true; sky2.material.opacity=0; sky2.visible=true; skyFade=0; skyFading=true; skyLoading=false;
   }, undefined, ()=>{ skyLoading=false; });   // errore di rete → annulla, riprova al prossimo giro (niente crash)
 }
