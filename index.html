@@ -2995,7 +2995,7 @@ function animate(){
     if(fallPhaseT<=0){ fallFast=!fallFast; fallTarget=fallFast?(20+Math.random()*12):1; fallPhaseT=45+Math.random()*60;   // veloce ancora più spinto (20-32×); fasi più corte (~45-105s)
       if($t.log){ $t.log.textContent=fallFast?'— acceleration. the fall quickens.':'— drifting. the fall slows.'; $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),9000); } } }
   fallMul += (fallTarget-fallMul)*Math.min(1,dt*0.08);                  // rampa graduale (~25-30s) verso il target — fasi più corte ma transizioni morbide
-  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul;
+  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul*zoomWorldMul;   // zoomWorldMul: pianeti/asteroidi al passo del deep zoom (1 a riposo)
   const rocketE=THREE.MathUtils.clamp((fallMul-1)/9,0,1);               // 0..1: i cue "RAZZO" crescono (gradualmente) con la velocità di caduta
   if(audio.music && audio.music.setSpeedMul) audio.music.setSpeedMul(1+rocketE*0.6);   // la musica accelera nelle fasi veloci
 
@@ -3792,6 +3792,8 @@ let zoomRig=null, zoomQuads=null, zoomStars=null, zoomStarsMat=null, zoomStarsPo
 let zoomCurI=-1, zoomNxtI=-1;      // indice livello corrente/entrante (-1 = L0 sfera sky, -2 = catena foto finita)
 let zoomGCu=0.5, zoomGCv=0.5, zoomFlip=false, zoomProcOp=0, zoomHandoff=false, _zCycleDone=false, zoomGen=0;   // zoomGen: scarta i load in volo di un dive precedente
 let zoomAimed=false, zoomAimT=0, zoomArmT=0;   // puntamento GC (il cielo ruota finché il bersaglio non è in asse) + watchdog dello stato 'arm'
+let zoomHoldT=0, zoomRebirth=0, zoomHold=10, zoomWorldMul=1, zoomWorldBoost=1.9;   // loop infinito: respiro nel procedurale + rinascita su nuovo cielo; boost velocità mondo (pianeti al passo del tuffo)
+const ZOOM_ENV_FLOOR=0.35;   // polvere/nebbie mai del tutto a zero durante il dive: i pianeti restano "dentro" la scena
 const ZP_N=2500, ZP_RMIN=14, ZP_RMAX=4800, ZP_Z=-4200;   // finale procedurale: disco di stelle in flusso radiale
 const _zDir=new THREE.Vector3(), _zUp=new THREE.Vector3(), _zFwd=new THREE.Vector3(), _zM=new THREE.Matrix4(), _zZero=new THREE.Vector3(0,0,0);   // scratch riusati (zero alloc per-frame)
 const _zNeutral=new THREE.Color(1,1,1).multiplyScalar(IS_LIVE?1.06:1.0);   // "bianco" dei livelli profondi: stesso boost live del tint sky
@@ -3855,7 +3857,7 @@ function zoomBuildRig(){ if(zoomRig) return;
       float halo=smoothstep(0.5,0.0,dist), core=smoothstep(0.22,0.0,dist), peak=smoothstep(0.06,0.0,dist);
       vec3 col=mix(vec3(0.78,0.84,1.0),vec3(1.0),peak);
       gl_FragColor=vec4(col,(halo*0.25+core*1.1+peak*0.9)*vA*uOp); }`});
-  zoomStars=new THREE.Points(g,zoomStarsMat); zoomStars.frustumCulled=false; zoomStars.renderOrder=-9.3; zoomStars.visible=false;
+  zoomStars=new THREE.Points(g,zoomStarsMat); zoomStars.frustumCulled=false; zoomStars.renderOrder=-8.95; zoomStars.visible=false;   // sopra sky2 (-9): il crossfade di rinascita del loop passa DIETRO il flusso di stelle (additivo: l'ordine con gli altri layer additivi è indifferente)
   zoomRig.add(zoomStars); zoomStarsPos=pos;
 }
 // prossimo livello USABILE della catena dopo i (salta i rotti; -2 = catena finita → nessuno)
@@ -3935,6 +3937,7 @@ function zoomFinishExit(){
   if(zoomRig) zoomRig.visible=false;
   zoomCurI=-1; zoomNxtI=-1; zoomProcOp=0; zoomHandoff=false; zoomT=0; zoomFovKick=0;
   zoomAimed=false; zoomAimT=0; zoomSkyPitch=0;   // puntamento azzerato (il residuo di pitch è già rientrato in rampa durante l'exit)
+  zoomHoldT=0; zoomRebirth=0; zoomWorldMul=1;    // loop: contatori rinascita e velocità mondo ai valori di riposo
   zoomSkyRotMul=1; zoomEnvMul=1; zoomState='idle';
   console.log('[zoom] dive concluso — caduta normale ripresa');
 }
@@ -3948,7 +3951,8 @@ function deepZoomUpdate(dt){
   const dive=(zoomState==='dive');
   // rampe globali (ripristinate in uscita): rotazione sky congelata in 2s, neb/polvere puliti in 4s, kick FOV decay ~1.5s
   zoomSkyRotMul=dive?Math.max(0,zoomSkyRotMul-dt/2):Math.min(1,zoomSkyRotMul+dt/2);
-  zoomEnvMul   =dive?Math.max(0,zoomEnvMul-dt/4)  :Math.min(1,zoomEnvMul+dt/3);
+  zoomEnvMul   =dive?Math.max(ZOOM_ENV_FLOOR,zoomEnvMul-dt/4):Math.min(1,zoomEnvMul+dt/3);   // floor: un filo di polvere/nebbie resta per dare profondità ai pianeti
+  zoomWorldMul+=THREE.MathUtils.clamp((dive&&zoomAimed?zoomWorldBoost:1)-zoomWorldMul,-dt/4,dt/4);   // pianeti accelerano col tuffo (rampa ~4s); durante panoramica/uscita tornano al passo
   zoomFovKick*=Math.exp(-dt/1.5);
   if(!dive) zoomSkyPitch*=Math.exp(-dt/1.5);   // uscita: il pitch di puntamento rientra in rampa (il crossfade sfondo forzato maschera il residuo)
   // Θ(t)=Θ0·exp(-k·t); dopo l'handoff al procedurale resta congelato (il flusso radiale porta lo zoom all'infinito)
@@ -4018,6 +4022,20 @@ function deepZoomUpdate(dt){
       if(x*x+y*y>R2){ const a=Math.random()*6.28318, r=ZP_RMIN*(0.3+Math.random()*0.7); x=Math.cos(a)*r; y=Math.sin(a)*r; }   // respawn DENTRO il nucleo invisibile (r≤RMIN, dove vA=0) → mai pop
       P[i*3]=x; P[i*3+1]=y; }
     zoomStars.geometry.attributes.position.needsUpdate=true; }
+  // LOOP INFINITO: dopo l'handoff, respiro nel procedurale → nuovo cielo dietro il flusso → si ri-tuffa
+  if(zoomState==='dive' && zoomMode==='loop' && zoomHandoff){
+    zoomHoldT+=dt;
+    if(zoomRebirth===0 && zoomHoldT>=zoomHold){ zoomRebirth=1;
+      skyT=0; skyEvery=180+Math.random()*150;                            // orologio sfondi: il nuovo cielo vive un intervallo pieno
+      if(!skyFading&&!skyLoading) cycleSky(); }                          // nuovo sfondo casuale, crossfade dietro le stelle procedurali
+    if(zoomRebirth===1 && !skyFading && !skyLoading){                    // crossfade finito → il nuovo cielo è quello attivo
+      zoomRebirth=0; zoomHoldT=0;
+      const keepProc=zoomProcOp;                                         // niente salti: il procedurale sfuma da solo (a Θ0 il suo target è 0)
+      zoomStartDive();                                                   // ri-init completo: GC del nuovo cielo, ri-puntamento, catena da capo
+      if(zoomState==='dive'){ zoomProcOp=keepProc; zoomStars.visible=keepProc>0.001; zoomStarsMat.uniforms.uOp.value=keepProc*0.9; console.log('[zoom] loop: rinascita → nuovo ciclo'); }
+      else zoomFinishExit();                                             // ciclo non riavviabile (GC mancante) → chiusura pulita
+    }
+  }
   // uscita: mode 'once' dopo dur → fade 4s + NUOVO sfondo casuale (cycleSky rispetta SKY_ROT_MIN) + ripristini
   if(zoomState==='dive' && zoomMode==='once' && zoomT>=zoomDur) zoomBeginExit(4);
   if(zoomState==='exit'){ zoomExitT+=dt;
@@ -4026,11 +4044,14 @@ function deepZoomUpdate(dt){
     if(zoomExitT>=zoomExitDur) zoomFinishExit(); }
 }
 // API console (nessun evento chat, nessun trigger del Director — solo manuale):
-//   cadutaZoom({dur:90, mode:'once'|'loop', k:null}) · cadutaZoomStop()
+//   cadutaZoom({dur:90, mode:'once'|'loop', k:null, hold:10, world:1.9}) · cadutaZoomStop()
+//   loop = INFINITO: catena foto → stelle procedurali (hold s) → nuovo cielo dietro il flusso → ri-tuffo, per sempre
+//   world = moltiplicatore velocità pianeti/asteroidi durante il tuffo (i pianeti "seguono" lo zoom)
 window.cadutaZoom=(opts)=>{ opts=opts||{};
   if(!built||!sky||!sky2) return 'scena non pronta (premi ENTER prima)';
   if(zoomState!=='idle') return 'dive già in corso ('+zoomState+') — cadutaZoomStop() per uscire';
   zoomDur=Math.max(20,+opts.dur||90); zoomMode=(opts.mode==='loop')?'loop':'once'; zoomKOpt=(+opts.k>0)?+opts.k:null;
+  zoomHold=Math.max(3,+opts.hold||10); zoomWorldBoost=Math.max(1,+opts.world||1.9);
   zoomState='arm'; zoomArmT=0;                                            // il dive parte quando manifest pronti E nessun crossfade sky in corso (watchdog 30s)
   zoomLoadCfg().then(ok=>{ if(!ok&&zoomState==='arm') zoomState='idle'; });
   return 'deep zoom armato ('+zoomMode+', '+zoomDur+'s)'+((skyFading||skyLoading)?' — attendo la fine del crossfade sfondo':'');
@@ -4039,8 +4060,8 @@ window.cadutaZoomStop=()=>{ if(zoomState==='idle') return 'nessun dive in corso'
   if(zoomState==='arm'){ zoomState='idle'; return 'dive annullato'; }
   if(zoomState!=='exit') zoomBeginExit(3); return 'uscita dal dive (~3s)'; };
 // diagnostica dive (console/verifica): stato, Θ, livelli attivi, texture residenti
-window.cadutaZoomInfo=()=>({ state:zoomState, aimed:zoomAimed, t:+zoomT.toFixed(1), theta:+zoomTheta.toFixed(3),
-  cur:zoomCurI, nxt:zoomNxtI, proc:+zoomProcOp.toFixed(2),
+window.cadutaZoomInfo=()=>({ state:zoomState, mode:zoomMode, aimed:zoomAimed, t:+zoomT.toFixed(1), theta:+zoomTheta.toFixed(3),
+  cur:zoomCurI, nxt:zoomNxtI, proc:+zoomProcOp.toFixed(2), rebirth:zoomRebirth, world:+zoomWorldMul.toFixed(2),
   levels:zoomLevels?zoomLevels.map(L=>L.state):null, tex:renderer.info.memory.textures });
 
 /* ---------------- REGISTRAZIONE clip 4K (locale): forza 3840x2160, 16:9 pieno, scena pulita; musica a parte ---------------- */
