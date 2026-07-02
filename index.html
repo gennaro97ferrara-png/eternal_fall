@@ -3805,7 +3805,8 @@ let zoomGCu=0.5, zoomGCv=0.5, zoomFlip=false, zoomProcOp=0, zoomHandoff=false, _
 let zoomAimed=false, zoomAimT=0, zoomArmT=0;   // puntamento GC (il cielo ruota finché il bersaglio non è in asse) + watchdog dello stato 'arm'
 let zoomHoldT=0, zoomRebirth=0, zoomHold=10, zoomWorldMul=1, zoomWorldBoost=5;   // loop infinito: respiro nel procedurale + rinascita su nuovo cielo; boost velocità mondo ×5: lo sfondo zoom cresce ~8%/s (esponenziale) → i corpi devono crescere PIÙ in fretta o l'occhio li incolla al flusso ("cadono insieme")
 let zoomSkyDim=1;   // oscuramento sfera sky (×tint in applyDirector, 1 a riposo): il puntamento avviene AL BUIO (blink — la sfera che ruota leggerebbe come "camera che gira" coi pianeti incollati) e nelle fasi procedurali dietro il flusso non si vede niente
-const ZOOM_ENV_FLOOR=0.35;   // polvere/nebbie mai del tutto a zero durante il dive: i pianeti restano "dentro" la scena
+const ZOOM_ENV_FLOOR=0.12;   // velo minimo di polvere durante il dive (0.35 metteva chiazze di nebbia sopra lo zoom = "sfondo")
+const ZOOM_LOOP_WIDE=25;     // livelli con campo più largo di così (gradi) = "cielo largo": esclusi dai cicli del loop
 const ZP_N=2500, ZP_RMIN=14, ZP_RMAX=4800, ZP_Z=-4200;   // finale procedurale: disco di stelle in flusso radiale
 const _zDir=new THREE.Vector3(), _zUp=new THREE.Vector3(), _zFwd=new THREE.Vector3(), _zM=new THREE.Matrix4(), _zZero=new THREE.Vector3(0,0,0);   // scratch riusati (zero alloc per-frame)
 const _zNeutral=new THREE.Color(1,1,1).multiplyScalar(IS_LIVE?1.06:1.0);   // "bianco" dei livelli profondi: stesso boost live del tint sky
@@ -3875,7 +3876,7 @@ function zoomBuildRig(){ if(zoomRig) return;
 }
 // prossimo livello USABILE della catena dopo i (salta i rotti; -2 = catena finita → nessuno)
 function zNextUsable(i){ if(!zoomLevels||i===-2) return -1;
-  for(let j=(i<0?0:i+1);j<zoomLevels.length;j++) if(zoomLevels[j].state!==3) return j; return -1; }
+  for(let j=(i<0?0:i+1);j<zoomLevels.length;j++) if(zoomLevels[j].state!==3 && zoomLevels[j].aw<=zoomTheta0*1.15) return j; return -1; }   // salta i livelli più larghi del Θ0 del ciclo (nel loop si parte dal profondo: L1 "cielo largo" escluso)
 function zSlotOf(i){ if(!zoomQuads) return null; return zoomQuads[0].lv===i?zoomQuads[0]:(zoomQuads[1].lv===i?zoomQuads[1]:null); }
 // libera texture + bitmap di un livello (close è idempotente: innocuo se l'upload l'ha già chiusa)
 function zFreeTex(L){ if(!L.tex) return; try{ if(L.tex.image&&L.tex.image.close) L.tex.image.close(); }catch(_){} try{L.tex.dispose();}catch(_){} L.tex=null; }
@@ -3923,6 +3924,9 @@ function zoomStartDive(){
   zoomBuildRig();
   const hf=2*Math.atan(Math.tan(camera.fov*Math.PI/360)*camera.aspect)*180/Math.PI;   // hFOV CORRENTE in gradi (vale anche in 4K rec)
   zoomTheta0=hf; zoomTheta=hf;
+  // LOOP = si parte dal PROFONDO: i livelli "cielo largo" (aw>25°, cioè L1) sembrano lo sfondo
+  // normale e nel loop non devono MAI vedersi → il ciclo comincia dal primo livello stretto (L2)
+  if(zoomMode==='loop'){ for(const L of zoomLevels){ if(L.state!==3 && L.aw<=ZOOM_LOOP_WIDE){ zoomTheta0=Math.min(hf,L.aw*1.02); zoomTheta=zoomTheta0; break; } } }
   let lastA=0; for(let i=zoomLevels.length-1;i>=0;i--){ if(zoomLevels[i].state!==3){ lastA=zoomLevels[i].aw; break; } }
   const thetaEnd=Math.max(lastA,0.01)*ZOOM_PROC_K;
   zoomK=zoomKOpt||Math.log(zoomTheta0/Math.max(thetaEnd,1e-4))/(zoomDur*0.85);   // default: la catena foto dura ~85% di dur
@@ -3934,7 +3938,7 @@ function zoomStartDive(){
   const c=zNextUsable(-1); if(c>=0){ const L1=zoomLevels[c];
     // PRIMO crossfade = contro la SFERA (che non zooma: scala fissa 1) → finestra ancorata a Θ0, non ad A1:
     // a opacità 0 il rapporto di scala è 1.0 e cresce solo mentre la sfera viene coperta (SPEC §4 "scale-matched")
-    L1.aIn=(L1.aw>=hf*0.6)?hf*0.98:L1.aw;            // solo se il livello copre ~lo schermo (catena degradata → finestra classica)
+    L1.aIn=(L1.aw>=zoomTheta0*0.6)?zoomTheta0*0.98:L1.aw;   // solo se il livello copre ~lo schermo al Θ0 del ciclo (catena degradata → finestra classica)
     L1.lgA=Math.log(L1.aIn); L1.lgB=L1.lgA+Math.log(ZOOM_FADE_LO);
     zLoadLevel(c); }                                 // L1 parte subito
   zoomState='dive';
@@ -4081,6 +4085,7 @@ window.cadutaZoomStop=()=>{ if(zoomState==='idle') return 'nessun dive in corso'
 // diagnostica dive (console/verifica): stato, Θ, livelli attivi, texture residenti
 window.cadutaZoomInfo=()=>({ state:zoomState, mode:zoomMode, aimed:zoomAimed, t:+zoomT.toFixed(1), theta:+zoomTheta.toFixed(3),
   cur:zoomCurI, nxt:zoomNxtI, proc:+zoomProcOp.toFixed(2), rebirth:zoomRebirth, world:+zoomWorldMul.toFixed(2),
+  dim:+zoomSkyDim.toFixed(3), skyCol:sky?sky.material.color.getHexString():'?', env:+zoomEnvMul.toFixed(2),
   levels:zoomLevels?zoomLevels.map(L=>L.state):null, tex:renderer.info.memory.textures });
 
 /* ---------------- REGISTRAZIONE clip 4K (locale): forza 3840x2160, 16:9 pieno, scena pulita; musica a parte ---------------- */
