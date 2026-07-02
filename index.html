@@ -2948,7 +2948,7 @@ const clock=new THREE.Clock();
 let shaderTime=0; const SWRAP=100000;
 let camPhase=0,camDist=10,started=false,camOrbit=0,manSpin=0;
 let camMoveAz=0,camMoveEl=0,camMoveDs=0,camMoveAzT=0,camMoveElT=0,camMoveDsT=0,camMoveNext=20,camMoveScale=1;   // RIFRAME lenti: la camera plana verso nuove inquadrature e vi indugia (richiesta utente: "più cambi di inquadratura")
-let camOrbitP=1,camOrbitDir=1,camOrbitNext=45+Math.random()*55;   // ORBITA IMPROVVISA: ogni ~0.75-1.7 min un giro completo attorno all'astronauta (~26s); P=progresso 0..1 (1=ferma)
+let camOrbitP=1,camOrbitDir=1,camOrbitNext=25+Math.random()*35;   // ORBITA IMPROVVISA: ogni ~25-60s un giro completo attorno all'astronauta (~26s); P=progresso 0..1 (1=ferma)
 let camLookX=0, camLookY=0.15;   // bersaglio lookAt smussato → niente stacchi d'inquadratura quando cambia il pianeta a fuoco
 let planetTimer=6,wispTimer=4,starTimer=2,mysteryTimer=80,parallelTimer=120,bhTimer=200;
 let cometTimer=40,clusterTimer=120,derelictTimer=150;
@@ -3207,7 +3207,7 @@ function animate(){
   // in asse); se un dive inizia a metà giro, il giro si CONGELA e riprende all'uscita. A fine giro
   // l'angolo vale 2π ≡ 0 → nessuno scatto.
   const _zIdle=(typeof zoomState==='undefined'||zoomState==='idle');
-  if(camOrbitP>=1){ if(_zIdle){ camOrbitNext-=dt; if(camOrbitNext<=0){ camOrbitNext=45+Math.random()*55; camOrbitP=0; camOrbitDir=Math.random()<0.5?1:-1; } } }
+  if(camOrbitP>=1){ if(_zIdle){ camOrbitNext-=dt; if(camOrbitNext<=0){ camOrbitNext=25+Math.random()*35; camOrbitP=0; camOrbitDir=Math.random()<0.5?1:-1; } } }
   else if(_zIdle) camOrbitP=Math.min(1,camOrbitP+dt/26);
   const _orb=camOrbitDir*6.283185307*(camOrbitP*camOrbitP*(3-2*camOrbitP));   // smoothstep 0→2π: parte piano, fila, atterra dolce
   const _az=Math.sin(camPhase*0.05)*0.05 + camMoveAz*camMoveScale + _orb;     // micro-sway (~3°) + riframe corrente + orbita
@@ -4114,7 +4114,7 @@ window.cadutaZoom=(opts)=>{ opts=opts||{};
   if(!built||!sky||!sky2) return 'scena non pronta (premi ENTER prima)';
   if(zoomState!=='idle') return 'dive già in corso ('+zoomState+') — cadutaZoomStop() per uscire';
   zoomMode=(opts.mode==='loop')?'loop':'once'; zoomKOpt=(+opts.k>0)?+opts.k:null;
-  zoomDur=Math.max(20,+opts.dur||(zoomMode==='loop'?60:90));               // loop più VELOCE di default (ciclo ~60s)
+  zoomDur=Math.max(20,+opts.dur||(zoomMode==='loop'?40:90));               // loop VELOCE di default (ciclo ~40s: la caduta si sente)
   zoomHold=Math.max(3,+opts.hold||10); zoomWorldBoost=Math.max(1,+opts.world||5);
   zoomAutoStarted=!!opts._auto;                                            // i dive lanciati a mano NON vengono chiusi dalla regia automatica
   zoomState='arm'; zoomArmT=0;                                            // il dive parte quando manifest pronti E nessun crossfade sky in corso (watchdog 30s)

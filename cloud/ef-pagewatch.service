@@ -1,0 +1,11 @@
+[Unit]
+Description=Eternal Fall - watchdog pagina live (JS bloccato / tab assente -> recovery Chrome)
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/bash /root/eternal-fall/cloud/ef-pagewatch.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
