@@ -581,6 +581,10 @@ let lavaTimer=240, shatteredTimer=300, whitedwarfTimer=120, variablestarTimer=11
 // VISITATORI (nuovi elementi casuali): stelle cadenti, navicella, razzo, UFO
 let shootingStars=[], shootTimer=25;
 let starship=null, starshipTimer=200+Math.random()*200, rocketShip=null, rocketTimer=320+Math.random()*240, ufo=null, ufoTimer=260+Math.random()*280;
+// MERAVIGLIE (round 3): wormhole, meduse, sputnik, attraversamento anelli, lanterne, stazione madre
+let wormhole=null, jellyPod=null, sputnik=null, ringCross=null, lanterns=null, motherStation=null;
+let wormholeTimer=1100+Math.random()*900, jellyTimer=380+Math.random()*380, sputnikTimer=520+Math.random()*480,
+    ringCrossTimer=900+Math.random()*700, lanternTimer=420+Math.random()*420, motherTimer=18000+Math.random()*20000;   // stazione madre: ~2-4 volte al giorno
 let solarEclipse, lunarEclipse;
 let solarEclipseTimer=520+Math.random()*300, lunarEclipseTimer=620+Math.random()*300;   // eventi rari (anche da comando)
 let _echoPending=0;   // eco di luce ~14s dopo una supernova (catena causa→effetto)
@@ -599,6 +603,16 @@ let manSparks=null;                                   // ~90 pinpoint sul torso/
 let manTwT=8+Math.random()*10, manTwE=0, manTwA=0;    // timer/energia/fase-attacco del twinkle periodico (~ogni 12-28s, sale in ~0.4s, decade in ~2s)
 const uFat={value:0};                                 // CICLO INGRASSA/DIMAGRISCE: 0=normale, 1=grasso (gonfiaggio lungo le normali, pesato sulla pancia)
 let fatT=150+Math.random()*180, fatClock=-1, fatAmp=0;   // prossimo ciclo tra ~2.5-5.5 min; fatClock>=0 = ciclo in corso
+// ROSTER PERSONAGGI: astronauta + animali-astronauta. I GLB vanno in assets/characters/ (mancanti = saltati senza errori).
+// helmet = casco a bolla procedurale per gli animali "nudi": coordinate 0..1 nel box del modello + raggio relativo all'altezza (si tarano con cadutaHelmet).
+const CHARACTERS=[
+  {name:'astronaut', file:'assets/astronaut.glb?v=2', credit:'Astronaut © Poly/Google'},
+  {name:'astrodog',  file:'assets/characters/astrodog.glb',  credit:'AstroDoggo © merrychuu (CC BY)'},
+  {name:'cat',       file:'assets/characters/cat.glb',       credit:'Cat © empire2ofearth (CC BY)',    helmet:{x:0.5,y:0.80,z:0.25,r:0.24}},
+  {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © SkyeSladeUT (CC BY)',   helmet:{x:0.5,y:0.92,z:0.35,r:0.14}},
+  {name:'elephant',  file:'assets/characters/elephant.glb',  credit:'Elephant © onderonvermez (CC BY)',helmet:{x:0.5,y:0.72,z:0.22,r:0.26}},
+];
+let charRoster=[], charIdx=0, charT=600+Math.random()*600, charSwapAt=-1;   // rotazione ogni ~10-20 min, swap al picco del twinkle-flash
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
 // VARIETÀ DI MOVIMENTO a livello di corpo (rotazioni/derive: NON deformano la mesh)
 let barrelTarget=0, barrelCur=0, barrelAxis=0, barrelHold=40;  // capriola lenta su asse alternato (0=Z roll, 1=X tumble); barrelHold=cooldown
@@ -719,13 +733,14 @@ function build(){
   rimLight=new THREE.DirectionalLight(0x8aa0d8,0.62); scene.add(rimLight);   // fill lato-camera (rende i pianeti più leggibili)
   scene.add(new THREE.AmbientLight(0x161f36,0.17));
 
-  // l'uomo
-  man=ASSETS.astronaut;
-  const box=new THREE.Box3().setFromObject(man), sz=new THREE.Vector3(), ct=new THREE.Vector3();
+  // PERSONAGGI: setupCharacter applica a QUALSIASI GLB la stessa pipeline dell'astronauta
+  // (scala a 1.95, materiale-stella con glitter/rim/wrap/ciclo-grasso, scintille-Points, casco a bolla per gli animali).
+  function setupCharacter(root,def,anims){
+  const box=new THREE.Box3().setFromObject(root), sz=new THREE.Vector3(), ct=new THREE.Vector3();
   box.getSize(sz); box.getCenter(ct); const s=1.95/sz.y;
-  man.scale.setScalar(s); man.position.set(-ct.x*s,-ct.y*s,-ct.z*s); man.rotation.y=Math.PI;
-  let _sparkMesh=null,_sparkVn=0;   // mesh più grande della tuta → ospiterà le scintille-Points (scelto nel traverse)
-  man.traverse(o=>{ if(o.isMesh&&o.material){ o.material.color=new THREE.Color(0xffffff); o.material.metalness=0.16; o.material.roughness=0.78; o.material.envMapIntensity=1.10;   // tuta più luminosa (raccoglie più cielo)
+  root.scale.setScalar(s); root.position.set(-ct.x*s,-ct.y*s,-ct.z*s); root.rotation.y=(def.yaw!==undefined?def.yaw:Math.PI);
+  let _sparkMesh=null,_sparkVn=0;   // mesh più grande → ospiterà le scintille-Points (scelto nel traverse)
+  root.traverse(o=>{ if(o.isMesh&&o.material){ o.material.color=new THREE.Color(0xffffff); o.material.metalness=0.16; o.material.roughness=0.78; o.material.envMapIntensity=1.10;   // tuta più luminosa (raccoglie più cielo)
     if(!o.isSkinnedMesh && o.geometry.attributes.position.count>_sparkVn){ _sparkMesh=o; _sparkVn=o.geometry.attributes.position.count; }
     o.material.normalScale&&o.material.normalScale.set(1.1,1.1);   // un filo più di rilievo dalla normal map → più forma
     o.material.emissive=new THREE.Color(0x000000);                 // base spenta: l'emissive lo usa SOLO il visore (sotto)
@@ -797,6 +812,52 @@ function build(){
         #include <opaque_fragment>`);
     };
     o.material.needsUpdate=true; o.frustumCulled=false; } });  // tuta opaca + arti animati + rim/visore
+  // CASCO A BOLLA per gli animali "nudi": sfera fresnel additiva (bolla di vetro, costo ~zero, tinta con la key regione)
+  if(def.helmet){ const H=def.helmet;
+    const hm=new THREE.Mesh(new THREE.SphereGeometry(1,24,16), new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+      uniforms:{uKey:manKey},
+      vertexShader:`varying vec3 vN;varying vec3 vV;void main(){ vN=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.0); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }`,
+      fragmentShader:`varying vec3 vN;varying vec3 vV;uniform vec3 uKey;
+        void main(){ float f=pow(1.0-abs(dot(normalize(vN),normalize(vV))),2.2);
+        vec3 c=mix(vec3(0.75,0.85,1.0),uKey,0.35);
+        gl_FragColor=vec4(c, 0.045+0.5*f); }`}));
+    hm.position.set(box.min.x+sz.x*H.x, box.min.y+sz.y*H.y, box.min.z+sz.z*H.z);
+    hm.scale.setScalar(sz.y*H.r); root.add(hm); root.userData.helmet=hm; }
+  // SCINTILLE PUNTUALI per-personaggio (come l'astronauta: torso/zona alta, zona a displacement ~zero)
+  let sparks=null;
+  if(_sparkMesh && !(anims&&anims.length)){
+    const bbS=_sparkMesh.geometry.boundingBox, extS=bbS.max.clone().sub(bbS.min);
+    const P=130, sp=new Float32Array(P*3), sph=new Float32Array(P), ssd=new Float32Array(P), snr=new Float32Array(P*3), sfw=new Float32Array(P);
+    const pa=_sparkMesh.geometry.attributes.position, na=_sparkMesh.geometry.attributes.normal; let n=0,guard=0;
+    const _ss=(a,b,x)=>{ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); };
+    while(n<P&&guard++<30000){ const i=(Math.random()*pa.count)|0;
+      const nx=(pa.getX(i)-bbS.min.x)/extS.x, ny=(pa.getY(i)-bbS.min.y)/extS.y;
+      if(Math.abs(nx-0.5)<0.21&&ny>0.52){ const off=extS.y*0.008;
+        sp[n*3]=pa.getX(i)+na.getX(i)*off; sp[n*3+1]=pa.getY(i)+na.getY(i)*off; sp[n*3+2]=pa.getZ(i)+na.getZ(i)*off;
+        snr[n*3]=na.getX(i); snr[n*3+1]=na.getY(i); snr[n*3+2]=na.getZ(i);
+        sfw[n]=extS.y*0.075*(0.35+0.85*_ss(0.16,0.42,ny)*(1-_ss(0.52,0.86,ny)));   // stesso peso-pancia del vertex → i punti restano incollati anche da grasso
+        sph[n]=Math.random()*6.28318; ssd[n]=0.5+Math.random()*1.7; n++; } }
+    if(n>10){ const sg=new THREE.BufferGeometry();
+      sg.setAttribute('position',new THREE.BufferAttribute(sp.slice(0,n*3),3)); sg.setAttribute('aPhase',new THREE.BufferAttribute(sph.slice(0,n),1)); sg.setAttribute('aSpd',new THREE.BufferAttribute(ssd.slice(0,n),1));
+      sg.setAttribute('aNrm',new THREE.BufferAttribute(snr.slice(0,n*3),3)); sg.setAttribute('aFatW',new THREE.BufferAttribute(sfw.slice(0,n),1));
+      sparks=new THREE.Points(sg,new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+        uniforms:{uTime:manFloatTime,uTw:uStarTw,uPix:{value:PIX},uFat:uFat},
+        vertexShader:`attribute float aPhase;attribute float aSpd;attribute vec3 aNrm;attribute float aFatW;uniform float uTime,uPix,uFat;varying float vB;
+          void main(){ float w=sin(uTime*aSpd+aPhase); vB=pow(max(w,0.0),24.0);            // pow alto = lampeggio ON/OFF raro, per-punto
+          vec3 p=position+aNrm*(aFatW*uFat);                                               // segue la superficie gonfiata del ciclo grasso
+          vec4 mv=modelViewMatrix*vec4(p,1.0); gl_Position=projectionMatrix*mv;
+          gl_PointSize=max(1.7*uPix, uPix*(2.6+2.2*vB)*(9.0/max(-mv.z,1.0))); }`,          // pavimento pixel fisici → leggibile da telefono
+        fragmentShader:`varying float vB;uniform float uTw;
+          void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d); float a=smoothstep(0.5,0.0,r)*0.3+smoothstep(0.12,0.0,r);
+          gl_FragColor=vec4(vec3(1.0,0.98,0.94), a*vB*(0.7+1.3*uTw)); }`}));               // sul twinkle globale i pinpoint sforano nel bloom
+      sparks.frustumCulled=false; _sparkMesh.add(sparks); } }   // figlio del mesh → eredita TUTTE le rotazioni gratis
+  let mixer=null;
+  if(anims&&anims.length){ mixer=new THREE.AnimationMixer(root); anims.forEach(c=>mixer.clipAction(c).play()); console.log('character '+def.name+': animazione attiva ('+anims.length+' clip)'); }
+  return {root,def,sparks,mixer,animated:!!(anims&&anims.length)};
+  }
+  // personaggio iniziale = astronauta (obbligatorio); gli animali si caricano in background dopo l'avvio
+  const _c0=setupCharacter(ASSETS.astronaut,CHARACTERS[0],ASSETS.astronautAnims);
+  charRoster.push(_c0); charIdx=0; man=_c0.root; manMixer=_c0.mixer; manSparks=_c0.sparks; manFloatAmt.value=_c0.animated?0:1;
   manRig=new THREE.Group(); manRig.add(man); scene.add(manRig);
   // ALONE STELLARE: alone morbido additivo attorno alla silhouette (depthTest ON → il corpo lo occlude
   // e resta solo il bordo di luce). Respira piano; nei "twinkle" si accende come una stella.
@@ -810,38 +871,29 @@ function build(){
       x.fillStyle=gr; x.beginPath(); x.moveTo(0,-3.2); x.lineTo(122,0); x.lineTo(0,3.2); x.fill(); x.restore(); }
     manSpike=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}));
     manSpike.scale.setScalar(3.4); manSpike.visible=false; manSpike.frustumCulled=false; manRig.add(manSpike); }
-  // SCINTILLE PUNTUALI: ~90 Points campionati su torso/casco (zona a displacement ~zero: ny>0.52, |nx-0.5|<0.21),
-  // pavimento in pixel fisici come le stelle (psFloor) → veri pinpoint che si accendono uno alla volta, visibili da telefono.
-  if(_sparkMesh && !(ASSETS.astronautAnims&&ASSETS.astronautAnims.length)){
-    const bbS=_sparkMesh.geometry.boundingBox, extS=bbS.max.clone().sub(bbS.min);
-    const P=130, sp=new Float32Array(P*3), sph=new Float32Array(P), ssd=new Float32Array(P), snr=new Float32Array(P*3), sfw=new Float32Array(P);
-    const pa=_sparkMesh.geometry.attributes.position, na=_sparkMesh.geometry.attributes.normal; let n=0,guard=0;
-    const _ss=(a,b,x)=>{ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); };
-    while(n<P&&guard++<30000){ const i=(Math.random()*pa.count)|0;
-      const nx=(pa.getX(i)-bbS.min.x)/extS.x, ny=(pa.getY(i)-bbS.min.y)/extS.y;
-      if(Math.abs(nx-0.5)<0.21&&ny>0.52){ const off=extS.y*0.008;
-        sp[n*3]=pa.getX(i)+na.getX(i)*off; sp[n*3+1]=pa.getY(i)+na.getY(i)*off; sp[n*3+2]=pa.getZ(i)+na.getZ(i)*off;
-        snr[n*3]=na.getX(i); snr[n*3+1]=na.getY(i); snr[n*3+2]=na.getZ(i);
-        sfw[n]=extS.y*0.075*(0.35+0.85*_ss(0.16,0.42,ny)*(1-_ss(0.52,0.86,ny)));   // stesso peso-pancia del vertex della tuta → i punti restano incollati anche da grasso
-        sph[n]=Math.random()*6.28318; ssd[n]=0.5+Math.random()*1.7; n++; } }
-    if(n>10){ const sg=new THREE.BufferGeometry();
-      sg.setAttribute('position',new THREE.BufferAttribute(sp.slice(0,n*3),3)); sg.setAttribute('aPhase',new THREE.BufferAttribute(sph.slice(0,n),1)); sg.setAttribute('aSpd',new THREE.BufferAttribute(ssd.slice(0,n),1));
-      sg.setAttribute('aNrm',new THREE.BufferAttribute(snr.slice(0,n*3),3)); sg.setAttribute('aFatW',new THREE.BufferAttribute(sfw.slice(0,n),1));
-      manSparks=new THREE.Points(sg,new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
-        uniforms:{uTime:manFloatTime,uTw:uStarTw,uPix:{value:PIX},uFat:uFat},
-        vertexShader:`attribute float aPhase;attribute float aSpd;attribute vec3 aNrm;attribute float aFatW;uniform float uTime,uPix,uFat;varying float vB;
-          void main(){ float w=sin(uTime*aSpd+aPhase); vB=pow(max(w,0.0),24.0);            // pow alto = lampeggio ON/OFF raro, per-punto
-          vec3 p=position+aNrm*(aFatW*uFat);                                               // segue la superficie gonfiata del ciclo grasso
-          vec4 mv=modelViewMatrix*vec4(p,1.0); gl_Position=projectionMatrix*mv;
-          gl_PointSize=max(1.7*uPix, uPix*(2.6+2.2*vB)*(9.0/max(-mv.z,1.0))); }`,          // pavimento pixel fisici → leggibile da telefono
-        fragmentShader:`varying float vB;uniform float uTw;
-          void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d); float a=smoothstep(0.5,0.0,r)*0.3+smoothstep(0.12,0.0,r);
-          gl_FragColor=vec4(vec3(1.0,0.98,0.94), a*vB*(0.7+1.3*uTw)); }`}));               // sul twinkle globale i pinpoint sforano nel bloom
-      manSparks.frustumCulled=false; _sparkMesh.add(manSparks); } }   // figlio del mesh → eredita TUTTE le rotazioni gratis
   // (la scritta "I FALL" è quella del modello stesso, sulla schiena)
-  // se il modello è riggato (es. da Mixamo) riproduci la sua animazione e spegni quella procedurale
-  if(ASSETS.astronautAnims && ASSETS.astronautAnims.length){ manMixer=new THREE.AnimationMixer(man);
-    ASSETS.astronautAnims.forEach(c=>manMixer.clipAction(c).play()); manFloatAmt.value=0; console.log('astronaut: animazione Mixamo attiva ('+ASSETS.astronautAnims.length+' clip)'); }
+  // carica gli ALTRI personaggi in background (GLB assenti → si salta senza errori, il roster resta com'è)
+  setTimeout(()=>{ for(const def of CHARACTERS.slice(1)){
+    fetch(def.file,{method:'HEAD'}).then(r=>{ if(!r.ok){ console.log('character assente (ok): '+def.name); return; }   // pre-check: niente 404 nel loader/console live
+      gl.load(def.file, g=>{ try{
+        const c=setupCharacter(g.scene,def,g.animations); c.root.visible=false; manRig.add(c.root); charRoster.push(c);
+        console.log('character pronto: '+def.name+' ('+charRoster.length+' nel roster)');
+      }catch(e){ console.warn('character KO:',def.name,e); } }, undefined, ()=>console.warn('character illeggibile: '+def.name)); }).catch(()=>{}); } }, 5000);
+  // SWITCH personaggio: nasconde l'attuale, mostra il nuovo, riaggancia sparks/mixer/credits
+  window._efSwitchCharacter=function(i){ const n=charRoster.length; if(!n) return 'roster vuoto';
+    i=(((i===undefined?charIdx+1:i)%n)+n)%n; if(i===charIdx&&n>1) return charRoster[i].def.name;
+    charRoster[charIdx].root.visible=false;
+    charIdx=i; const c=charRoster[i];
+    c.root.visible=true; man=c.root; manMixer=c.mixer; manSparks=c.sparks; manFloatAmt.value=c.animated?0:1;
+    if(manSparks) manSparks.material.uniforms.uPix.value=PIX;
+    const cr=document.getElementById('credit2'); if(cr) cr.textContent='Milky Way © ESO/S. Brunier · planets © Solar System Scope (CC BY) · '+c.def.credit;
+    return c.def.name; };
+  window.cadutaCharacter=(x)=>{ if(x===undefined) return {attivo:charRoster[charIdx].def.name, roster:charRoster.map(c=>c.def.name)};
+    const i=(typeof x==='number')?x:charRoster.findIndex(c=>c.def.name===x);
+    return (i>=0&&i<charRoster.length)?('personaggio → '+window._efSwitchCharacter(i)):('non trovato; roster: '+charRoster.map(c=>c.def.name).join(', ')); };
+  window.cadutaHelmet=(x,y,z,r)=>{ const hm=charRoster[charIdx].root.userData.helmet; if(!hm) return 'il personaggio attivo non ha casco';
+    if(x!==undefined) hm.position.set(x,y,z); if(r!==undefined) hm.scale.setScalar(r);
+    return {pos:hm.position.toArray().map(v=>+v.toFixed(3)), r:+hm.scale.x.toFixed(3)}; };   // taratura live del casco (coordinate locali del modello)
 
   // polvere
   dustGeo=new THREE.BufferGeometry(); dustPos=new Float32Array(DUST_N*3);
@@ -932,6 +984,12 @@ function build(){
     else if(w==='rocket'){ rocketShip.spawn(); }
     else if(w==='ufo'){ ufo.spawn(); }
     else if(w==='shooting'){ const fs=shootingStars.find(s=>!s.active); if(fs) fs.spawn(); }
+    else if(w==='wormhole'){ wormhole.spawn(); wormhole.g.position.set(50,5,-500); }
+    else if(w==='jellies'){ jellyPod.spawn(); jellyPod.g.position.set(50,5,-350); jellyPod.z0=-350-500; }
+    else if(w==='sputnik'){ sputnik.spawn(); }
+    else if(w==='rings'){ ringCross.spawn(); }
+    else if(w==='lanterns'){ lanterns.spawn(); }
+    else if(w==='mothership'){ motherStation.spawn(); }
     else if(w==='eclipsesolar'||w==='eclipse'){ solarEclipse.spawn(); }
     else if(w==='eclipselunar'){ lunarEclipse.spawn(); }
     else if(w==='supernova'){ supernova.flash(); }
@@ -1001,6 +1059,7 @@ function build(){
   solarEclipse=new SolarEclipse(); lunarEclipse=new LunarEclipse();
   for(let i=0;i<3;i++) shootingStars.push(new ShootingStar());   // pool: nelle piogge ne sfrecciano anche 2-3 insieme
   starship=new Starship(); rocketShip=new RocketShip(); ufo=new UFO();
+  wormhole=new Wormhole(); jellyPod=new JellyPod(); sputnik=new Sputnik(); ringCross=new RingCrossing(); lanterns=new Lanterns(); motherStation=new MotherStation();
   for(let i=0;i<2;i++) ownedPlanets.push(new OwnedPlanet());   // pianeti permanenti (acquisti): pool che ruota sul catalogo
   loadPermanent();
   galaxies=[]; const gHues=[0.6,0.08,0.58,0.52,0.12];
@@ -1411,19 +1470,26 @@ const BHLensShader={
       gl_FragColor=vec4(texture2D(tDiffuse, clamp(uv,0.0,1.0)).rgb*shadow,1.0); }`};
 function updateLens(){
   if(!lensPass) return;
+  // la passata di lensing serve DUE sorgenti (mai insieme): buco nero (con ombra) o wormhole (distorsione più tenue)
+  let srcPos=null,srcR=0,srcSt=0;
   if(blackhole && blackhole.active){
-    const v=_bhProj.copy(blackhole.group.position).project(camera);
+    const op=THREE.MathUtils.clamp((blackhole.group.position.z-SPAWN_Z)/700,0,1);
+    const s=0.14+0.10*THREE.MathUtils.clamp((blackhole.group.scale.x-34)/26,0,1);   // lensing più leggibile, scalato col raggio del buco
+    srcPos=blackhole.group.position; srcR=blackhole.group.scale.x*2.6; srcSt=s*op;
+  } else if(wormhole && wormhole.active){
+    srcPos=wormhole.g.position; srcR=wormhole.g.scale.x*1.15; srcSt=0.085*wormhole.mat.uniforms.uOp.value;
+  }
+  if(srcPos && srcSt>0.0005){
+    const v=_bhProj.copy(srcPos).project(camera);
     if(v.z<1){
       lensPass.uniforms.uBH.value.set((v.x+1)/2,(v.y+1)/2);
-      const dist=camera.position.distanceTo(blackhole.group.position);
-      const angR=Math.atan((blackhole.group.scale.x*2.6)/Math.max(dist,1));
+      const dist=camera.position.distanceTo(srcPos);
+      const angR=Math.atan(srcR/Math.max(dist,1));
       lensPass.uniforms.uRadius.value=Math.min((angR/((camera.fov*Math.PI/180)/2))*0.5,0.6);
-      const op=THREE.MathUtils.clamp((blackhole.group.position.z-SPAWN_Z)/700,0,1);
-      const s=0.14+0.10*THREE.MathUtils.clamp((blackhole.group.scale.x-34)/26,0,1);   // lensing più leggibile, scalato col raggio del buco
-      lensPass.uniforms.uStrength.value=s*op; lensPass.uniforms.uAspect.value=WIDTH/HEIGHT; lensPass.enabled=op>0; return;   // salta la passata anche durante la rampa iniziale (op=0)
+      lensPass.uniforms.uStrength.value=srcSt; lensPass.uniforms.uAspect.value=WIDTH/HEIGHT; lensPass.enabled=true; return;
     }
   }
-  lensPass.uniforms.uStrength.value=0.0; lensPass.uniforms.uBH.value.set(-1,-1); lensPass.enabled=false;   // salta la passata se non c'è buco nero in scena
+  lensPass.uniforms.uStrength.value=0.0; lensPass.uniforms.uBH.value.set(-1,-1); lensPass.enabled=false;   // salta la passata se non c'è sorgente in scena
 }
 
 /* ---------------- NEBULA FIELD: attraversamento volumetrico (immersione) ---------------- */
@@ -2543,6 +2609,225 @@ class UFO{
     if(this.t>=this.dur){ this.active=false; this.g.visible=false; } }
 }
 
+/* ---------------- WORMHOLE: portale a spirale che DISTORCE lo spazio (riusa la passata BHLens) ---------------- */
+class Wormhole{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
+    this.mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
+      uniforms:{uTime:{value:0},uOp:{value:0}},
+      vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:NOISE_GLSL+`varying vec2 vUv;uniform float uTime,uOp;
+        void main(){ vec2 p=vUv-0.5; float r=length(p)*2.0; float a=atan(p.y,p.x);
+          float sp=fbm(vec3(cos(a+r*4.0-uTime*0.9)*2.0, sin(a+r*4.0-uTime*0.9)*2.0, r*3.0));   // bracci a spirale che scivolano verso la gola
+          float ring=smoothstep(1.0,0.80,r)*smoothstep(0.28,0.55,r);
+          float throat=smoothstep(0.36,0.06,r);                                                 // gola scura al centro (la parte "dove si cade")
+          vec3 col=mix(vec3(0.35,0.85,0.95), vec3(0.62,0.45,1.0), sp);                          // teal → violetto
+          float b=(0.35+0.85*sp)*ring;
+          gl_FragColor=vec4(col*b*1.6*(1.0-throat), b*(1.0-throat*0.9)*uOp); }`});
+    this.disc=new THREE.Mesh(new THREE.PlaneGeometry(2,2),this.mat); this.disc.frustumCulled=false; this.g.add(this.disc);
+    this.glow=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0x86e6f0),opacity:0}));
+    this.glow.scale.setScalar(3.2); this.g.add(this.glow);
+    this.active=false; this.t=0; this.dur=0; this._counted=false;
+  }
+  spawn(){ this.active=true; this.t=0; this._counted=false; this.dur=45+Math.random()*20;
+    const side=Math.random()<0.5?-1:1; this.g.scale.setScalar(30+Math.random()*18);
+    this.g.position.set(side*(70+Math.random()*60),(Math.random()*2-1)*35,-900-Math.random()*300);
+    this.mat.uniforms.uTime.value=0; this.g.visible=true;
+    $t.log.textContent='— a hole with two mouths. Nobody knows what walks through.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),13000);
+    if(typeof audio!=='undefined'&&audio.enqueueVoice) audio.enqueueVoice('blackhole'); }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.g.position.z+=speed*dt*0.5; this.mat.uniforms.uTime.value+=dt; this.g.lookAt(camera.position);
+    const z=this.g.position.z;
+    const op=Math.min(THREE.MathUtils.clamp(this.t/5,0,1),THREE.MathUtils.clamp((this.dur-this.t)/5,0,1),THREE.MathUtils.clamp((-60-z)/80,0,1));
+    this.mat.uniforms.uOp.value=op; this.glow.material.opacity=op*0.25;
+    if(!this._counted && this.t>this.dur*0.4){ this._counted=true; TEL.blackholes++; }
+    if(this.t>this.dur+1){ this.active=false; this.g.visible=false; } }
+}
+/* ---------------- MEDUSE SPAZIALI: campane bioluminescenti che pulsano, parenti delle balene ---------------- */
+class JellyPod{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
+    this.domeMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,
+      uniforms:{uOp:{value:0},uTime:{value:0},uGlow:{value:new THREE.Color(0x7fe8d8)},uGrade:{value:new THREE.Color(0x223a6b)}},
+      vertexShader:`varying vec3 vN;varying vec2 vUv;uniform float uTime;void main(){vUv=uv;vN=normalize(normalMatrix*normal);
+        vec3 p=position; p.xz*=(1.0+0.06*sin(uTime*2.0+position.y*3.0));   // la campana ondeggia
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}`,
+      fragmentShader:`varying vec3 vN;varying vec2 vUv;uniform float uOp,uTime;uniform vec3 uGlow,uGrade;
+        void main(){ float rim=pow(1.0-abs(vN.z),2.0);
+          float bands=0.5+0.5*sin(vUv.y*14.0-uTime*2.2);                   // onde di luce che scendono lungo la campana
+          vec3 c=uGrade*0.08+uGlow*(0.25*rim+0.30*bands*rim);
+          gl_FragColor=vec4(c,(0.10+0.30*rim+0.25*bands*rim)*uOp); }`});
+    this.tentMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
+      uniforms:{uOp:{value:0},uTime:{value:0},uGlow:{value:new THREE.Color(0x7fe8d8)}},
+      vertexShader:`varying vec2 vUv;uniform float uTime;void main(){vUv=uv;
+        vec3 p=position; p.x+=sin(uTime*1.7+uv.y*5.0+position.z*3.0)*0.35*uv.y;   // i tentacoli sventolano (più in punta)
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}`,
+      fragmentShader:`varying vec2 vUv;uniform float uOp,uTime;uniform vec3 uGlow;
+        void main(){ float run=0.5+0.5*sin(vUv.y*9.0-uTime*3.0);           // impulsi di luce che corrono giù
+          gl_FragColor=vec4(uGlow*(0.35+0.45*run), (1.0-vUv.y)*(0.22+0.30*run)*uOp); }`});
+    this.jellies=[]; const N=IS_MOBILE?2:3;
+    for(let i=0;i<N;i++){ const j=new THREE.Group();
+      const dome=new THREE.Mesh(new THREE.SphereGeometry(1,18,10,0,6.28318,0,1.35),this.domeMat); j.add(dome);
+      for(let k=0;k<5;k++){ const tp=new THREE.Mesh(new THREE.PlaneGeometry(0.09,1.9,1,6),this.tentMat);
+        tp.position.set(Math.cos(k/5*6.28318)*0.5,-1.05,Math.sin(k/5*6.28318)*0.5); tp.rotation.y=k/5*6.28318; j.add(tp); }
+      j.userData={ph:Math.random()*6.28,sc:1}; this.g.add(j); this.jellies.push(j); }
+    this.active=false; this._counted=false; this.t=0; this.dur=0; this.vx=0; this.vy=0; this.z0=0;
+  }
+  spawn(){ this.active=true; this._counted=false; this.t=0; this.dur=48+Math.random()*24;
+    const side=Math.random()<0.5?-1:1;
+    this.g.position.set(side*(60+Math.random()*50),(Math.random()*2-1)*35,SPAWN_Z*0.75-Math.random()*200); this.z0=this.g.position.z;
+    this.vx=-side*(1.6+Math.random()*1.6); this.vy=(Math.random()*2-1)*0.5;
+    for(const j of this.jellies){ const sc=4+Math.random()*4; j.scale.setScalar(sc); j.userData.sc=sc; j.userData.ph=Math.random()*6.28;
+      j.position.set((Math.random()*2-1)*26,(Math.random()*2-1)*16,(Math.random()*2-1)*30); }
+    this.g.visible=true;
+    $t.log.textContent='— lanterns of the deep. They pulse, and the dark pulses back.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.g.position.z+=speed*dt; this.g.position.x+=this.vx*dt; this.g.position.y+=this.vy*dt;
+    this.domeMat.uniforms.uTime.value=shaderTime; this.tentMat.uniforms.uTime.value=shaderTime;
+    this.domeMat.uniforms.uGrade.value.copy(director.grade);
+    for(const j of this.jellies){ const u=j.userData, ph=this.t*0.9+u.ph, s=Math.sin(ph);
+      j.scale.set(u.sc*(1-0.06*s),u.sc*(1+0.12*s),u.sc*(1-0.06*s));       // PULSAZIONE fisica della campana
+      j.position.y+=Math.max(0,s)*dt*2.0; }                               // ogni pulsazione dà una spinta (nuoto a medusa)
+    const z=this.g.position.z;
+    const op=Math.min(THREE.MathUtils.clamp((z-this.z0)/500,0,1),THREE.MathUtils.clamp((50-z)/110,0,1),THREE.MathUtils.clamp((this.dur-this.t)/4,0,1));
+    this.domeMat.uniforms.uOp.value=op; this.tentMat.uniforms.uOp.value=op;
+    if(!this._counted && z>-30){ this._counted=true; TEL.companions++; }
+    if(this.t>=this.dur||z>60){ this.active=false; this.g.visible=false; } }
+}
+/* ---------------- SPUTNIK: piccola sfera d'argento con antenne — il 1957 che passa ancora ---------------- */
+class Sputnik{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
+    this.mat=new THREE.MeshStandardMaterial({color:0xcfd6e2,roughness:0.15,metalness:1.0,envMapIntensity:2.2,transparent:true,opacity:0});
+    this.g.add(new THREE.Mesh(new THREE.SphereGeometry(0.5,24,16),this.mat));
+    const ag=new THREE.CylinderGeometry(0.012,0.005,3.0,5); ag.translate(0,-1.5,0);   // perno in punta → l'antenna parte dalla sfera
+    for(let k=0;k<4;k++){ const an=new THREE.Mesh(ag,this.mat); const a=k/4*Math.PI*2;
+      an.position.set(Math.sin(a)*0.18,0.12,0.30); an.rotation.order='YXZ'; an.rotation.y=a*0.5-0.8; an.rotation.x=2.5; this.g.add(an); }
+    this.active=false; this.t=0; this.dur=0; this.vel=new THREE.Vector3(); this._counted=false;
+  }
+  spawn(){ this.active=true; this.t=0; this._counted=false; this.dur=30+Math.random()*12;
+    const side=Math.random()<0.5?-1:1; this.g.scale.setScalar(1.6+Math.random()*0.9);
+    this.g.position.set(side*(45+Math.random()*40),(Math.random()*2-1)*30,-420-Math.random()*160);
+    this.vel.set(-side*(4+Math.random()*3),(Math.random()*2-1)*1.2, 16+Math.random()*8);
+    this.g.visible=true;
+    if(typeof audio!=='undefined'&&audio._cue) audio._cue('star');
+    $t.log.textContent='— a small silver sphere. 1957 still echoes out here.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.g.position.addScaledVector(this.vel,dt); this.g.position.z+=speed*dt*0.3;
+    this.g.rotation.x+=dt*0.5; this.g.rotation.y+=dt*0.8;                   // il tumble lento fa lampeggiare i GLINT dell'acciaio (envMap 2.2)
+    const op=Math.max(0,Math.min(this.t/2.5,(this.dur-this.t)/2.5,1)); this.mat.opacity=op;
+    if(!this._counted && this.t>this.dur*0.4){ this._counted=true; TEL.companions++; }
+    if(this.t>=this.dur){ this.active=false; this.g.visible=false; } }
+}
+/* ---------------- ATTRAVERSAMENTO DEGLI ANELLI: gigante gassoso + cristalli di ghiaccio che scintillano attorno ---------------- */
+class RingCrossing{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
+    this.pmat=new THREE.ShaderMaterial({transparent:true,depthWrite:true,uniforms:{uTime:{value:0},uOp:{value:0},uSun:{value:new THREE.Vector3(0,1,0)}},
+      vertexShader:`varying vec3 vp;varying vec3 vn;void main(){vp=position;vn=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:NOISE_GLSL+`varying vec3 vp;varying vec3 vn;uniform float uTime,uOp;uniform vec3 uSun;
+        void main(){ float b=fbm(vec3(vp.x*0.6,vp.y*3.2,vp.z*0.6)+vec3(0.0,uTime*0.01,0.0));   // bande calme da gigante gassoso
+          vec3 c=mix(vec3(0.72,0.60,0.45),vec3(0.88,0.78,0.62),b);
+          float ndl=0.35+0.65*max(dot(vn,normalize(uSun)),0.0);
+          gl_FragColor=vec4(c*ndl,uOp); }`});
+    this.planet=new THREE.Mesh(new THREE.SphereGeometry(1,40,28),this.pmat); this.g.add(this.planet);
+    this.rmat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,uniforms:{uOp:{value:0}},
+      vertexShader:`varying float vR;void main(){vR=length(position.xy);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:`varying float vR;uniform float uOp;
+        void main(){ float t=clamp((vR-1.35)/1.15,0.0,1.0);
+          float bands=0.45+0.4*sin(t*40.0)+0.15*sin(t*95.0);
+          float edge=smoothstep(0.0,0.06,t)*smoothstep(1.0,0.92,t);
+          gl_FragColor=vec4(vec3(0.85,0.80,0.70)*bands, bands*edge*0.55*uOp); }`});
+    this.ring=new THREE.Mesh(new THREE.RingGeometry(1.35,2.5,96,1),this.rmat); this.ring.rotation.x=Math.PI*0.46; this.g.add(this.ring);
+    // CRISTALLI DI GHIACCIO: banda di punti che attraversa la camera scintillando in controluce
+    const N=IS_MOBILE?140:240, cp=new Float32Array(N*3), cph=new Float32Array(N), csz=new Float32Array(N);
+    const cre=(i,z)=>{ cp[i*3]=(Math.random()*2-1)*90; cp[i*3+1]=(Math.random()*2-1)*26; cp[i*3+2]=z; };
+    for(let i=0;i<N;i++){ cre(i,-Math.random()*560); cph[i]=Math.random()*6.28; csz[i]=0.8+Math.random()*2.6; }
+    const cg=new THREE.BufferGeometry(); cg.setAttribute('position',new THREE.BufferAttribute(cp,3)); cg.setAttribute('aPhase',new THREE.BufferAttribute(cph,1)); cg.setAttribute('aSize',new THREE.BufferAttribute(csz,1));
+    this.cmat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+      uniforms:{uTime:{value:0},uOp:{value:0},uPix:{value:PIX}},
+      vertexShader:`attribute float aPhase;attribute float aSize;uniform float uTime,uPix;varying float vTw;
+        void main(){ float w=sin(uTime*(1.2+aPhase*0.3)+aPhase*7.0); vTw=0.35+0.65*pow(max(w,0.0),10.0);   // scintillio prismatico ON/OFF
+        vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+        gl_PointSize=max(1.7*uPix, aSize*uPix*(140.0/max(-mv.z,1.0))); }`,
+      fragmentShader:`varying float vTw;uniform float uOp;
+        void main(){ vec2 d=gl_PointCoord-0.5; float a=smoothstep(0.25,0.0,dot(d,d));
+        gl_FragColor=vec4(vec3(0.85,0.92,1.0), a*vTw*uOp); }`});
+    this.crystals=new THREE.Points(cg,this.cmat); this.crystals.frustumCulled=false; this.crystals.visible=false; scene.add(this.crystals);
+    this.cryPos=cp; this.cryRe=cre; this.N=N;
+    this.active=false; this.t=0; this.dur=0; this._counted=false;
+  }
+  spawn(){ this.active=true; this.t=0; this._counted=false; this.dur=65+Math.random()*20;
+    const side=Math.random()<0.5?-1:1;
+    this.g.position.set(side*(130+Math.random()*80),(Math.random()*2-1)*40,-1500);
+    const ps=150+Math.random()*60; this.planet.scale.setScalar(ps); this.ring.scale.setScalar(ps);
+    this.ring.rotation.z=(Math.random()*2-1)*0.4; this.pmat.uniforms.uTime.value=0;
+    this.crystals.visible=true; this.g.visible=true;
+    $t.log.textContent='— we cross the rings. A billion pieces of ice, each one a mirror.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),14000); }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.g.position.z+=speed*dt*0.22; this.pmat.uniforms.uTime.value+=dt; this.pmat.uniforms.uSun.value.copy(sunDir);
+    const op=Math.min(THREE.MathUtils.clamp(this.t/6,0,1),THREE.MathUtils.clamp((this.dur-this.t)/6,0,1));
+    this.pmat.uniforms.uOp.value=op; this.rmat.uniforms.uOp.value=op;
+    // i cristalli scorrono e riciclano SOLO durante la finestra centrale dell'evento
+    this.cmat.uniforms.uTime.value=shaderTime; this.cmat.uniforms.uPix.value=PIX;
+    const cop=op*smooth(8,20,this.t)*(1-smooth(this.dur-16,this.dur-6,this.t));
+    this.cmat.uniforms.uOp.value=cop;
+    if(cop>0.005){ const dz=speed*dt*1.5;
+      for(let i=0;i<this.N;i++){ this.cryPos[i*3+2]+=dz; if(this.cryPos[i*3+2]>40) this.cryRe(i,-520); }
+      this.crystals.geometry.attributes.position.needsUpdate=true; }
+    if(!this._counted && this.t>this.dur*0.4){ this._counted=true; TEL.planets++; }
+    if(this.t>this.dur+1){ this.active=false; this.g.visible=false; this.crystals.visible=false; this.cmat.uniforms.uOp.value=0; } }
+}
+/* ---------------- LANTERNE DEI VIAGGIATORI: piccole luci calde che accompagnano la caduta (una porta un nome) ---------------- */
+class Lanterns{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
+    this.items=[]; const N=7;
+    for(let i=0;i<N;i++){ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xffc98a),opacity:0}));
+      s.scale.setScalar(0.5+Math.random()*0.5); this.g.add(s); this.items.push({s,ph:Math.random()*6.28,r:3.5+Math.random()*7,h:(Math.random()*2-1)*3,sp:0.15+Math.random()*0.2}); }
+    this.label=null; this._lblTex=null;
+    this.active=false; this.t=0; this.dur=0;
+  }
+  spawn(){ this.active=true; this.t=0; this.dur=42+Math.random()*20;
+    for(const it of this.items) it.ph=Math.random()*6.28;
+    if(this.label){ this.g.remove(this.label); this.label.material.dispose(); if(this._lblTex) this._lblTex.dispose(); this.label=null; this._lblTex=null; }
+    if(companionPool.length){ const nm=companionPool.shift(); this._lblTex=labelTexture(nm);   // una lanterna porta il nome di un iscritto
+      this.label=new THREE.Sprite(new THREE.SpriteMaterial({map:this._lblTex,transparent:true,depthWrite:false,opacity:0}));
+      this.label.scale.set(3.2,0.8,1); this.g.add(this.label); }
+    this.g.visible=true;
+    $t.log.textContent="— travelers' lanterns. Small warm lights, keeping us company."; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    const o=Math.max(0,Math.min(this.t/4,(this.dur-this.t)/4,1));
+    let i=0; for(const it of this.items){ it.ph+=dt*it.sp;
+      it.s.position.set(Math.cos(it.ph)*it.r, it.h+Math.sin(shaderTime*0.5+i)*0.8, Math.sin(it.ph)*it.r*0.7-2.5-this.t*0.12);
+      it.s.material.opacity=o*(0.5+0.3*Math.sin(shaderTime*1.3+i*2.1)); i++; }
+    if(this.label){ this.label.position.copy(this.items[0].s.position); this.label.position.y+=0.9; this.label.material.opacity=o*0.85; }
+    if(this.t>=this.dur){ this.active=false; this.g.visible=false; } }
+}
+/* ---------------- STAZIONE MADRE: una città addormentata che attraversa il buio (rarissima) ---------------- */
+class MotherStation{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
+    this.mat=new THREE.MeshStandardMaterial({color:0x171c26,roughness:0.6,metalness:0.85,envMapIntensity:0.9,transparent:true,opacity:0});
+    const spine=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,30,10),this.mat); spine.rotation.z=Math.PI/2; this.g.add(spine);
+    for(let k=0;k<2;k++){ const tor=new THREE.Mesh(new THREE.TorusGeometry(4.5-k*1.2,0.35,8,36),this.mat); tor.position.x=-8+k*16; tor.rotation.y=Math.PI/2; this.g.add(tor); }
+    for(let k=0;k<6;k++){ const bx=new THREE.Mesh(new THREE.BoxGeometry(2.2,1.4,1.4),this.mat); bx.position.set(-12+k*4.8,(k%2?1.4:-1.4),((k%3)-1)*1.2); this.g.add(bx); }
+    this.blk=[]; for(let k=0;k<5;k++){ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(k%2?0xff7a6a:0xcfe2ff),opacity:0}));
+      s.scale.setScalar(0.8); s.position.set(-14+k*7,(k%2?2.8:-2.6),0.8); this.g.add(s); this.blk.push(s); }
+    this.active=false; this.t=0; this.dur=0; this.vx=0;
+  }
+  spawn(){ this.active=true; this.t=0; this.dur=100+Math.random()*40;
+    const side=Math.random()<0.5?-1:1; this.g.scale.setScalar(9+Math.random()*4);
+    this.g.position.set(side*450,(Math.random()*2-1)*120,-950-Math.random()*250);
+    this.vx=-side*(900/this.dur); this.g.rotation.z=(Math.random()*2-1)*0.15; this.g.visible=true;
+    $t.log.textContent='— a sleeping city crosses the dark. No one waves back.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),16000); }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.g.position.x+=this.vx*dt; this.g.position.z+=speed*dt*0.12; this.g.rotation.x+=dt*0.008;
+    const op=Math.max(0,Math.min(this.t/8,(this.dur-this.t)/8,1)); this.mat.opacity=op*0.95;
+    for(let k=0;k<5;k++){ const w=Math.max(0,Math.sin(this.t*(0.7+k*0.13)+k*2.0)); this.blk[k].material.opacity=op*(0.08+0.9*Math.pow(w,8)); }
+    if(this.t>=this.dur){ this.active=false; this.g.visible=false; } }
+}
+
 /* ---------------- PIANETI PERMANENTI (acquisto: nome + logo) ---------------- */
 class OwnedPlanet{
   constructor(){
@@ -2831,6 +3116,13 @@ function animate(){
   starshipTimer-=dt; if(starshipTimer<=0 && !starship.active){ starshipTimer=280+Math.random()*300; starship.spawn(); } starship.update(dt,speed);
   rocketTimer-=dt; if(rocketTimer<=0 && !rocketShip.active){ rocketTimer=380+Math.random()*320; rocketShip.spawn(); } rocketShip.update(dt,speed);
   ufoTimer-=dt; if(ufoTimer<=0 && !ufo.active){ ufoTimer=320+Math.random()*360; ufo.spawn(); } ufo.update(dt,speed);
+  // meraviglie round 3 (wormhole mai insieme al buco nero: condividono la passata di lensing)
+  wormholeTimer-=dt; if(wormholeTimer<=0 && !wormhole.active && !blackhole.active){ wormholeTimer=1100+Math.random()*900; wormhole.spawn(); } wormhole.update(dt,speed);
+  jellyTimer-=dt; if(jellyTimer<=0 && !jellyPod.active){ jellyTimer=380+Math.random()*380; jellyPod.spawn(); } jellyPod.update(dt,speed);
+  sputnikTimer-=dt; if(sputnikTimer<=0 && !sputnik.active){ sputnikTimer=520+Math.random()*480; sputnik.spawn(); } sputnik.update(dt,speed);
+  ringCrossTimer-=dt; if(ringCrossTimer<=0 && !ringCross.active && !duststorm.active){ ringCrossTimer=900+Math.random()*700; ringCross.spawn(); } ringCross.update(dt,speed);
+  lanternTimer-=dt; if(lanternTimer<=0 && !lanterns.active){ lanternTimer=420+Math.random()*420; lanterns.spawn(); } lanterns.update(dt,speed);
+  motherTimer-=dt; if(motherTimer<=0 && !motherStation.active){ motherTimer=18000+Math.random()*20000; motherStation.spawn(); } motherStation.update(dt,speed);
   solarEclipseTimer-=dt; if(solarEclipseTimer<=0 && !solarEclipse.active){ solarEclipseTimer=520+Math.random()*360; solarEclipse.spawn(); } solarEclipse.update(dt,speed);
   lunarEclipseTimer-=dt; if(lunarEclipseTimer<=0 && !lunarEclipse.active){ lunarEclipseTimer=620+Math.random()*360; lunarEclipse.spawn(); } lunarEclipse.update(dt,speed);
   // PIANETI PERMANENTI: ne mostra uno alla volta, ruotando sul catalogo acquistato
@@ -2859,6 +3151,10 @@ function animate(){
     manSpike.material.opacity=0.34*_twk*_twk;                           // quadratico → appare solo sul picco, fade dolce a due lati
     manSpike.scale.setScalar(3.0+0.9*_twk);                             // le punte si allungano mentre brilla (respiro da stella)
     manSpike.visible=manSpike.material.opacity>0.004; }                 // igiene: zero draw a riposo
+  // ROTAZIONE PERSONAGGI: ogni ~10-20 min, con lo swap nascosto nel PICCO del twinkle-flash (l'astronauta "brilla" e diventa qualcun altro)
+  if(charRoster.length>1){ charT-=dt;
+    if(charT<=0 && charSwapAt<0){ charT=600+Math.random()*600; manTwA=1; charSwapAt=0.55; }
+    if(charSwapAt>=0){ charSwapAt-=dt; if(charSwapAt<0) window._efSwitchCharacter(); } }
   // CICLO INGRASSA/DIMAGRISCE: raro (~ogni 2.5-5.5 min), gonfia in ~15s, plateau ~20s, sgonfia in ~30s (tutto graduale, anti-pop)
   if(fatClock<0){ fatT-=dt; if(fatT<=0){ fatClock=0; fatAmp=0.55+Math.random()*0.45;
     if($t.log){ $t.log.textContent='— zero-g bloat. The suit swells; it will pass.'; $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),9000); } } }
@@ -3497,8 +3793,12 @@ const CMD_EVENTS={
   ship:   ()=> (starship && !starship.active) ? (starship.spawn(),true) : false,
   rocket: ()=> (rocketShip && !rocketShip.active) ? (rocketShip.spawn(),true) : false,
   ufo:    ()=> (ufo && !ufo.active) ? (ufo.spawn(),true) : false,
+  wormhole:()=> (wormhole && !wormhole.active && !blackhole.active) ? (wormhole.spawn(),true) : false,
+  jellies: ()=> (jellyPod && !jellyPod.active) ? (jellyPod.spawn(),true) : false,
+  sputnik: ()=> (sputnik && !sputnik.active) ? (sputnik.spawn(),true) : false,
+  lanterns:()=> (lanterns && !lanterns.active) ? (lanterns.spawn(),true) : false,
 };
-const CMD_CUE={star:'star',message:'star',light:'star',comet:'comet',wish:'comet',whales:'deep',aurora:'deep',world:'deep',nebula:'deep',blackhole:'dark',eclipse:'dark',supernova:'dark',meteors:'comet',ship:'deep',rocket:'comet',ufo:'dark'};
+const CMD_CUE={star:'star',message:'star',light:'star',comet:'comet',wish:'comet',whales:'deep',aurora:'deep',world:'deep',nebula:'deep',blackhole:'dark',eclipse:'dark',supernova:'dark',meteors:'comet',ship:'deep',rocket:'comet',ufo:'dark',wormhole:'dark',jellies:'deep',sputnik:'star',lanterns:'star'};
 window.cadutaCommand=(cmd,arg,user)=>{
   cmd=String(cmd||'').toLowerCase();
   if(cmd==='musicnext') return window.cadutaMusicNext();
@@ -3508,7 +3808,7 @@ window.cadutaCommand=(cmd,arg,user)=>{
   if(cmd==='star'||cmd==='message'){ const label=String(arg||user||'').slice(0,40).trim(); if(label) window.cadutaAddStar(label); return true; }
   if(cmd==='light'){ const who=String(arg||user||'qualcuno').slice(0,38).trim(); window.cadutaAddStar('🕯 '+who); return true; }
   if(cmd==='eclipse'){ const a=String(arg||'').toLowerCase(); const k=/lun/.test(a)?'eclipselunar':'eclipsesolar'; if(cmdQueue.length<CMD_QMAX) cmdQueue.push(k); return true; }   // !eclipse solar / !eclipse lunar
-  if(cmd==='help'){ if($t&&$t.log){ $t.log.textContent='command: !star !light !message !comet !wish !whales !aurora !eclipse solar/lunar !supernova !meteors !world !nebula !blackhole !ship !rocket !ufo'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } return true; }
+  if(cmd==='help'){ if($t&&$t.log){ $t.log.textContent='command: !star !light !message !comet !wish !whales !aurora !eclipse !supernova !meteors !world !nebula !blackhole !ship !rocket !ufo !wormhole !jellies !sputnik !lanterns'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } return true; }
   if(CMD_EVENTS[cmd]){ if(cmdQueue.length<CMD_QMAX) cmdQueue.push(cmd); return true; }   // evento → in coda
   return false;
 };
