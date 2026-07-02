@@ -1320,6 +1320,9 @@ class Planet{
       // dissolvenza a due lati ancorata al guscio: ~0 sia al bordo profondo (-3300) sia al piano di riciclo (-1200) → niente pop
       const fadeIn=THREE.MathUtils.clamp((z+3300)/700,0,1), fadeOut=THREE.MathUtils.clamp((DREC-z)/700,0,1);
       op=Math.min(fadeIn,fadeOut);
+      // durante il DEEP ZOOM i mondi-sfondo spariscono: crescono al 2-4%/s contro uno sfondo che
+      // esplode all'8%/s → l'occhio li "incolla" al flusso (cadrebbero insieme all'astronauta)
+      op*=THREE.MathUtils.clamp((zoomEnvMul-ZOOM_ENV_FLOOR)/(1-ZOOM_ENV_FLOOR),0,1);
     } else {
       const outEnd=340+this.mesh.scale.x*2.0;
       const opIn=THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1);        // dissolvenza dal profondo
@@ -3796,7 +3799,7 @@ let zoomRig=null, zoomQuads=null, zoomStars=null, zoomStarsMat=null, zoomStarsPo
 let zoomCurI=-1, zoomNxtI=-1;      // indice livello corrente/entrante (-1 = L0 sfera sky, -2 = catena foto finita)
 let zoomGCu=0.5, zoomGCv=0.5, zoomFlip=false, zoomProcOp=0, zoomHandoff=false, _zCycleDone=false, zoomGen=0;   // zoomGen: scarta i load in volo di un dive precedente
 let zoomAimed=false, zoomAimT=0, zoomArmT=0;   // puntamento GC (il cielo ruota finché il bersaglio non è in asse) + watchdog dello stato 'arm'
-let zoomHoldT=0, zoomRebirth=0, zoomHold=10, zoomWorldMul=1, zoomWorldBoost=1.9;   // loop infinito: respiro nel procedurale + rinascita su nuovo cielo; boost velocità mondo (pianeti al passo del tuffo)
+let zoomHoldT=0, zoomRebirth=0, zoomHold=10, zoomWorldMul=1, zoomWorldBoost=5;   // loop infinito: respiro nel procedurale + rinascita su nuovo cielo; boost velocità mondo ×5: lo sfondo zoom cresce ~8%/s (esponenziale) → i corpi devono crescere PIÙ in fretta o l'occhio li incolla al flusso ("cadono insieme")
 const ZOOM_ENV_FLOOR=0.35;   // polvere/nebbie mai del tutto a zero durante il dive: i pianeti restano "dentro" la scena
 const ZP_N=2500, ZP_RMIN=14, ZP_RMAX=4800, ZP_Z=-4200;   // finale procedurale: disco di stelle in flusso radiale
 const _zDir=new THREE.Vector3(), _zUp=new THREE.Vector3(), _zFwd=new THREE.Vector3(), _zM=new THREE.Matrix4(), _zZero=new THREE.Vector3(0,0,0);   // scratch riusati (zero alloc per-frame)
@@ -3956,7 +3959,7 @@ function deepZoomUpdate(dt){
   // rampe globali (ripristinate in uscita): rotazione sky congelata in 2s, neb/polvere puliti in 4s, kick FOV decay ~1.5s
   zoomSkyRotMul=dive?Math.max(0,zoomSkyRotMul-dt/2):Math.min(1,zoomSkyRotMul+dt/2);
   zoomEnvMul   =dive?Math.max(ZOOM_ENV_FLOOR,zoomEnvMul-dt/4):Math.min(1,zoomEnvMul+dt/3);   // floor: un filo di polvere/nebbie resta per dare profondità ai pianeti
-  zoomWorldMul+=THREE.MathUtils.clamp((dive&&zoomAimed?zoomWorldBoost:1)-zoomWorldMul,-dt/4,dt/4);   // pianeti accelerano col tuffo (rampa ~4s); durante panoramica/uscita tornano al passo
+  zoomWorldMul+=((dive&&zoomAimed?zoomWorldBoost:1)-zoomWorldMul)*Math.min(1,dt*0.5);   // pianeti accelerano col tuffo (costante ~2s, proporzionale: regge anche boost alti); panoramica/uscita → passo normale
   zoomFovKick*=Math.exp(-dt/1.5);
   if(!dive) zoomSkyPitch*=Math.exp(-dt/1.5);   // uscita: il pitch di puntamento rientra in rampa (il crossfade sfondo forzato maschera il residuo)
   // Θ(t)=Θ0·exp(-k·t); dopo l'handoff al procedurale resta congelato (il flusso radiale porta lo zoom all'infinito)
@@ -4048,14 +4051,14 @@ function deepZoomUpdate(dt){
     if(zoomExitT>=zoomExitDur) zoomFinishExit(); }
 }
 // API console (nessun evento chat, nessun trigger del Director — solo manuale):
-//   cadutaZoom({dur:90, mode:'once'|'loop', k:null, hold:10, world:1.9}) · cadutaZoomStop()
+//   cadutaZoom({dur:90, mode:'once'|'loop', k:null, hold:10, world:5}) · cadutaZoomStop()
 //   loop = INFINITO: catena foto → stelle procedurali (hold s) → nuovo cielo dietro il flusso → ri-tuffo, per sempre
 //   world = moltiplicatore velocità pianeti/asteroidi durante il tuffo (i pianeti "seguono" lo zoom)
 window.cadutaZoom=(opts)=>{ opts=opts||{};
   if(!built||!sky||!sky2) return 'scena non pronta (premi ENTER prima)';
   if(zoomState!=='idle') return 'dive già in corso ('+zoomState+') — cadutaZoomStop() per uscire';
   zoomDur=Math.max(20,+opts.dur||90); zoomMode=(opts.mode==='loop')?'loop':'once'; zoomKOpt=(+opts.k>0)?+opts.k:null;
-  zoomHold=Math.max(3,+opts.hold||10); zoomWorldBoost=Math.max(1,+opts.world||1.9);
+  zoomHold=Math.max(3,+opts.hold||10); zoomWorldBoost=Math.max(1,+opts.world||5);
   zoomState='arm'; zoomArmT=0;                                            // il dive parte quando manifest pronti E nessun crossfade sky in corso (watchdog 30s)
   zoomLoadCfg().then(ok=>{ if(!ok&&zoomState==='arm') zoomState='idle'; });
   return 'deep zoom armato ('+zoomMode+', '+zoomDur+'s)'+((skyFading||skyLoading)?' — attendo la fine del crossfade sfondo':'');
