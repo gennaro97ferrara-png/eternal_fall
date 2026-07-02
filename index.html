@@ -621,7 +621,7 @@ const CHARACTERS=[
   {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © BlueMesh (CC BY)',  scale:1.6, wiggle:0.65, animSpeed:0.6, helmet:{x:0.5,y:0.90,z:0.12,r:0.13}, hide:['circle']},   // PIÙ GRANDE (1.6); animata (camminata) → niente limb procedurale
   {name:'elephant',  file:'assets/characters/elephant.glb',  credit:'Elephant © denys4624 (CC BY)', float:0, limb:0.9, wiggle:0.65, yaw:0, helmet:{x:0.5,y:0.72,z:0.68,r:0.30}},     // limb = proboscide/coda/zampe; movimento più ponderato
 ];
-let charRoster=[], charIdx=0, charT=600+Math.random()*600, charSwapAt=-1;   // rotazione ogni ~10-20 min, swap al picco del twinkle-flash
+let charRoster=[], charIdx=0, charT=240+Math.random()*180, charSwapAt=-1;   // rotazione ogni ~4-7 min, swap al picco del twinkle-flash
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
 // VARIETÀ DI MOVIMENTO a livello di corpo (rotazioni/derive: NON deformano la mesh)
 let barrelTarget=0, barrelCur=0, barrelAxis=0, barrelHold=40;  // capriola lenta su asse alternato (0=Z roll, 1=X tumble); barrelHold=cooldown
@@ -2948,7 +2948,7 @@ const clock=new THREE.Clock();
 let shaderTime=0; const SWRAP=100000;
 let camPhase=0,camDist=10,started=false,camOrbit=0,manSpin=0;
 let camMoveAz=0,camMoveEl=0,camMoveDs=0,camMoveAzT=0,camMoveElT=0,camMoveDsT=0,camMoveNext=20,camMoveScale=1;   // RIFRAME lenti: la camera plana verso nuove inquadrature e vi indugia (richiesta utente: "più cambi di inquadratura")
-let camOrbitP=1,camOrbitDir=1,camOrbitNext=70+Math.random()*110;   // ORBITA IMPROVVISA: ogni ~1.5-3 min un giro completo attorno all'astronauta (~26s); P=progresso 0..1 (1=ferma)
+let camOrbitP=1,camOrbitDir=1,camOrbitNext=45+Math.random()*55;   // ORBITA IMPROVVISA: ogni ~0.75-1.7 min un giro completo attorno all'astronauta (~26s); P=progresso 0..1 (1=ferma)
 let camLookX=0, camLookY=0.15;   // bersaglio lookAt smussato → niente stacchi d'inquadratura quando cambia il pianeta a fuoco
 let planetTimer=6,wispTimer=4,starTimer=2,mysteryTimer=80,parallelTimer=120,bhTimer=200;
 let cometTimer=40,clusterTimer=120,derelictTimer=150;
@@ -3207,7 +3207,7 @@ function animate(){
   // in asse); se un dive inizia a metà giro, il giro si CONGELA e riprende all'uscita. A fine giro
   // l'angolo vale 2π ≡ 0 → nessuno scatto.
   const _zIdle=(typeof zoomState==='undefined'||zoomState==='idle');
-  if(camOrbitP>=1){ if(_zIdle){ camOrbitNext-=dt; if(camOrbitNext<=0){ camOrbitNext=70+Math.random()*110; camOrbitP=0; camOrbitDir=Math.random()<0.5?1:-1; } } }
+  if(camOrbitP>=1){ if(_zIdle){ camOrbitNext-=dt; if(camOrbitNext<=0){ camOrbitNext=45+Math.random()*55; camOrbitP=0; camOrbitDir=Math.random()<0.5?1:-1; } } }
   else if(_zIdle) camOrbitP=Math.min(1,camOrbitP+dt/26);
   const _orb=camOrbitDir*6.283185307*(camOrbitP*camOrbitP*(3-2*camOrbitP));   // smoothstep 0→2π: parte piano, fila, atterra dolce
   const _az=Math.sin(camPhase*0.05)*0.05 + camMoveAz*camMoveScale + _orb;     // micro-sway (~3°) + riframe corrente + orbita
@@ -3231,7 +3231,7 @@ function animate(){
     manSpike.visible=manSpike.material.opacity>0.004; }                 // igiene: zero draw a riposo
   // ROTAZIONE PERSONAGGI: ogni ~10-20 min, con lo swap nascosto nel PICCO del twinkle-flash (l'astronauta "brilla" e diventa qualcun altro)
   if(charRoster.length>1){ charT-=dt;
-    if(charT<=0 && charSwapAt<0){ charT=600+Math.random()*600; manTwA=1; charSwapAt=0.55; }
+    if(charT<=0 && charSwapAt<0){ charT=240+Math.random()*180; manTwA=1; charSwapAt=0.55; }
     if(charSwapAt>=0){ charSwapAt-=dt; if(charSwapAt<0) window._efSwitchCharacter(); } }
   // CICLO INGRASSA/DIMAGRISCE: raro (~ogni 2.5-5.5 min), gonfia in ~15s, plateau ~20s, sgonfia in ~30s (tutto graduale, anti-pop)
   if(fatClock<0){ fatT-=dt; if(fatT<=0){ fatClock=0; fatAmp=0.55+Math.random()*0.45;
@@ -3830,7 +3830,7 @@ let zoomAimed=false, zoomAimT=0, zoomArmT=0;   // puntamento GC (il cielo ruota 
 let zoomHoldT=0, zoomRebirth=0, zoomHold=10, zoomWorldMul=1, zoomWorldBoost=5;   // loop infinito: respiro nel procedurale + rinascita su nuovo cielo; boost velocità mondo ×5: lo sfondo zoom cresce ~8%/s (esponenziale) → i corpi devono crescere PIÙ in fretta o l'occhio li incolla al flusso ("cadono insieme")
 let zoomSkyDim=1;   // oscuramento sfera sky (×tint in applyDirector, 1 a riposo): il puntamento avviene AL BUIO (blink — la sfera che ruota leggerebbe come "camera che gira" coi pianeti incollati) e nelle fasi procedurali dietro il flusso non si vede niente
 let zoomWorldDimN=1, zoomMaxA=1e9;   // dim normalizzato del "vestiario" mondo (star-layer, mondi-sfondo: 1 a riposo → 0 nel tuffo) + campo massimo dei livelli usabili in questo dive (loop: esclude il cielo largo)
-let zoomAutoOn=!/[?&]rec=1/.test(location.search), zoomAutoStarted=false, zoomAutoT=0, zoomAutoEso=140+Math.random()*100, zoomAutoZoom=150+Math.random()*90;   // REGIA AUTOMATICA: alterna ESO (~2.5-4min) ↔ deep zoom loop (~2.5-4min) da sola; OFF nelle sessioni ?rec=1
+let zoomAutoOn=!/[?&]rec=1/.test(location.search), zoomAutoStarted=false, zoomAutoT=0, zoomAutoEso=70+Math.random()*50, zoomAutoZoom=80+Math.random()*60;   // REGIA AUTOMATICA: alterna ESO (~1-2min) ↔ deep zoom loop (~1.3-2.3min, 1-2 tuffi) da sola; OFF nelle sessioni ?rec=1
 const ZOOM_ENV_FLOOR=0.12;   // velo minimo di polvere durante il dive (0.35 metteva chiazze di nebbia sopra lo zoom = "sfondo")
 const ZOOM_LOOP_WIDE=25;     // livelli con campo più largo di così (gradi) = "cielo largo": esclusi dai cicli del loop
 const ZP_N=2500, ZP_RMIN=14, ZP_RMAX=4800, ZP_Z=-4200;   // finale procedurale: disco di stelle in flusso radiale
@@ -3997,7 +3997,7 @@ function deepZoomUpdate(dt){
     if(zoomState==='idle'){ if(camOrbitP>=1){ zoomAutoT+=dt;
       if(zoomAutoT>=zoomAutoEso){ window.cadutaZoom({mode:'loop',_auto:true}); zoomAutoT=(zoomState==='idle')?zoomAutoEso-12:0; } } }   // scena non pronta → riprova tra ~12s
     else if(zoomState==='dive'&&zoomAutoStarted){ zoomAutoT+=dt;
-      if(zoomAutoT>=zoomAutoZoom){ zoomAutoT=0; zoomAutoEso=140+Math.random()*100; zoomAutoZoom=150+Math.random()*90; zoomBeginExit(4); } }
+      if(zoomAutoT>=zoomAutoZoom){ zoomAutoT=0; zoomAutoEso=70+Math.random()*50; zoomAutoZoom=80+Math.random()*60; zoomBeginExit(4); } }
   }
   if(zoomState==='idle') return;
   if(zoomState==='arm'){ zoomArmT+=dt;
