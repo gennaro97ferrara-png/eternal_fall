@@ -20,8 +20,8 @@
       ],
       "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
       "px": [
-        5965,
-        3355
+        8192,
+        4608
       ]
     },
     {
@@ -50,7 +50,7 @@
     }
   ],
   "_disattivati": {
-    "nota": "HAWK-I L5/L6 esclusi dalla catena (falso colore IR = coriandoli/luci di Natale, scelta utente 2026-07-02). JPEG ancora in assets/zoom/: per riattivarli rimetterli in levels.json.",
+    "nota": "HAWK-I L5/L6 esclusi (coriandoli IR, scelta utente). Riattivabili rimettendoli in levels.json.",
     "levels": [
       {
         "file": "assets/zoom/L5.jpg",

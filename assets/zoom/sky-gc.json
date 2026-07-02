@@ -6,7 +6,7 @@
       "seed": 7,
       "w": 6144,
       "h": 3072,
-      "vscale": 1.0,
+      "vscale": 0.78,
       "n": 50
     }
   },
@@ -19,301 +19,301 @@
     },
     "assets/skies/gen_01.jpg": {
       "u": 0.555176,
-      "v": 0.5,
+      "v": 0.514323,
       "flip": true,
       "roll_px": 5805
     },
     "assets/skies/gen_02.jpg": {
       "u": 0.397135,
-      "v": 0.5,
+      "v": 0.529622,
       "flip": false,
       "roll_px": 5512
     },
     "assets/skies/gen_03.jpg": {
       "u": 0.618978,
-      "v": 0.5,
+      "v": 0.525065,
       "flip": false,
       "roll_px": 731
     },
     "assets/skies/gen_04.jpg": {
       "u": 0.802897,
-      "v": 0.5,
+      "v": 0.500326,
       "flip": false,
       "roll_px": 1861
     },
     "assets/skies/gen_05.jpg": {
       "u": 0.799805,
-      "v": 0.5,
+      "v": 0.487305,
       "flip": true,
       "roll_px": 4302
     },
     "assets/skies/gen_06.jpg": {
       "u": 0.488932,
-      "v": 0.5,
+      "v": 0.463542,
       "flip": false,
       "roll_px": 6076
     },
     "assets/skies/gen_07.jpg": {
       "u": 0.691569,
-      "v": 0.5,
+      "v": 0.525391,
       "flip": true,
       "roll_px": 4967
     },
     "assets/skies/gen_08.jpg": {
       "u": 0.870931,
-      "v": 0.5,
+      "v": 0.460938,
       "flip": true,
       "roll_px": 3865
     },
     "assets/skies/gen_09.jpg": {
       "u": 0.220866,
-      "v": 0.5,
+      "v": 0.499023,
       "flip": false,
       "roll_px": 4429
     },
     "assets/skies/gen_10.jpg": {
       "u": 0.496419,
-      "v": 0.5,
+      "v": 0.529948,
       "flip": true,
       "roll_px": 22
     },
     "assets/skies/gen_11.jpg": {
       "u": 0.458008,
-      "v": 0.5,
+      "v": 0.497721,
       "flip": true,
       "roll_px": 258
     },
     "assets/skies/gen_12.jpg": {
       "u": 0.408529,
-      "v": 0.5,
+      "v": 0.488932,
       "flip": true,
       "roll_px": 562
     },
     "assets/skies/gen_13.jpg": {
       "u": 0.098307,
-      "v": 0.5,
+      "v": 0.47819,
       "flip": false,
       "roll_px": 3676
     },
     "assets/skies/gen_14.jpg": {
       "u": 0.650065,
-      "v": 0.5,
+      "v": 0.506836,
       "flip": false,
       "roll_px": 922
     },
     "assets/skies/gen_15.jpg": {
       "u": 0.456706,
-      "v": 0.5,
+      "v": 0.504883,
       "flip": false,
       "roll_px": 5878
     },
     "assets/skies/gen_16.jpg": {
       "u": 0.940267,
-      "v": 0.5,
+      "v": 0.537109,
       "flip": false,
       "roll_px": 2705
     },
     "assets/skies/gen_17.jpg": {
       "u": 0.003092,
-      "v": 0.5,
+      "v": 0.467448,
       "flip": true,
       "roll_px": 3053
     },
     "assets/skies/gen_18.jpg": {
       "u": 0.837891,
-      "v": 0.5,
+      "v": 0.531901,
       "flip": true,
       "roll_px": 4068
     },
     "assets/skies/gen_19.jpg": {
       "u": 0.749837,
-      "v": 0.5,
+      "v": 0.479492,
       "flip": true,
       "roll_px": 4609
     },
     "assets/skies/gen_20.jpg": {
       "u": 0.947754,
-      "v": 0.5,
+      "v": 0.505534,
       "flip": true,
       "roll_px": 3393
     },
     "assets/skies/gen_21.jpg": {
       "u": 0.213216,
-      "v": 0.5,
+      "v": 0.537109,
       "flip": false,
       "roll_px": 4382
     },
     "assets/skies/gen_22.jpg": {
       "u": 0.376139,
-      "v": 0.5,
+      "v": 0.519857,
       "flip": false,
       "roll_px": 5383
     },
     "assets/skies/gen_23.jpg": {
       "u": 0.407064,
-      "v": 0.5,
+      "v": 0.493164,
       "flip": false,
       "roll_px": 5573
     },
     "assets/skies/gen_24.jpg": {
       "u": 0.467122,
-      "v": 0.5,
+      "v": 0.529297,
       "flip": false,
       "roll_px": 5942
     },
     "assets/skies/gen_25.jpg": {
       "u": 0.36377,
-      "v": 0.5,
+      "v": 0.531901,
       "flip": false,
       "roll_px": 5307
     },
     "assets/skies/gen_26.jpg": {
       "u": 0.019043,
-      "v": 0.5,
+      "v": 0.53418,
       "flip": false,
       "roll_px": 3189
     },
     "assets/skies/gen_27.jpg": {
       "u": 0.143717,
-      "v": 0.5,
+      "v": 0.527344,
       "flip": false,
       "roll_px": 3955
     },
     "assets/skies/gen_28.jpg": {
       "u": 0.918783,
-      "v": 0.5,
+      "v": 0.523112,
       "flip": false,
       "roll_px": 2573
     },
     "assets/skies/gen_29.jpg": {
       "u": 0.692871,
-      "v": 0.5,
+      "v": 0.532552,
       "flip": false,
       "roll_px": 1185
     },
     "assets/skies/gen_30.jpg": {
       "u": 0.136882,
-      "v": 0.5,
+      "v": 0.505534,
       "flip": true,
       "roll_px": 2231
     },
     "assets/skies/gen_31.jpg": {
       "u": 0.718913,
-      "v": 0.5,
+      "v": 0.476237,
       "flip": false,
       "roll_px": 1345
     },
     "assets/skies/gen_32.jpg": {
       "u": 0.519694,
-      "v": 0.5,
+      "v": 0.519206,
       "flip": true,
       "roll_px": 6023
     },
     "assets/skies/gen_33.jpg": {
       "u": 0.874349,
-      "v": 0.5,
+      "v": 0.516927,
       "flip": false,
       "roll_px": 2300
     },
     "assets/skies/gen_34.jpg": {
       "u": 0.577311,
-      "v": 0.5,
+      "v": 0.535807,
       "flip": true,
       "roll_px": 5669
     },
     "assets/skies/gen_35.jpg": {
       "u": 0.190104,
-      "v": 0.5,
+      "v": 0.470703,
       "flip": true,
       "roll_px": 1904
     },
     "assets/skies/gen_36.jpg": {
       "u": 0.870443,
-      "v": 0.5,
+      "v": 0.476237,
       "flip": true,
       "roll_px": 3868
     },
     "assets/skies/gen_37.jpg": {
       "u": 0.685872,
-      "v": 0.5,
+      "v": 0.507161,
       "flip": true,
       "roll_px": 5002
     },
     "assets/skies/gen_38.jpg": {
       "u": 0.612305,
-      "v": 0.5,
+      "v": 0.51237,
       "flip": false,
       "roll_px": 690
     },
     "assets/skies/gen_39.jpg": {
       "u": 0.265625,
-      "v": 0.5,
+      "v": 0.492839,
       "flip": true,
       "roll_px": 1440
     },
     "assets/skies/gen_40.jpg": {
       "u": 0.135091,
-      "v": 0.5,
+      "v": 0.520833,
       "flip": false,
       "roll_px": 3902
     },
     "assets/skies/gen_41.jpg": {
       "u": 0.581706,
-      "v": 0.5,
+      "v": 0.515299,
       "flip": true,
       "roll_px": 5642
     },
     "assets/skies/gen_42.jpg": {
       "u": 0.301921,
-      "v": 0.5,
+      "v": 0.463867,
       "flip": false,
       "roll_px": 4927
     },
     "assets/skies/gen_43.jpg": {
       "u": 0.206706,
-      "v": 0.5,
+      "v": 0.535482,
       "flip": false,
       "roll_px": 4342
     },
     "assets/skies/gen_44.jpg": {
       "u": 0.6875,
-      "v": 0.5,
+      "v": 0.473307,
       "flip": false,
       "roll_px": 1152
     },
     "assets/skies/gen_45.jpg": {
       "u": 0.930013,
-      "v": 0.5,
+      "v": 0.52832,
       "flip": true,
       "roll_px": 3502
     },
     "assets/skies/gen_46.jpg": {
       "u": 0.038249,
-      "v": 0.5,
+      "v": 0.47526,
       "flip": false,
       "roll_px": 3307
     },
     "assets/skies/gen_47.jpg": {
       "u": 0.031901,
-      "v": 0.5,
+      "v": 0.531576,
       "flip": true,
       "roll_px": 2876
     },
     "assets/skies/gen_48.jpg": {
       "u": 0.354004,
-      "v": 0.5,
+      "v": 0.469076,
       "flip": false,
       "roll_px": 5247
     },
     "assets/skies/gen_49.jpg": {
       "u": 0.837402,
-      "v": 0.5,
+      "v": 0.494792,
       "flip": true,
       "roll_px": 4071
     },
     "assets/skies/gen_50.jpg": {
       "u": 0.297038,
-      "v": 0.5,
+      "v": 0.475911,
       "flip": false,
       "roll_px": 4897
     }

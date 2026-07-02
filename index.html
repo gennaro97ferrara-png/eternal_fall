@@ -566,7 +566,7 @@ function updateGalaxies(dt,speed){ if(!galaxies) return;
 let sky,sky2,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
 // SFONDI multipli (varietà): Via Lattea + 8 nebulose equirettangolari (assets/skies/), crossfade lazy-load (1-2 texture in VRAM alla volta)
 const SKY_FILES=['milkyway_8k.jpg'].concat(Array.from({length:50},(_,i)=>'skies/gen_'+String(i+1).padStart(2,'0')+'.jpg'));   // Via Lattea grezza (iniziale) + 50 varianti reali ESO (come gen_25)
-const SKY_QV='?v=12';       // cache-buster degli sfondi: BUMPA a ogni rigenerazione (v12 = banda PIENA vscale 1.0 a 6144 = risoluzione nativa ESO, più grande/nitida, file più leggeri)
+const SKY_QV='?v=13';       // cache-buster degli sfondi: BUMPA a ogni rigenerazione (v13 = 8192 con banda STRETTA vscale 0.78: stelle fitte e sottili)
 const SKY_ROT_MIN=1;        // la rotazione pesca SOLO dai gen_ belli (indici 1..50), mai la Via Lattea grezza scura (0)
 let skyIdx=0, skyT=0, skyEvery=2, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;   // primo gen bello ~2s dopo l'avvio, poi rotazione 3-5.5 min
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
@@ -608,7 +608,7 @@ let manSpike=null;                                    // croce di diffrazione a 
 let manSparks=null;                                   // ~90 pinpoint sul torso/casco che lampeggiano uno alla volta (leggibili da telefono)
 let manTwT=8+Math.random()*10, manTwE=0, manTwA=0;    // timer/energia/fase-attacco del twinkle periodico (~ogni 12-28s, sale in ~0.4s, decade in ~2s)
 const uFat={value:0};                                 // CICLO INGRASSA/DIMAGRISCE: 0=normale, 1=grasso (gonfiaggio lungo le normali, pesato sulla pancia)
-let fatT=150+Math.random()*180, fatClock=-1, fatAmp=0;   // prossimo ciclo tra ~2.5-5.5 min; fatClock>=0 = ciclo in corso
+let fatT=60+Math.random()*90, fatClock=-1, fatAmp=0;   // prossimo ciclo tra ~1-2.5 min (ingrassano spesso); fatClock>=0 = ciclo in corso
 // ROSTER PERSONAGGI: astronauta + animali-astronauta. I GLB vanno in assets/characters/ (mancanti = saltati senza errori).
 // helmet = casco a bolla procedurale per gli animali "nudi": coordinate 0..1 nel box del modello + raggio relativo all'altezza (si tarano con cadutaHelmet).
 const CHARACTERS=[
@@ -668,8 +668,8 @@ function makeStarLayer(count,zN,zF,half,sizeScale,scrollMul,tint,K,fade,twAmt){
       vTw=clamp(vTw,0.04,2.2);
       vF=smoothstep(uZN,uZN+uFade,position.z)*smoothstep(uZF,uZF-uFade,position.z);   // dissolvenza ai bordi della banda → ricicla senza pop
       vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
-      float psGeom=aSize*uPix*(0.55+0.4*vTw)*(uK/max(-mv.z,1.0));         // taglia geometrica: il twinkle pesa MENO sulla size → niente throbbing
-      float psFloor=1.7*uPix;                                            // PAVIMENTO in pixel fisici: a 4K mai sub-pixel → stelle definite, non aliasate
+      float psGeom=aSize*uPix*(0.48+0.36*vTw)*(uK/max(-mv.z,1.0));         // taglia geometrica: il twinkle pesa MENO sulla size → niente throbbing
+      float psFloor=1.5*uPix;                                            // PAVIMENTO in pixel fisici: a 4K mai sub-pixel → stelle definite, non aliasate
       float ps=max(psGeom,psFloor);
       vAComp=clamp(psGeom/psFloor,0.70,1.0);                            // le stelle di FONDO (sub-pixel) restano molto LUMINOSE (min 0.70) → tante microstelle brillanti che luccicano
       vAComp=mix(1.0,vAComp,step(psGeom,psFloor));                       // compensa SOLO quando si è clampato (le vicine già grandi restano piene)
@@ -1299,7 +1299,7 @@ class Planet{
     this.mesh.rotation.set(Math.random()*0.5-0.25,Math.random()*Math.PI*2,Math.random()*0.3-0.15);
     this.spin=(Math.random()*2-1)*0.007;
     this.mat.map=this.mat.emissiveMap=ASSETS.pt[idx];   // stessa texture; emissiveMap già presente → nessun recompile
-    this.mat.emissiveIntensity=this.isSun?1.9:0;        // il Sole emette (× emissiveMap); gli altri no
+    this.mat.emissiveIntensity=this.isSun?1.6:0;        // il Sole emette (× emissiveMap); gli altri no
     const pu=this.pUni;
     pu.uIsEarth.value=meta.earth?1:0; pu.uIsSun.value=this.isSun?1:0; pu.uAirless.value=meta.gray?1:0;
     pu.uHasAtmo.value=(this.isSun||meta.gray)?0:1; pu.uBump.value=this.isSun?0:(meta.bump!=null?meta.bump:3.0);
@@ -3209,17 +3209,21 @@ function animate(){
   const _zIdle=(typeof zoomState==='undefined'||zoomState==='idle');
   if(camOrbitP>=1){ if(_zIdle){ camOrbitNext-=dt; if(camOrbitNext<=0){
     camOrbitP=0; camOrbitDir=Math.random()<0.5?1:-1;
-    camOrbitType=Math.random()<0.45?0:1;                                       // 45% giro completo, 55% scivolo a S
-    camOrbitDur=camOrbitType===0?(16+Math.random()*10):(10+Math.random()*7);   // giro ~16-26s · S ~10-17s
+    const _ft=Math.random(); camOrbitType=_ft<0.30?0:(_ft<0.60?1:(_ft<0.80?2:3));   // 30% giro · 30% scivolo-spirale · 20% arco verticale · 20% vite 360°
+    camOrbitDur=[16+Math.random()*10, 18+Math.random()*10, 14+Math.random()*8, 12+Math.random()*6][camOrbitType];
     camOrbitNext=2+Math.random()*3;                                            // pausa tra figure: SOLO 2-5s
     if(Math.random()<0.35){ try{ window.cadutaDebugEvent(['comet','cluster','aurora','pulsar'][(Math.random()*4)|0]); }catch(_){} }   // il giro rivela qualcosa: evento leggero nel 35% delle figure
   } } }
   else if(_zIdle) camOrbitP=Math.min(1,camOrbitP+dt/camOrbitDur);
   const _cp=camOrbitP*camOrbitP*(3-2*camOrbitP);                               // smoothstep: parte piano, fila, atterra dolce
-  const _orb=camOrbitType===0 ? camOrbitDir*6.283185307*_cp                    // giro completo (2π ≡ 0 alla fine)
-                              : camOrbitDir*0.85*Math.sin(_cp*6.283185307);    // S: va (+49°), torna, va (−49°), rientra a 0
-  const _orbEl=(camOrbitP<1)?(camOrbitType===0?Math.sin(_cp*3.14159)*0.4:Math.sin(_cp*12.566)*0.28):0;   // quota: il giro si alza a metà, la S ondeggia (scivolo)
-  camOrbitLive=camOrbitP<1?1:0;                                                // flag per la regia: camera in figura → più pianeti/eventi
+  const TAU=6.283185307, _fig=camOrbitP<1;
+  const _orb=!_fig?0:(camOrbitType===0 ? camOrbitDir*TAU*_cp                                   // GIRO: rivoluzione pulita (2π ≡ 0)
+            : camOrbitType===1 ? camOrbitDir*(TAU*_cp+0.30*Math.sin(_cp*TAU*3))               // SCIVOLO: rivoluzione che SERPEGGIA (slalom a spirale, mai avanti-e-dietro)
+            : 0);                                                                              // arco verticale e vite: azimut fermo
+  const _orbPitch=(_fig&&camOrbitType===2)?camOrbitDir*1.26*Math.sin(_cp*TAU):0;               // ARCO VERTICALE: sale sopra la testa (+72°), scende sotto i piedi (−72°), rientra
+  const _orbRoll=(_fig&&camOrbitType===3)?camOrbitDir*TAU*_cp:0;                               // VITE: la camera rolla su se stessa di 360° (2π ≡ 0)
+  const _orbEl=!_fig?0:(camOrbitType===0?Math.sin(_cp*3.14159)*0.4:(camOrbitType===1?Math.sin(_cp*TAU*2.5)*0.35:0));   // quota: il giro si alza a metà, lo scivolo ondeggia
+  camOrbitLive=_fig?1:0;                                                       // flag per la regia: camera in figura → più pianeti/eventi
   const _az=Math.sin(camPhase*0.05)*0.05 + camMoveAz*camMoveScale + _orb;      // micro-sway (~3°) + riframe corrente + figura
 
   // --- UOMO: ruota su se stesso + tumble ampio di caduta libera (visore scuro = nessun volto) ---
@@ -3247,7 +3251,7 @@ function animate(){
   if(fatClock<0){ fatT-=dt; if(fatT<=0){ fatClock=0; fatAmp=0.55+Math.random()*0.45;
     if($t.log){ $t.log.textContent='— zero-g bloat. The suit swells; it will pass.'; $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),9000); } } }
   else { fatClock+=dt; uFat.value=smooth(0,15,fatClock)*(1-smooth(35,65,fatClock))*fatAmp;
-    if(fatClock>68){ fatClock=-1; fatT=150+Math.random()*180; uFat.value=0; } }
+    if(fatClock>68){ fatClock=-1; fatT=60+Math.random()*90; uFat.value=0; } }
   if(astHitCD>0) astHitCD-=dt;
   hitFlash =Math.max(0,hitFlash -dt*2.2);   // ~0.45s di flash
   hitTremor=Math.max(0,hitTremor-dt*1.4);   // ~0.7s di tremore
@@ -3296,13 +3300,13 @@ function animate(){
   const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*2.0 + camMoveDs*camMoveScale;   // + riframe di distanza
   camDist += (baseDist-camDist)*Math.min(1,dt*0.1);
   const _el=1.0 + Math.sin(camPhase*0.045)*0.22 + camMoveEl*camMoveScale + _orbEl;   // quota che respira + riframe + onda della figura (scivolo)
-  camera.position.set(Math.sin(_az)*camDist, _el, Math.cos(_az)*camDist);
+  const _pc=Math.cos(_orbPitch); camera.position.set(Math.sin(_az)*camDist*_pc, _el+Math.sin(_orbPitch)*camDist, Math.cos(_az)*camDist*_pc);   // pitch = arco verticale (0 a riposo)
   let lx=manRig.position.x*0.4, ly2=manRig.position.y*0.5+0.15;
   // NIENTE panoramica verso i pianeti: la camera resta SEMPRE sull'astronauta → nessun cambio d'inquadratura (richiesta utente)
   camLookX += (lx-camLookX)*Math.min(1,dt*2.2);
   camLookY += (ly2-camLookY)*Math.min(1,dt*2.2);
   tmpLook.set(camLookX,camLookY,0); camera.lookAt(tmpLook);
-  camera.rotation.z+=Math.sin(camPhase*0.03)*0.010;
+  camera.rotation.z+=Math.sin(camPhase*0.03)*0.010+_orbRoll;   // micro-roll + vite 360° (0 a riposo)
   camera.fov=baseFov+Math.sin(camPhase*0.045)*1.0 + slingE*3.0 + rocketE*7.0 + zoomFovKick; camera.updateProjectionMatrix();   // FOV si allarga DOLCEMENTE con la velocità (niente vibrazione "tamburo") + micro-kick DEEP ZOOM (0 a riposo)
   deepZoomUpdate(dt);   // DEEP ZOOM (zoom infinito): no-op totale se spento
 
@@ -3311,7 +3315,7 @@ function animate(){
   cinePass.uniforms.uVignette.value=1.0+rocketE*0.22+director.surge*0.08+eclipseDim;  // tunnel in warp + iris-down alla totalità dell'eclissi
   cinePass.uniforms.uGrain.value=Math.min(0.026, 0.020*(1.0+director.surge*0.30))*(0.1+0.9*zoomWorldDimN);    // la camera "sente" la caduta; nero pulito per l'encoder. Nel DEEP ZOOM la grana quasi sparisce: sul nero delle fasi profonde leggeva come un campo di finte stelline ("lo sfondo sotto")
   bloomPass.strength=Math.min(0.78, 0.36+director.cur.aB*0.30+director.surge*0.20);   // bloom ridotto + cap più basso → il centro non si brucia, dettagli/UI restano leggibili
-  bloomPass.threshold=Math.max(0.82, 0.90-director.cur.neb*0.06-director.surge*0.02); // firma per-mood: nursery morbida (~0.84), abisso chirurgico (0.90); pavimento 0.82 (il jitter di regione porta neb fino a ~1.09)
+  bloomPass.threshold=Math.max(0.86, 0.92-director.cur.neb*0.05-director.surge*0.02); // firma per-mood, pavimento alzato 0.82→0.86: meno 'macchie' luminose sui pianeti (bloom più chirurgico)
   bloomPass.radius=Math.min(0.85, 0.48+director.cur.aB*0.28+director.surge*0.12+rocketE*0.10);   // alone ampio nei mood luminosi e in warp
 
   composer.render();
@@ -3899,7 +3903,7 @@ function zoomBuildRig(){ if(zoomRig) return;
       vA*=0.80+0.20*sin(uTime*1.6+aPhase);                              // twinkle minimo per-stella (uTime = shaderTime wrappato → 24/7 ok)
       vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
       float psGeom=aSize*uPix*(0.35+1.8*r/${ZP_RMAX.toFixed(1)})*(4300.0/max(-mv.z,1.0));   // cresce "avvicinandosi" (verso il bordo)
-      float psFloor=1.7*uPix; float ps=max(psGeom,psFloor);              // PAVIMENTO in pixel fisici come gli star layer: mai sub-pixel
+      float psFloor=1.5*uPix; float ps=max(psGeom,psFloor);              // PAVIMENTO in pixel fisici come gli star layer: mai sub-pixel
       vA*=mix(1.0,clamp(psGeom/psFloor,0.70,1.0),step(psGeom,psFloor)); // compensa SOLO quando clampa (come makeStarLayer)
       gl_PointSize=ps; }`,
     fragmentShader:`uniform float uOp;varying float vA;

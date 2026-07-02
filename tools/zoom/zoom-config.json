@@ -3,61 +3,133 @@
   "levels": [
     {
       "name": "L1",
-      "source": { "type": "file", "path": "assets/zoom/_src/svs_gal_crop.png" },
-      "center_px": [3277, 1843],
-      "crop_px": [6554, 3686],
+      "source": {
+        "type": "file",
+        "path": "assets/zoom/_src/svs_gal_crop.png"
+      },
+      "center_px": [
+        3277,
+        1843
+      ],
+      "crop_px": [
+        6554,
+        3686
+      ],
       "rotate_deg": 0.0,
-      "angle_deg": [72.0, 40.5],
+      "angle_deg": [
+        72.0,
+        40.5
+      ],
       "out_max": 8192,
       "credit": "NASA/Goddard SVS — Deep Star Maps 2020 (Gaia DR2 / Hipparcos-2 / Tycho-2)"
     },
     {
       "name": "L2",
-      "source": { "type": "file", "path": "assets/zoom/_src/vvv_L2.png" },
-      "center_px": [2982, 1677],
-      "crop_px": [5965, 3355],
+      "source": {
+        "type": "file",
+        "path": "assets/zoom/_src/vvv_L2_hi.png"
+      },
+      "center_px": [
+        5967,
+        3356
+      ],
+      "crop_px": [
+        11934,
+        6713
+      ],
       "rotate_deg": 0.0,
-      "angle_deg": [18.0, 10.125],
+      "angle_deg": [
+        18.0,
+        10.125
+      ],
       "out_max": 8192,
       "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
     },
     {
       "name": "L3",
-      "source": { "type": "file", "path": "assets/zoom/_src/vvv_L3.png" },
-      "center_px": [4096, 2304],
-      "crop_px": [8192, 4608],
+      "source": {
+        "type": "file",
+        "path": "assets/zoom/_src/vvv_L3.png"
+      },
+      "center_px": [
+        4096,
+        2304
+      ],
+      "crop_px": [
+        8192,
+        4608
+      ],
       "rotate_deg": 0.0,
-      "angle_deg": [6.18, 3.476],
+      "angle_deg": [
+        6.18,
+        3.476
+      ],
       "out_max": 8192,
       "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
     },
     {
       "name": "L4",
-      "source": { "type": "file", "path": "assets/zoom/_src/vvv_L4.png" },
-      "center_px": [4096, 2304],
-      "crop_px": [8192, 4608],
+      "source": {
+        "type": "file",
+        "path": "assets/zoom/_src/vvv_L4.png"
+      },
+      "center_px": [
+        4096,
+        2304
+      ],
+      "crop_px": [
+        8192,
+        4608
+      ],
       "rotate_deg": 0.0,
-      "angle_deg": [1.545, 0.869],
+      "angle_deg": [
+        1.545,
+        0.869
+      ],
       "out_max": 8192,
       "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
     },
     {
       "name": "L5",
-      "source": { "type": "file", "path": "assets/zoom/_src/hawki_L5.png" },
-      "center_px": [3347, 1883],
-      "crop_px": [6695, 3766],
+      "source": {
+        "type": "file",
+        "path": "assets/zoom/_src/hawki_L5.png"
+      },
+      "center_px": [
+        3347,
+        1883
+      ],
+      "crop_px": [
+        6695,
+        3766
+      ],
       "rotate_deg": -0.16,
-      "angle_deg": [0.395, 0.2222],
+      "angle_deg": [
+        0.395,
+        0.2222
+      ],
       "out_max": 8192,
       "credit": "ESO/Nogueras-Lara et al. — HAWK-I GALACTICNUCLEUS (CC BY 4.0)"
     },
     {
       "name": "L6",
-      "source": { "type": "file", "path": "assets/zoom/_src/hawki_L6.png" },
-      "center_px": [4096, 2304],
-      "crop_px": [8192, 4608],
+      "source": {
+        "type": "file",
+        "path": "assets/zoom/_src/hawki_L6.png"
+      },
+      "center_px": [
+        4096,
+        2304
+      ],
+      "crop_px": [
+        8192,
+        4608
+      ],
       "rotate_deg": -0.16,
-      "angle_deg": [0.1208, 0.068],
+      "angle_deg": [
+        0.1208,
+        0.068
+      ],
       "out_max": 8192,
       "credit": "ESO/Nogueras-Lara et al. — HAWK-I GALACTICNUCLEUS (CC BY 4.0)"
     }
