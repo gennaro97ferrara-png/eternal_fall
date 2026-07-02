@@ -560,7 +560,7 @@ function updateGalaxies(dt,speed){ if(!galaxies) return;
 let sky,sky2,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
 // SFONDI multipli (varietà): Via Lattea + 8 nebulose equirettangolari (assets/skies/), crossfade lazy-load (1-2 texture in VRAM alla volta)
 const SKY_FILES=['milkyway_8k.jpg'].concat(Array.from({length:50},(_,i)=>'skies/gen_'+String(i+1).padStart(2,'0')+'.jpg'));   // Via Lattea grezza (iniziale) + 50 varianti reali ESO (come gen_25)
-const SKY_QV='?v=11';       // cache-buster degli sfondi: BUMPA a ogni rigenerazione (v11 = canvas 8192, banda a dettaglio ~nativo, JPEG q95 senza chroma subsampling)
+const SKY_QV='?v=12';       // cache-buster degli sfondi: BUMPA a ogni rigenerazione (v12 = banda PIENA vscale 1.0 a 6144 = risoluzione nativa ESO, più grande/nitida, file più leggeri)
 const SKY_ROT_MIN=1;        // la rotazione pesca SOLO dai gen_ belli (indici 1..50), mai la Via Lattea grezza scura (0)
 let skyIdx=0, skyT=0, skyEvery=2, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;   // primo gen bello ~2s dopo l'avvio, poi rotazione 3-5.5 min
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
