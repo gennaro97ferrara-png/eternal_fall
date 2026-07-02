@@ -1128,6 +1128,8 @@ function build(){
   // SMAA rimosso: l'MSAA del renderer (antialias:true) copre già i bordi; passata risparmiata
 
   ['log'].forEach(k=>$t[k]=document.getElementById('t-'+k));   // UI Space Radio: solo la caption centrale resta come #t-log
+  if($t.log) $t.log.style.display='none';   // MESSAGGI IN SOVRIMPRESSIONE SPENTI (scelta utente 2026-07-02): niente testi al centro della live (sottotitoli voce, frasi eventi, diario di bordo). La voce continua a parlare; cadutaMessages(true) riaccende i testi.
+  window.cadutaMessages=(on)=>{ if(!$t.log) return 'elemento assente'; $t.log.style.display=(on===undefined||on)?'':'none'; return 'messaggi in sovrimpressione: '+((on===undefined||on)?'ATTIVI':'spenti'); };
   $t.nowTitle=document.getElementById('now-title'); $t.nowTag=document.getElementById('now-tag'); $t.nextTitle=document.getElementById('next-title'); $t.nextEta=document.getElementById('next-eta');
   onResize();
   // stelle "default" del pubblico (sostituite dal vero catalogo in Fase B)
