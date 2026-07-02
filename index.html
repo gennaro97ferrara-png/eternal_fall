@@ -615,7 +615,7 @@ const CHARACTERS=[
   // ANIMALI: NIENTE mesh-deform (float:0) — sono modelli multi-mesh/organici (fino a 26 parti) che il
   // displacement per-vertex lacererebbe; il movimento del corpo è RIGIDO a livello di gruppo (wiggle → beccheggio/
   // rollio/pagaiata + i tumble di caduta) così non si "spezzano" mai. La giraffa ha la SUA animazione (camminata).
-  {name:'astrodog',  file:'assets/characters/astrodog.glb',  credit:'AstroDoggo © merrychuu (CC BY)', float:0, wiggle:1.0},   // già in tuta col suo casco
+  {name:'astrodog',  file:'assets/characters/astrodog.glb',  credit:'AstroDoggo © merrychuu (CC BY)', float:0, wiggle:1.0, sparkYMax:0.60},   // già in tuta col suo casco; niente scintille sopra il collo (la faccia dietro il vetro si deve vedere)
   {name:'cat',       file:'assets/characters/cat.glb',       credit:'Cat © Empire (CC BY)',        float:0, limb:1.0, wiggle:0.8, yaw:0, helmet:{x:0.5,y:0.815,z:0.87,r:0.235}},   // limb = coda/collo/zampe (model-space); wiggle ridotto (ora il corpo si muove)
   {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © BlueMesh (CC BY)',  scale:1.6, wiggle:0.65, animSpeed:0.6, helmet:{x:0.5,y:0.90,z:0.12,r:0.13}, hide:['circle']},   // PIÙ GRANDE (1.6); animata (camminata) → niente limb procedurale
   {name:'elephant',  file:'assets/characters/elephant.glb',  credit:'Elephant © denys4624 (CC BY)', float:0, limb:0.9, wiggle:0.65, yaw:0, helmet:{x:0.5,y:0.72,z:0.68,r:0.30}},     // limb = proboscide/coda/zampe; movimento più ponderato
@@ -767,6 +767,7 @@ function build(){
   root.traverse(o=>{ if(o.isMesh&&o.material){
     if(!o.material.isMeshStandardMaterial){   // materiali legacy (unlit/phong/specGloss) → convertiti a PBR: niente crash uniforms, e prendono luce
       const old=o.material; o.material=new THREE.MeshStandardMaterial({map:old.map||null,color:(old.color?old.color.clone():new THREE.Color(0xffffff)),roughness:0.8,metalness:0.05,transparent:!!old.transparent,side:old.side!==undefined?old.side:THREE.FrontSide}); }
+    if(o.material.transparent){ o.material.envMapIntensity=1.2; o.material.roughness=0.15; o.material.metalness=0.05; o.material.needsUpdate=true; o.frustumCulled=false; return; }   // VETRO del GLB (casco del cane, ecc.): resta vetro PULITO — niente glitter/materiale-stella sul visore, la faccia si deve vedere
     if(o.material.map) o.material.color=new THREE.Color(0xffffff);   // con texture: colore neutro; senza: si preserva la tinta del modello
     o.material.metalness=0.16; o.material.roughness=0.78; o.material.envMapIntensity=1.10;   // tuta più luminosa (raccoglie più cielo)
     if(!o.isSkinnedMesh && o.geometry.attributes.position.count>_sparkVn){ _sparkMesh=o; _sparkVn=o.geometry.attributes.position.count; }
@@ -882,7 +883,7 @@ function build(){
     const _ss=(a,b,x)=>{ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); };
     while(n<P&&guard++<30000){ const i=(Math.random()*pa.count)|0;
       const nx=(pa.getX(i)-bbS.min.x)/extS.x, ny=(pa.getY(i)-bbS.min.y)/extS.y;
-      if(Math.abs(nx-0.5)<0.21&&ny>0.52){ const off=extS.y*0.008;
+      if(Math.abs(nx-0.5)<0.21&&ny>0.52&&ny<=(def.sparkYMax||1)){ const off=extS.y*0.008;   // sparkYMax: esclude la zona testa/casco (es. astrodog: faccia visibile dietro il vetro)
         sp[n*3]=pa.getX(i)+na.getX(i)*off; sp[n*3+1]=pa.getY(i)+na.getY(i)*off; sp[n*3+2]=pa.getZ(i)+na.getZ(i)*off;
         snr[n*3]=na.getX(i); snr[n*3+1]=na.getY(i); snr[n*3+2]=na.getZ(i);
         sfw[n]=extS.y*0.075*(0.35+0.85*_ss(0.16,0.42,ny)*(1-_ss(0.52,0.86,ny)));   // stesso peso-pancia del vertex → i punti restano incollati anche da grasso
@@ -2943,6 +2944,7 @@ window.cadutaDebugOwned=(name,skin,logo)=>{ const free=ownedPlanets.find(p=>!p.a
 const clock=new THREE.Clock();
 let shaderTime=0; const SWRAP=100000;
 let camPhase=0,camDist=10,started=false,camOrbit=0,manSpin=0;
+let camMoveAz=0,camMoveEl=0,camMoveDs=0,camMoveAzT=0,camMoveElT=0,camMoveDsT=0,camMoveNext=20,camMoveScale=1;   // RIFRAME lenti: la camera plana verso nuove inquadrature e vi indugia (richiesta utente: "più cambi di inquadratura")
 let camLookX=0, camLookY=0.15;   // bersaglio lookAt smussato → niente stacchi d'inquadratura quando cambia il pianeta a fuoco
 let planetTimer=6,wispTimer=4,starTimer=2,mysteryTimer=80,parallelTimer=120,bhTimer=200;
 let cometTimer=40,clusterTimer=120,derelictTimer=150;
@@ -3188,9 +3190,16 @@ function animate(){
   for(const p of ownedPlanets) p.update(dt,speed);
   if(_echoPending>0){ _echoPending-=dt; if(_echoPending<=0 && !lightEcho.active) lightEcho.spawn(); }   // eco di luce ~14s dopo una supernova
 
-  // --- CAMERA QUASI-FERMA dietro l'uomo: niente orbita, solo un respiro impercettibile ---
+  // --- CAMERA dietro l'uomo: respiro impercettibile + RIFRAME lenti (planate di inquadratura) ---
   camPhase+=dt*timeScale;
-  const _az=Math.sin(camPhase*0.05)*0.05;                              // micro-sway laterale (~3°), non un giro
+  // ogni ~40-110s una nuova inquadratura: orbita parziale, quota, distanza — planata di ~10s, poi indugia.
+  // Mai stacchi (sempre easing) e sempre sull'astronauta (il lookAt non cambia).
+  camMoveNext-=dt; if(camMoveNext<=0){ camMoveNext=40+Math.random()*70;
+    camMoveAzT=(Math.random()<0.30?0:(Math.random()*2-1)*0.55);          // 30% delle volte torna in asse
+    camMoveElT=(Math.random()*2-1)*0.65; camMoveDsT=(Math.random()*2-1)*1.9; }
+  camMoveScale+=(((typeof zoomState==='undefined'||zoomState==='idle')?1:0.14)-camMoveScale)*Math.min(1,dt*0.5);   // nel deep zoom i riframe si riducono (il centro dello zoom deve restare in quadro)
+  camMoveAz+=(camMoveAzT-camMoveAz)*Math.min(1,dt*0.11); camMoveEl+=(camMoveElT-camMoveEl)*Math.min(1,dt*0.11); camMoveDs+=(camMoveDsT-camMoveDs)*Math.min(1,dt*0.11);
+  const _az=Math.sin(camPhase*0.05)*0.05 + camMoveAz*camMoveScale;     // micro-sway (~3°) + riframe corrente
 
   // --- UOMO: ruota su se stesso + tumble ampio di caduta libera (visore scuro = nessun volto) ---
   const mt=shaderTime; manFloatTime.value=mt; if(manMixer) manMixer.update(dt*timeScale);
@@ -3234,11 +3243,11 @@ function animate(){
   // velocità di rotazione Y che varia dolcemente nel tempo (a volte quasi ferma, a volte un giro più deciso)
   spinRetargetT-=dt*timeScale; if(spinRetargetT<=0){ spinRetargetT=20+Math.random()*30; spinRateTarget=0.02+Math.random()*0.05; }   // capriola più lenta
   spinRateCur += (spinRateTarget-spinRateCur)*Math.min(1,dt*0.25);
-  manSpin=(manSpin+dt*timeScale*spinRateCur*(1+rocketE*1.6))%6.28318;                 // rotazione su se stesso, più decisa alla velocità di caduta
+  manSpin=(manSpin+dt*timeScale*spinRateCur*(1+rocketE*1.6)*(1-0.72*Math.cos(manSpin)))%6.28318;   // rotazione su se stesso CON INDUGIO frontale: rallenta ~3× quando guarda lo spettatore, accelera di spalle (media invariata)
   // CAPOVOLTA continua sull'asse X: la caduta libera fa ruzzolare il corpo a 360° (lento, ritmo variabile)
   tumbleRetargetT-=dt*timeScale; if(tumbleRetargetT<=0){ tumbleRetargetT=16+Math.random()*24; tumbleRateTarget=0.025+Math.random()*0.05; }   // capovolta più lenta
   tumbleRateCur += (tumbleRateTarget-tumbleRateCur)*Math.min(1,dt*0.25);
-  manTumble=(manTumble+dt*timeScale*tumbleRateCur*(1+rocketE*2.4))%6.28318;   // tumble più deciso alla velocità di caduta
+  manTumble=(manTumble+dt*timeScale*tumbleRateCur*(1+rocketE*2.4)*(1-0.72*Math.cos(manTumble)))%6.28318;   // tumble più deciso alla velocità di caduta, CON INDUGIO quando il corpo è dritto verso la camera (faccia visibile più a lungo)
   // BURST capriole all'impatto: gira veloce sull'asse X (3-4 giri), decelera e atterra DRITTO (target = multiplo di 2π → reset invisibile)
   if(hitFlipTarget>0){ const _rem=hitFlipTarget-hitFlip; hitFlip += dt*timeScale*(1+rocketE*2.0)*Math.max(0.8,Math.min(9.0,_rem*2.4)); if(hitFlip>=hitFlipTarget-0.04){ hitFlip=0; hitFlipTarget=0; } }   // capriola: ease-out graduale (no stop secco) + velocità in base alla caduta
   // CAPRIOLA LENTA occasionale su asse alternato (barrel roll completo, dolce, non un giro brusco)
@@ -3263,9 +3272,9 @@ function animate(){
   manRig.position.z = -slingE*1.6 - rocketE*1.5 + _hitImp.z*0.5;                    // scaraventato in avanti (fionda + spinta razzo)
 
   // --- CAMERA: fissa dietro l'uomo, respiro lievissimo di quota/distanza ---
-  const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*2.0;
+  const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*2.0 + camMoveDs*camMoveScale;   // + riframe di distanza
   camDist += (baseDist-camDist)*Math.min(1,dt*0.1);
-  const _el=1.0 + Math.sin(camPhase*0.045)*0.22;                       // quota che respira (ridotta)
+  const _el=1.0 + Math.sin(camPhase*0.045)*0.22 + camMoveEl*camMoveScale;   // quota che respira + riframe di quota
   camera.position.set(Math.sin(_az)*camDist, _el, Math.cos(_az)*camDist);
   let lx=manRig.position.x*0.4, ly2=manRig.position.y*0.5+0.15;
   // NIENTE panoramica verso i pianeti: la camera resta SEMPRE sull'astronauta → nessun cambio d'inquadratura (richiesta utente)
@@ -3279,7 +3288,7 @@ function animate(){
   cinePass.uniforms.uTime.value=shaderTime; cinePass.uniforms.uRocket.value=rocketE;
   eclipseDim=Math.max(0,eclipseDim-dt*0.8);                                           // decadimento morbido (l'eclissi lo ricarica finché è in totalità)
   cinePass.uniforms.uVignette.value=1.0+rocketE*0.22+director.surge*0.08+eclipseDim;  // tunnel in warp + iris-down alla totalità dell'eclissi
-  cinePass.uniforms.uGrain.value=Math.min(0.026, 0.020*(1.0+director.surge*0.30));    // la camera "sente" la caduta; nero pulito per l'encoder
+  cinePass.uniforms.uGrain.value=Math.min(0.026, 0.020*(1.0+director.surge*0.30))*(0.1+0.9*zoomWorldDimN);    // la camera "sente" la caduta; nero pulito per l'encoder. Nel DEEP ZOOM la grana quasi sparisce: sul nero delle fasi profonde leggeva come un campo di finte stelline ("lo sfondo sotto")
   bloomPass.strength=Math.min(0.78, 0.36+director.cur.aB*0.30+director.surge*0.20);   // bloom ridotto + cap più basso → il centro non si brucia, dettagli/UI restano leggibili
   bloomPass.threshold=Math.max(0.82, 0.90-director.cur.neb*0.06-director.surge*0.02); // firma per-mood: nursery morbida (~0.84), abisso chirurgico (0.90); pavimento 0.82 (il jitter di regione porta neb fino a ~1.09)
   bloomPass.radius=Math.min(0.85, 0.48+director.cur.aB*0.28+director.surge*0.12+rocketE*0.10);   // alone ampio nei mood luminosi e in warp
@@ -3973,7 +3982,7 @@ function deepZoomUpdate(dt){
   if(zoomState==='idle') return;
   if(zoomState==='arm'){ zoomArmT+=dt;
     if(zoomArmT>30){ zoomState='idle'; console.warn('[zoom] arm scaduto (30s: manifest o crossfade sky mai pronti) → dive annullato'); return; }   // watchdog: mai 'arm' per sempre (sbloccherebbe anche la rotazione sfondi)
-    if(!zoomLevels||skyFading||skyLoading) return; zoomStartDive(); if(zoomState!=='dive') return; }   // attende manifest + fine crossfade sky (poll, mai blocking)
+    if(!zoomLevels||((skyFading||skyLoading)&&zoomMode!=='loop')) return; zoomStartDive(); if(zoomState!=='dive') return; }   // attende manifest (+ fine crossfade solo in 'once': nel loop il cielo è invisibile → si parte SUBITO)
   if(zoomAimed) zoomT+=dt;   // il tempo del dive scorre solo a PUNTAMENTO finito (Θ resta Θ0 durante la panoramica)
   const dive=(zoomState==='dive');
   // rampe globali (ripristinate in uscita): rotazione sky congelata in 2s, neb/polvere puliti in 4s, kick FOV decay ~1.5s
@@ -4088,11 +4097,16 @@ window.cadutaZoom=(opts)=>{ opts=opts||{};
   zoomHold=Math.max(3,+opts.hold||10); zoomWorldBoost=Math.max(1,+opts.world||5);
   zoomState='arm'; zoomArmT=0;                                            // il dive parte quando manifest pronti E nessun crossfade sky in corso (watchdog 30s)
   zoomLoadCfg().then(ok=>{ if(!ok&&zoomState==='arm') zoomState='idle'; });
-  return 'deep zoom armato ('+zoomMode+', '+zoomDur+'s)'+((skyFading||skyLoading)?' — attendo la fine del crossfade sfondo':'');
+  return 'deep zoom armato ('+zoomMode+', '+zoomDur+'s)'+(((skyFading||skyLoading)&&zoomMode!=='loop')?' — attendo la fine del crossfade sfondo':'');
 };
 window.cadutaZoomStop=()=>{ if(zoomState==='idle') return 'nessun dive in corso';
   if(zoomState==='arm'){ zoomState='idle'; return 'dive annullato'; }
   if(zoomState!=='exit') zoomBeginExit(3); return 'uscita dal dive (~3s)'; };
+// scanner di scena (verifica): chi sta renderizzando cosa negli strati di sfondo
+window.cadutaSceneScan=()=>{ const out=[]; scene.traverse(o=>{ if(!o.visible||o.renderOrder>-8) return;
+  const m=o.material; out.push({tipo:o.type, ro:o.renderOrder, nome:o.name||'', map:!!(m&&m.map), op:m?(m.opacity!==undefined?+(+m.opacity).toFixed(2):1):null,
+    col:(m&&m.color)?m.color.getHexString():null, mapNome:(m&&m.map&&m.map.image&&m.map.image.src)?m.map.image.src.split('/').pop().slice(0,30):((m&&m.map)?'bitmap':null)}); });
+  return out; };
 // diagnostica dive (console/verifica): stato, Θ, livelli attivi, texture residenti
 window.cadutaZoomInfo=()=>({ state:zoomState, mode:zoomMode, aimed:zoomAimed, t:+zoomT.toFixed(1), theta:+zoomTheta.toFixed(3),
   cur:zoomCurI, nxt:zoomNxtI, proc:+zoomProcOp.toFixed(2), rebirth:zoomRebirth, world:+zoomWorldMul.toFixed(2),
