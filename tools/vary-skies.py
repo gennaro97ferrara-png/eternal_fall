@@ -20,6 +20,7 @@ while i < len(args):
     a = args[i]
     if a == "--w": OUTW = int(args[i+1]); i += 2
     elif a == "--out": OUTDIR = args[i+1]; i += 2
+    elif a == "--base": BASES = [args[i+1]]; i += 2
     elif a == "--sample": SAMPLE = True; i += 1
     elif a.isdigit(): N = int(a); i += 1
     else: i += 1
