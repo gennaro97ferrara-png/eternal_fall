@@ -105,16 +105,19 @@ def main():
                     if env_set_video_id(live):
                         subprocess.call(["systemctl", "restart", "ef-server"])
                 # tutto ok: nessun'altra azione
-            elif upcoming:
+            else:
+                # NON live (upcoming O outage totale): una riconnessione ffmpeg FRESCA sulla key
+                # riusabile AUTO-STARTA un broadcast armato E AUTO-CREA una nuova "Stream now" se non
+                # ce n'e' nessuno (verificato 2026-07-02: reconnect fresco -> nuovo broadcast wTY0B0LpkSs
+                # live). Quindi forziamo il reconnect anche in OUTAGE, con cooldown anti-flapping.
+                tag = ("upcoming=%s" % upcoming) if upcoming else "OUTAGE (nessuna diretta)"
                 age = ffmpeg_age()
                 now = time.time()
                 if age >= FFMPEG_MIN_AGE and (now - last_reconnect) >= RECONNECT_COOLDOWN:
-                    force_reconnect("broadcast UPCOMING=%s non live, ffmpeg stantio (%ss)" % (upcoming, age))
+                    force_reconnect("%s -> reconnect fresco (auto-start/auto-crea la diretta)" % tag)
                     last_reconnect = now
                 else:
-                    say("upcoming=%s, non-live; attendo (ffmpeg_age=%ss, cooldown)" % (upcoming, age))
-            else:
-                say("OUTAGE: nessun broadcast live ne' upcoming — armare una diretta in YouTube Studio")
+                    say("non-live (%s); attendo reconnect (ffmpeg_age=%ss, cooldown %ss)" % (tag, age, RECONNECT_COOLDOWN))
         except Exception as e:
             say("errore ciclo: %s" % e)
         time.sleep(PERIOD)
