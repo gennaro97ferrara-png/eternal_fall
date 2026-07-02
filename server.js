@@ -72,8 +72,8 @@ function addStar(name, key) {
 const commands = [];                     // {cmd, arg, user, ts}
 const cmdCooldown = new Map();           // channelId -> lastTs
 const CMD_USER_CD = 60000;               // 60s per utente
-const CMD_FREE = new Set(['star', 'light', 'message', 'comet', 'wish', 'whales', 'aurora', 'eclipse', 'supernova', 'meteors', 'help']);
-const CMD_SUB  = new Set(['world', 'nebula', 'blackhole']);   // riservati a iscritti/membri/mod
+const CMD_FREE = new Set(['star', 'light', 'message', 'comet', 'wish', 'whales', 'aurora', 'eclipse', 'supernova', 'meteors', 'help', 'ship', 'rocket', 'sputnik', 'lanterns']);
+const CMD_SUB  = new Set(['world', 'nebula', 'blackhole', 'ufo', 'wormhole', 'jellies']);   // riservati a iscritti/membri/mod (eventi speciali)
 const CMD_ADMIN = new Set(['musicnext', 'musicpause', 'musicplay']);   // solo pannello regia, mai dalla chat
 const BADWORDS = (process.env.STAR_BADWORDS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 function cleanArg(s) { return String(s || '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/https?:\/\/\S+/gi, '').replace(/\s+/g, ' ').trim().slice(0, 40); }

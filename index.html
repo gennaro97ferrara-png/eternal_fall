@@ -3843,7 +3843,32 @@ window.addEventListener('resize', onResize);
 
 const gate=document.getElementById('gate'), hudUi=document.getElementById('hud-ui');
 function begin(){ if(started||!built) return; started=true; audio.start();
-  gate.classList.add('hidden'); if(hudUi) hudUi.classList.add('show'); setTimeout(()=>gate.style.display='none',2600); }
+  gate.classList.add('hidden'); if(hudUi) hudUi.classList.add('show'); setTimeout(()=>gate.style.display='none',2600);
+  // DEMO TOUR (?demo=1): sfila le novità una dopo l'altra — per rivederle in locale senza aspettare i timer
+  if(/[?&]demo=1/.test(location.search)){
+    const D=(w)=>()=>window.cadutaDebugEvent(w);
+    const seq=[ ['twinkle-stella',()=>window.cadutaTwinkle(),6],
+      ['ciclo ingrassa/dimagrisce (~65s, intanto passano gli altri)',()=>window.cadutaFat(),8],
+      ['stella cadente',D('shooting'),8],
+      ['navicella',D('ship'),26],
+      ['razzo',D('rocket'),24],
+      ['UFO',D('ufo'),26],
+      ['Sputnik',D('sputnik'),26],
+      ['lanterne dei viaggiatori',D('lanterns'),20],
+      ['meduse spaziali',D('jellies'),40],
+      ['wormhole',D('wormhole'),50],
+      ['attraversamento degli anelli',D('rings'),85],
+      ['stazione madre',D('mothership'),40],
+      ['supernova + eco',D('supernova'),30],
+      ['cometa a doppia coda',D('comet'),25],
+      ['aurora',D('aurora'),30],
+      ['buco nero (lensing)',D('blackhole'),40],
+      ['eclissi solare (diamante ai contatti)',D('eclipsesolar'),10] ];
+    let k=0; const step=()=>{ if(k>=seq.length){ console.log('[demo] tour finito — gli eventi ora tornano sui loro timer naturali'); return; }
+      const [nm,fn,wait]=seq[k++]; try{ fn(); }catch(e){ console.warn('[demo]',nm,e); }
+      console.log('[demo] '+k+'/'+seq.length+' → '+nm);
+      setTimeout(step, wait*1000); };
+    setTimeout(step, 6000); console.log('[demo] tour delle novità tra 6s (~7 min totali)'); } }
 enterBtn.addEventListener('click', begin);
 window.addEventListener('keydown', e=>{ if(e.key==='f'||e.key==='F'){ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); } });
 
