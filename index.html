@@ -218,9 +218,10 @@
 </script>
 
 <script type="module">
-// CONSOLE PULITA: i log informativi ([zoom], [music], character, ...) si vedono SOLO con
-// ?debug=1 o ?rec=1 — warn/error restano sempre attivi (servono alla diagnosi/resilienza)
-if(!/[?&](debug|rec)=1/.test(location.search)){ const _noop=()=>{}; console.log=_noop; console.info=_noop; }
+// CONSOLE PULITA: log, info E warn ([zoom], [music], character, ...) si vedono SOLO con
+// ?debug=1 o ?rec=1 — gli ERROR restano sempre (guasti veri: servono alla diagnosi).
+// NB: l'eco del comando digitato ('deep zoom armato...') è il REPL della console, non un log.
+if(!/[?&](debug|rec)=1/.test(location.search)){ const _noop=()=>{}; console.log=_noop; console.info=_noop; console.warn=_noop; }
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -2945,6 +2946,7 @@ const clock=new THREE.Clock();
 let shaderTime=0; const SWRAP=100000;
 let camPhase=0,camDist=10,started=false,camOrbit=0,manSpin=0;
 let camMoveAz=0,camMoveEl=0,camMoveDs=0,camMoveAzT=0,camMoveElT=0,camMoveDsT=0,camMoveNext=20,camMoveScale=1;   // RIFRAME lenti: la camera plana verso nuove inquadrature e vi indugia (richiesta utente: "più cambi di inquadratura")
+let camOrbitP=1,camOrbitDir=1,camOrbitNext=70+Math.random()*110;   // ORBITA IMPROVVISA: ogni ~1.5-3 min un giro completo attorno all'astronauta (~26s); P=progresso 0..1 (1=ferma)
 let camLookX=0, camLookY=0.15;   // bersaglio lookAt smussato → niente stacchi d'inquadratura quando cambia il pianeta a fuoco
 let planetTimer=6,wispTimer=4,starTimer=2,mysteryTimer=80,parallelTimer=120,bhTimer=200;
 let cometTimer=40,clusterTimer=120,derelictTimer=150;
@@ -3035,7 +3037,7 @@ function animate(){
 
   sky.rotation.y+=dt*0.0016*zoomSkyRotMul; sky.rotation.x=Math.sin(shaderTime*0.004)*0.05*zoomSkyRotMul+zoomSkyPitch;   // ×zoomSkyRotMul: DEEP ZOOM congela la rotazione con rampa; +zoomSkyPitch: beccheggio di puntamento GC (0 a riposo = identico a prima)
   // campo stellare volumetrico: ogni strato scorre a velocità diversa (parallasse) e ricicla senza pop
-  for(const L of starLayers){ L.mat.uniforms.uTime.value=shaderTime; L.mat.uniforms.uGDim.value=zoomWorldDimN; const dzL=speed*dt*L.mul, p=L.pos;
+  for(const L of starLayers){ L.mat.uniforms.uTime.value=shaderTime; const dzL=speed*dt*L.mul, p=L.pos;   // le stelle che luccicano restano SEMPRE (anche nel deep zoom — scelta utente; uGDim resta a 1, disponibile per il futuro)
     for(let i=0;i<L.count;i++){ p[i*3+2]+=dzL; if(p[i*3+2]>L.zF){ p[i*3]=(Math.random()*2-1)*L.half; p[i*3+1]=(Math.random()*2-1)*L.half; p[i*3+2]=L.zN; } }
     L.pts.geometry.attributes.position.needsUpdate=true; }
   // lastre di nebulosa profonde che scorrono e riciclano
@@ -3199,7 +3201,14 @@ function animate(){
     camMoveElT=(Math.random()*2-1)*0.65; camMoveDsT=(Math.random()*2-1)*1.9; }
   camMoveScale+=(((typeof zoomState==='undefined'||zoomState==='idle')?1:0.14)-camMoveScale)*Math.min(1,dt*0.5);   // nel deep zoom i riframe si riducono (il centro dello zoom deve restare in quadro)
   camMoveAz+=(camMoveAzT-camMoveAz)*Math.min(1,dt*0.11); camMoveEl+=(camMoveElT-camMoveEl)*Math.min(1,dt*0.11); camMoveDs+=(camMoveDsT-camMoveDs)*Math.min(1,dt*0.11);
-  const _az=Math.sin(camPhase*0.05)*0.05 + camMoveAz*camMoveScale;     // micro-sway (~3°) + riframe corrente
+  // ORBITA IMPROVVISA: parte solo a scena classica (mai nel dive: il centro dello zoom deve restare
+  // in asse); se un dive inizia a metà giro, il giro si CONGELA e riprende all'uscita. A fine giro
+  // l'angolo vale 2π ≡ 0 → nessuno scatto.
+  const _zIdle=(typeof zoomState==='undefined'||zoomState==='idle');
+  if(camOrbitP>=1){ if(_zIdle){ camOrbitNext-=dt; if(camOrbitNext<=0){ camOrbitNext=70+Math.random()*110; camOrbitP=0; camOrbitDir=Math.random()<0.5?1:-1; } } }
+  else if(_zIdle) camOrbitP=Math.min(1,camOrbitP+dt/26);
+  const _orb=camOrbitDir*6.283185307*(camOrbitP*camOrbitP*(3-2*camOrbitP));   // smoothstep 0→2π: parte piano, fila, atterra dolce
+  const _az=Math.sin(camPhase*0.05)*0.05 + camMoveAz*camMoveScale + _orb;     // micro-sway (~3°) + riframe corrente + orbita
 
   // --- UOMO: ruota su se stesso + tumble ampio di caduta libera (visore scuro = nessun volto) ---
   const mt=shaderTime; manFloatTime.value=mt; if(manMixer) manMixer.update(dt*timeScale);
@@ -3819,6 +3828,7 @@ let zoomAimed=false, zoomAimT=0, zoomArmT=0;   // puntamento GC (il cielo ruota 
 let zoomHoldT=0, zoomRebirth=0, zoomHold=10, zoomWorldMul=1, zoomWorldBoost=5;   // loop infinito: respiro nel procedurale + rinascita su nuovo cielo; boost velocità mondo ×5: lo sfondo zoom cresce ~8%/s (esponenziale) → i corpi devono crescere PIÙ in fretta o l'occhio li incolla al flusso ("cadono insieme")
 let zoomSkyDim=1;   // oscuramento sfera sky (×tint in applyDirector, 1 a riposo): il puntamento avviene AL BUIO (blink — la sfera che ruota leggerebbe come "camera che gira" coi pianeti incollati) e nelle fasi procedurali dietro il flusso non si vede niente
 let zoomWorldDimN=1, zoomMaxA=1e9;   // dim normalizzato del "vestiario" mondo (star-layer, mondi-sfondo: 1 a riposo → 0 nel tuffo) + campo massimo dei livelli usabili in questo dive (loop: esclude il cielo largo)
+let zoomAutoOn=!/[?&]rec=1/.test(location.search), zoomAutoStarted=false, zoomAutoT=0, zoomAutoEso=140+Math.random()*100, zoomAutoZoom=150+Math.random()*90;   // REGIA AUTOMATICA: alterna ESO (~2.5-4min) ↔ deep zoom loop (~2.5-4min) da sola; OFF nelle sessioni ?rec=1
 const ZOOM_ENV_FLOOR=0.12;   // velo minimo di polvere durante il dive (0.35 metteva chiazze di nebbia sopra lo zoom = "sfondo")
 const ZOOM_LOOP_WIDE=25;     // livelli con campo più largo di così (gradi) = "cielo largo": esclusi dai cicli del loop
 const ZP_N=2500, ZP_RMIN=14, ZP_RMAX=4800, ZP_Z=-4200;   // finale procedurale: disco di stelle in flusso radiale
@@ -3979,6 +3989,14 @@ function zoomFinishExit(){
 }
 // update per-frame (chiamato da animate() DENTRO il try/catch, dopo la riga camera.fov): zero allocazioni
 function deepZoomUpdate(dt){
+  // REGIA AUTOMATICA (default ON): la live ALTERNA da sola scena ESO classica ↔ deep zoom loop.
+  // Il dive parte solo a orbita camera conclusa; i dive lanciati A MANO non vengono mai chiusi da qui.
+  if(zoomAutoOn){
+    if(zoomState==='idle'){ if(camOrbitP>=1){ zoomAutoT+=dt;
+      if(zoomAutoT>=zoomAutoEso){ window.cadutaZoom({mode:'loop',_auto:true}); zoomAutoT=(zoomState==='idle')?zoomAutoEso-12:0; } } }   // scena non pronta → riprova tra ~12s
+    else if(zoomState==='dive'&&zoomAutoStarted){ zoomAutoT+=dt;
+      if(zoomAutoT>=zoomAutoZoom){ zoomAutoT=0; zoomAutoEso=140+Math.random()*100; zoomAutoZoom=150+Math.random()*90; zoomBeginExit(4); } }
+  }
   if(zoomState==='idle') return;
   if(zoomState==='arm'){ zoomArmT+=dt;
     if(zoomArmT>30){ zoomState='idle'; console.warn('[zoom] arm scaduto (30s: manifest o crossfade sky mai pronti) → dive annullato'); return; }   // watchdog: mai 'arm' per sempre (sbloccherebbe anche la rotazione sfondi)
@@ -4093,15 +4111,20 @@ function deepZoomUpdate(dt){
 window.cadutaZoom=(opts)=>{ opts=opts||{};
   if(!built||!sky||!sky2) return 'scena non pronta (premi ENTER prima)';
   if(zoomState!=='idle') return 'dive già in corso ('+zoomState+') — cadutaZoomStop() per uscire';
-  zoomDur=Math.max(20,+opts.dur||90); zoomMode=(opts.mode==='loop')?'loop':'once'; zoomKOpt=(+opts.k>0)?+opts.k:null;
+  zoomMode=(opts.mode==='loop')?'loop':'once'; zoomKOpt=(+opts.k>0)?+opts.k:null;
+  zoomDur=Math.max(20,+opts.dur||(zoomMode==='loop'?60:90));               // loop più VELOCE di default (ciclo ~60s)
   zoomHold=Math.max(3,+opts.hold||10); zoomWorldBoost=Math.max(1,+opts.world||5);
+  zoomAutoStarted=!!opts._auto;                                            // i dive lanciati a mano NON vengono chiusi dalla regia automatica
   zoomState='arm'; zoomArmT=0;                                            // il dive parte quando manifest pronti E nessun crossfade sky in corso (watchdog 30s)
   zoomLoadCfg().then(ok=>{ if(!ok&&zoomState==='arm') zoomState='idle'; });
   return 'deep zoom armato ('+zoomMode+', '+zoomDur+'s)'+(((skyFading||skyLoading)&&zoomMode!=='loop')?' — attendo la fine del crossfade sfondo':'');
 };
-window.cadutaZoomStop=()=>{ if(zoomState==='idle') return 'nessun dive in corso';
+window.cadutaZoomStop=()=>{ zoomAutoT=0; if(zoomState==='idle') return 'nessun dive in corso';
   if(zoomState==='arm'){ zoomState='idle'; return 'dive annullato'; }
   if(zoomState!=='exit') zoomBeginExit(3); return 'uscita dal dive (~3s)'; };
+// regia automatica ESO ↔ zoom: cadutaZoomAuto(false) la spegne, cadutaZoomAuto(true)/() la riaccende
+window.cadutaZoomAuto=(on)=>{ zoomAutoOn=(on===undefined)?true:!!on; zoomAutoT=0;
+  return 'regia automatica ESO↔zoom: '+(zoomAutoOn?'ATTIVA (eso ~'+Math.round(zoomAutoEso)+'s ↔ zoom ~'+Math.round(zoomAutoZoom)+'s)':'spenta'); };
 // scanner di scena (verifica): chi sta renderizzando cosa negli strati di sfondo
 window.cadutaSceneScan=()=>{ const out=[]; scene.traverse(o=>{ if(!o.visible||o.renderOrder>-8) return;
   const m=o.material; out.push({tipo:o.type, ro:o.renderOrder, nome:o.name||'', map:!!(m&&m.map), op:m?(m.opacity!==undefined?+(+m.opacity).toFixed(2):1):null,
@@ -4111,6 +4134,7 @@ window.cadutaSceneScan=()=>{ const out=[]; scene.traverse(o=>{ if(!o.visible||o.
 window.cadutaZoomInfo=()=>({ state:zoomState, mode:zoomMode, aimed:zoomAimed, t:+zoomT.toFixed(1), theta:+zoomTheta.toFixed(3),
   cur:zoomCurI, nxt:zoomNxtI, proc:+zoomProcOp.toFixed(2), rebirth:zoomRebirth, world:+zoomWorldMul.toFixed(2),
   dim:+zoomSkyDim.toFixed(3), skyCol:sky?sky.material.color.getHexString():'?', env:+zoomEnvMul.toFixed(2),
+  auto:zoomAutoOn, autoT:+zoomAutoT.toFixed(0), orb:+camOrbitP.toFixed(2), orbIn:+camOrbitNext.toFixed(0),
   levels:zoomLevels?zoomLevels.map(L=>L.state):null, tex:renderer.info.memory.textures });
 
 /* ---------------- REGISTRAZIONE clip 4K (locale): forza 3840x2160, 16:9 pieno, scena pulita; musica a parte ---------------- */
