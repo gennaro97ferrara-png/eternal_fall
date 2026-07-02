@@ -1,0 +1,44 @@
+<!doctype html>
+<!-- VISORE PERSONAGGI (dev): render statico di un GLB + casco-guida in wireframe.
+     Uso: /tools/char-viewer.html?m=/assets/characters/cat.glb&hx=0.5&hy=0.8&hz=0.25&hr=0.24&view=side
+     view=front|side|back|top. Nessun loop di animazione: 1 render per caricamento (headless-safe). -->
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#0a0d16;color:#cdd6f4;font:12px ui-monospace,monospace}#info{position:fixed;top:8px;left:10px;white-space:pre;z-index:2}</style>
+<script type="importmap">{"imports":{"three":"/assets/vendor/three/build/three.module.js","three/addons/":"/assets/vendor/three/examples/jsm/"}}</script>
+</head><body><div id="info">loading…</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const q=new URLSearchParams(location.search);
+const M=q.get('m')||'/assets/characters/cat.glb';
+const hx=+(q.get('hx')||0.5), hy=+(q.get('hy')||0.8), hz=+(q.get('hz')||0.25), hr=+(q.get('hr')||0.24);
+const view=q.get('view')||'side';
+const W=innerWidth||1280,H=innerHeight||720;
+const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(W,H); document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0a0d16);
+scene.add(new THREE.AmbientLight(0xffffff,1.1));
+const dl=new THREE.DirectionalLight(0xffffff,2.2); dl.position.set(2,3,4); scene.add(dl);
+const dl2=new THREE.DirectionalLight(0x8899ff,0.8); dl2.position.set(-3,1,-2); scene.add(dl2);
+new GLTFLoader().load(M,(g)=>{
+  const root=g.scene; scene.add(root);
+  const box=new THREE.Box3().setFromObject(root), sz=new THREE.Vector3(), ct=new THREE.Vector3();
+  box.getSize(sz); box.getCenter(ct);
+  // casco-guida in wireframe alle coordinate normalizzate della def
+  const hm=new THREE.Mesh(new THREE.SphereGeometry(1,20,14), new THREE.MeshBasicMaterial({color:0x66e6d8,wireframe:true,transparent:true,opacity:0.7}));
+  hm.position.set(box.min.x+sz.x*hx, box.min.y+sz.y*hy, box.min.z+sz.z*hz); hm.scale.setScalar(sz.y*hr); scene.add(hm);
+  // camera che inquadra il box dal lato scelto
+  const cam=new THREE.PerspectiveCamera(40,W/H,0.01,10000);
+  const R=Math.max(sz.x,sz.y,sz.z)*1.5;
+  const dirs={front:[0,0,1],back:[0,0,-1],side:[1,0,0],top:[0,1,0.001]};
+  const d=dirs[view]||dirs.side;
+  cam.position.set(ct.x+d[0]*R*1.8, ct.y+d[1]*R*1.8+(view==='top'?0:R*0.15), ct.z+d[2]*R*1.8);
+  cam.lookAt(ct);
+  const meshes=[]; root.traverse(o=>{ if(o.isMesh) meshes.push((o.name||'?')+' ['+(o.geometry.attributes.position||{}).count+'v]'); });
+  const anims=(g.animations||[]).map(a=>a.name+' ('+a.duration.toFixed(1)+'s)');
+  document.getElementById('info').textContent=
+    M+'  vista:'+view+'\nbox min '+box.min.toArray().map(v=>+v.toFixed(2))+'  max '+box.max.toArray().map(v=>+v.toFixed(2))+
+    '\nsize '+sz.toArray().map(v=>+v.toFixed(2))+'  casco: hx'+hx+' hy'+hy+' hz'+hz+' hr'+hr+' → pos '+hm.position.toArray().map(v=>+v.toFixed(2))+' r '+(+hm.scale.x.toFixed(2))+
+    '\nanim: '+(anims.join(', ')||'nessuna')+'\nmesh: '+meshes.slice(0,14).join(' · ')+(meshes.length>14?' …+'+(meshes.length-14):'');
+  renderer.render(scene,cam);
+  setTimeout(()=>renderer.render(scene,cam),400);   // secondo render dopo il settle delle texture
+},undefined,(e)=>{ document.getElementById('info').textContent='ERRORE: '+e; });
+</script></body></html>

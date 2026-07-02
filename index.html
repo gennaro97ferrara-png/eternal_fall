@@ -607,10 +607,10 @@ let fatT=150+Math.random()*180, fatClock=-1, fatAmp=0;   // prossimo ciclo tra ~
 // helmet = casco a bolla procedurale per gli animali "nudi": coordinate 0..1 nel box del modello + raggio relativo all'altezza (si tarano con cadutaHelmet).
 const CHARACTERS=[
   {name:'astronaut', file:'assets/astronaut.glb?v=2', credit:'Astronaut © Poly/Google'},
-  {name:'astrodog',  file:'assets/characters/astrodog.glb',  credit:'AstroDoggo © merrychuu (CC BY)'},
-  {name:'cat',       file:'assets/characters/cat.glb',       credit:'Cat © empire2ofearth (CC BY)',    helmet:{x:0.5,y:0.80,z:0.25,r:0.24}},
-  {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © SkyeSladeUT (CC BY)',   helmet:{x:0.5,y:0.92,z:0.35,r:0.14}},
-  {name:'elephant',  file:'assets/characters/elephant.glb',  credit:'Elephant © onderonvermez (CC BY)',helmet:{x:0.5,y:0.72,z:0.22,r:0.26}},
+  {name:'astrodog',  file:'assets/characters/astrodog.glb',  credit:'AstroDoggo © merrychuu (CC BY)'},   // già in tuta col suo casco
+  {name:'cat',       file:'assets/characters/cat.glb',       credit:'Cat © Empire (CC BY)',        float:0.85, yaw:0, helmet:{x:0.5,y:0.815,z:0.87,r:0.235}},   // tarato col char-viewer (testa a +z)
+  {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © SkyeSladeUT (CC BY)',float:0.8, helmet:{x:0.5,y:0.92,z:0.35,r:0.14}},
+  {name:'elephant',  file:'assets/characters/elephant.glb',  credit:'Elephant © denys4624 (CC BY)', float:0.8, yaw:0, helmet:{x:0.5,y:0.72,z:0.68,r:0.30}},     // tarato col char-viewer (proboscide fuori bolla)
 ];
 let charRoster=[], charIdx=0, charT=600+Math.random()*600, charSwapAt=-1;   // rotazione ogni ~10-20 min, swap al picco del twinkle-flash
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
@@ -857,7 +857,7 @@ function build(){
   }
   // personaggio iniziale = astronauta (obbligatorio); gli animali si caricano in background dopo l'avvio
   const _c0=setupCharacter(ASSETS.astronaut,CHARACTERS[0],ASSETS.astronautAnims);
-  charRoster.push(_c0); charIdx=0; man=_c0.root; manMixer=_c0.mixer; manSparks=_c0.sparks; manFloatAmt.value=_c0.animated?0:1;
+  charRoster.push(_c0); charIdx=0; man=_c0.root; manMixer=_c0.mixer; manSparks=_c0.sparks; manFloatAmt.value=_c0.animated?0:(_c0.def.float!==undefined?_c0.def.float:1);
   manRig=new THREE.Group(); manRig.add(man); scene.add(manRig);
   // ALONE STELLARE: alone morbido additivo attorno alla silhouette (depthTest ON → il corpo lo occlude
   // e resta solo il bordo di luce). Respira piano; nei "twinkle" si accende come una stella.
@@ -884,7 +884,7 @@ function build(){
     i=(((i===undefined?charIdx+1:i)%n)+n)%n; if(i===charIdx&&n>1) return charRoster[i].def.name;
     charRoster[charIdx].root.visible=false;
     charIdx=i; const c=charRoster[i];
-    c.root.visible=true; man=c.root; manMixer=c.mixer; manSparks=c.sparks; manFloatAmt.value=c.animated?0:1;
+    c.root.visible=true; man=c.root; manMixer=c.mixer; manSparks=c.sparks; manFloatAmt.value=c.animated?0:(c.def.float!==undefined?c.def.float:1);   // animati = clip propria; altrimenti nuotata procedurale (ampiezza per-personaggio)
     if(manSparks) manSparks.material.uniforms.uPix.value=PIX;
     const cr=document.getElementById('credit2'); if(cr) cr.textContent='Milky Way © ESO/S. Brunier · planets © Solar System Scope (CC BY) · '+c.def.credit;
     return c.def.name; };
