@@ -98,59 +98,65 @@
   @property --red-soft{ syntax:'<color>'; inherits:true; initial-value:rgba(170,140,235,0.55); }
   @property --red-dim{ syntax:'<color>'; inherits:true; initial-value:rgba(170,140,235,0.22); }
   :root{ --red:#aa8ceb; --red-soft:rgba(170,140,235,0.55); --red-dim:rgba(170,140,235,0.22); --ink:#e8e9f2;
-    --line:rgba(232,233,242,0.15); --line2:rgba(232,233,242,0.30); --lbl:rgba(232,233,242,0.55); --sub:rgba(232,233,242,0.50);
+    --line:rgba(232,233,242,0.15); --line2:rgba(232,233,242,0.30); --lbl:rgba(232,233,242,0.66); --sub:rgba(232,233,242,0.62);   /* token secondari più presenti: tengono sui fondi ESO chiari */
     --disp:"Helvetica Neue","Inter",ui-sans-serif,system-ui,Arial,sans-serif; --hmono:ui-monospace,"SF Mono",Menlo,monospace;
     transition:--red 1.6s ease,--red-soft 1.6s ease,--red-dim 1.6s ease; }
   #hud-ui{ position:fixed; inset:0; z-index:6; pointer-events:none; opacity:0; transition:opacity 1.8s ease; font-family:var(--hmono); color:var(--ink);
-    text-shadow:0 1px 5px rgba(0,0,0,0.85),0 0 14px rgba(0,0,0,0.5); }
+    text-shadow:0 1px 6px rgba(0,0,0,0.95),0 0 18px rgba(0,0,0,0.65); }
   #hud-ui.show{ opacity:1; }
   /* brand */
   #brand{ position:absolute; top:5.5vh; left:3.8vw; }
   #brand::before{ content:''; position:absolute; inset:-1.6em -4.5em -1.4em -1.8em; z-index:-1; pointer-events:none; border-radius:22px;
-    background:radial-gradient(118% 96% at 15% 36%, rgba(3,3,9,0.62), rgba(3,3,9,0.26) 56%, rgba(3,3,9,0) 80%); }   /* scrim morbido: testo leggibile anche su sfondi chiari/rumorosi */
-  #brand .t{ font-family:var(--disp); font-weight:200; font-size:clamp(24px,4.7vw,72px); line-height:0.96; letter-spacing:0.13em; text-transform:uppercase; color:#f6f6fc; text-shadow:0 2px 14px rgba(0,0,0,0.7); }   /* titolo -12% */
-  #brand .s{ font-family:var(--disp); font-weight:400; font-size:clamp(11px,1.65vw,21px); letter-spacing:0.6em; text-transform:uppercase;
+    background:radial-gradient(118% 96% at 15% 36%, rgba(3,3,9,0.72), rgba(3,3,9,0.32) 56%, rgba(3,3,9,0) 82%); }   /* scrim morbido: testo leggibile anche su sfondi chiari/rumorosi */
+  #brand .t{ font-family:var(--disp); font-weight:200; font-size:clamp(24px,4.7vw,72px); line-height:0.96; letter-spacing:0.13em; text-transform:uppercase; color:#f6f6fc; text-shadow:0 2px 16px rgba(0,0,0,0.85),0 0 34px rgba(0,0,0,0.5); }   /* titolo -12% */
+  #brand .s{ font-family:var(--disp); font-weight:400; font-size:clamp(13px,1.55vw,30px); letter-spacing:0.5em; text-transform:uppercase;
     color:rgba(241,242,251,0.84); margin-top:0.7em; border-top:1px solid var(--line2); padding-top:0.6em; display:inline-block; text-shadow:0 1px 8px rgba(0,0,0,0.92); }
-  #brand .onair{ display:flex; align-items:center; gap:0.7em; margin-top:1.5em; font-size:clamp(10px,1.3vw,16px); letter-spacing:0.38em; color:rgba(241,242,251,0.9); text-shadow:0 1px 8px rgba(0,0,0,0.92); }
-  #brand #mwave{ display:block; width:clamp(130px,14vw,210px); height:clamp(16px,2.4vh,30px); margin-top:1em; opacity:0.8; }   /* barra MUSICA (effetto radio) */
+  #brand .onair{ display:flex; align-items:center; gap:0.7em; margin-top:1.1em; font-size:clamp(12px,1.45vw,28px); letter-spacing:0.3em; color:rgba(241,242,251,0.9); text-shadow:0 1px 8px rgba(0,0,0,0.92); }
+  #brand #mwave{ display:block; width:clamp(150px,15vw,270px); height:clamp(18px,2.9vh,36px); margin-top:1em; opacity:0.85; }   /* barra MUSICA (effetto radio) */
   .rdot{ width:0.62em; height:0.62em; border-radius:50%; background:var(--red); box-shadow:0 0 8px 1px var(--red-soft); animation:rpulse 2.4s ease-in-out infinite; flex:none; }
   @keyframes rpulse{ 0%,100%{ opacity:1 } 50%{ opacity:0.35 } }
   /* live badge — cornice a parentesi (alto-dx) */
   #livebadge{ position:absolute; top:5.6vh; right:3.8vw; text-align:right; padding:0.55em 1.1em; }
-  #livebadge .lv{ display:flex; align-items:center; justify-content:flex-end; gap:0.5em; font-size:clamp(11px,1.35vw,17px); letter-spacing:0.26em; color:var(--red); }
-  #livebadge .meta{ margin-top:0.5em; font-size:clamp(8px,1vw,12px); letter-spacing:0.3em; color:var(--lbl); line-height:1.55; }
-  #livebadge::before,#livebadge::after{ content:''; position:absolute; width:14px; height:14px; border:1.5px solid var(--line2); }
+  #livebadge .lv{ display:flex; align-items:center; justify-content:flex-end; gap:0.5em; font-size:clamp(13px,1.6vw,31px); letter-spacing:0.22em; color:var(--red); }
+  #livebadge .meta{ margin-top:0.5em; font-size:clamp(10px,1.35vw,26px); letter-spacing:0.24em; color:var(--lbl); line-height:1.45; }
+  #livebadge::before,#livebadge::after{ content:''; position:absolute; width:20px; height:20px; border:1.5px solid var(--line2); }
   #livebadge::before{ top:0; right:0; border-left:0; border-bottom:0; } #livebadge::after{ bottom:0; left:0; border-right:0; border-top:0; }
   /* panels */
-  .rpanel{ position:absolute; bottom:12vh; width:clamp(240px,27vw,460px); border:1px solid var(--line); border-radius:16px;
-    padding:1.2em 1.4em; background:rgba(10,9,16,0.42); backdrop-filter:blur(4px); }
+  .rpanel{ position:absolute; bottom:12vh; width:clamp(260px,28vw,540px); border:1px solid var(--line); border-radius:16px;
+    padding:1em 1.2em; background:rgba(8,7,14,0.52); backdrop-filter:blur(6px);
+    box-shadow:inset 0 1px 0 rgba(232,233,242,0.07), 0 8px 30px rgba(0,0,0,0.35); }  /* hairline top + posa d'ombra: il vetro prende spessore */
   #nowpanel{ left:3.8vw; } #nextpanel{ right:3.8vw; }
-  .rpanel .lbl{ display:flex; align-items:center; gap:0.7em; color:var(--lbl); font-size:clamp(9px,1.02vw,13px); letter-spacing:0.32em; text-transform:uppercase; }
+  .rpanel .lbl{ display:flex; align-items:center; gap:0.7em; color:var(--lbl); font-size:clamp(11px,1.3vw,25px); letter-spacing:0.26em; text-transform:uppercase; }
   .rpanel .lbl::before{ content:''; width:1.7em; height:2px; background:var(--red); flex:none; transform-origin:left center; }   /* tick d'accento */
   @keyframes tickpulse{ 0%,100%{ opacity:1; transform:scaleX(1); } 50%{ opacity:0.35; transform:scaleX(0.55); } }
   #nowpanel .lbl::before{ animation:tickpulse 1.9s ease-in-out infinite; }   /* segno di vita: NOW TRANSMITTING pulsa */
-  .rpanel .big{ font-family:var(--disp); font-weight:700; font-size:clamp(19px,2.5vw,40px); line-height:1.04; letter-spacing:0.005em; text-transform:uppercase; color:#f3f3fb; margin-top:0.62em; min-height:1em; }
-  .rpanel .sml{ font-size:clamp(10px,1.1vw,15px); color:var(--sub); margin-top:0.55em; min-height:1.1em; letter-spacing:0.02em; }
-  #wave{ display:block; width:100%; height:clamp(18px,3vh,34px); margin-top:1em; opacity:0.9; }
-  .rpanel .eta{ margin-top:0.75em; font-size:clamp(11px,1.3vw,18px); letter-spacing:0.1em; color:var(--red); font-variant-numeric:tabular-nums; }
-  .rpanel .eta .k{ color:var(--lbl); letter-spacing:0.26em; font-size:0.72em; margin-right:0.5em; }
+  .rpanel .big{ font-family:var(--disp); font-weight:700; font-size:clamp(20px,2.6vw,46px); line-height:1.05; letter-spacing:0.005em; text-transform:uppercase; color:#f3f3fb; margin-top:0.62em; min-height:1em; }
+  .rpanel .sml{ font-size:clamp(12px,1.5vw,28px); color:var(--sub); margin-top:0.45em; min-height:1.1em; letter-spacing:0.02em; }
+  #wave{ display:block; width:100%; height:clamp(22px,3.7vh,42px); margin-top:0.8em; opacity:0.9; }
+  .rpanel .eta{ margin-top:0.6em; font-size:clamp(13px,1.65vw,32px); letter-spacing:0.1em; color:var(--red); font-variant-numeric:tabular-nums; }
+  .rpanel .eta .k{ color:var(--lbl); letter-spacing:0.22em; font-size:0.78em; margin-right:0.5em; }
   #nextpanel .dots{ height:5px; margin-top:1em; background:repeating-linear-gradient(to right,var(--red-soft) 0 2px,transparent 2px 10px); opacity:0.5; border-radius:2px; }
   /* caption centrale pulita (niente parentesi) */
   #t-log{ position:absolute; left:50%; bottom:17vh; transform:translateX(-50%); max-width:34vw; text-align:center;   /* sta nel varco tra i pannelli → non sborda */
-    font-style:italic; font-weight:400; font-size:clamp(14px,1.55vw,24px); line-height:1.5; color:#f7f7ff; opacity:0; transition:opacity 1.2s ease;
-    text-shadow:0 1px 12px rgba(0,0,0,0.96),0 0 26px rgba(0,0,0,0.75); }   /* più presenza/leggibilità */
+    font-style:italic; font-weight:400; font-size:clamp(16px,1.9vw,37px); line-height:1.45; color:#f7f7ff; opacity:0; transition:opacity 1.2s ease;
+    text-shadow:0 1px 14px rgba(0,0,0,0.98),0 0 34px rgba(0,0,0,0.85),0 0 60px rgba(0,0,0,0.5); }   /* la voce del documentario: leggibile da telefono, scrim via ombra */
   #t-log.on{ opacity:1; }
   /* chat bar */
-  #chatbar{ position:absolute; left:3.8vw; right:3.8vw; bottom:4.4vh; display:flex; align-items:center; gap:1.5em; border:1px solid var(--line);
-    border-radius:12px; padding:0.75em 1.5em; background:rgba(10,9,16,0.38); backdrop-filter:blur(4px); font-size:clamp(10px,1.15vw,15px); letter-spacing:0.16em; color:var(--lbl); }
+  #chatbar{ position:absolute; left:3.8vw; right:3.8vw; bottom:4.4vh; display:flex; align-items:center; gap:1em; border:1px solid var(--line);
+    border-radius:12px; padding:0.55em 1.1em; background:rgba(8,7,14,0.5); backdrop-filter:blur(6px); font-size:clamp(12px,1.45vw,27px); letter-spacing:0.1em; color:var(--lbl);
+    box-shadow:inset 0 1px 0 rgba(232,233,242,0.06); }  /* stessa hairline dei pannelli → linguaggio coerente */
   #chatbar .cs{ display:flex; align-items:center; gap:0.6em; white-space:nowrap; color:var(--lbl); }
-  #chatbar .chips{ display:flex; flex:1; justify-content:space-around; gap:0.8em; }
-  #chatbar .chips span{ color:var(--ink); opacity:0.78; position:relative; padding:0 0.7em; white-space:nowrap; }
+  #chatbar .chips{ display:flex; flex:1; justify-content:space-around; gap:0.5em; }
+  #chatbar .chips span{ color:var(--ink); opacity:0.9; position:relative; padding:0 0.5em; white-space:nowrap; }
   #chatbar .chips span+span::before{ content:''; position:absolute; left:-0.4em; top:50%; height:1.1em; width:1px; background:var(--line2); transform:translateY(-50%); }
-  #credit2{ position:absolute; right:3.8vw; bottom:1.4vh; z-index:5; color:rgba(232,233,242,0.14); font-family:var(--hmono); font-size:clamp(7px,0.78vw,10px); letter-spacing:0.05em; max-width:46vw; text-align:right; pointer-events:none; }
+  #credit2{ position:absolute; right:3.8vw; bottom:1.4vh; z-index:5; color:rgba(232,233,242,0.3); font-family:var(--hmono); font-size:clamp(9px,0.95vw,14px); letter-spacing:0.05em; max-width:46vw; text-align:right; pointer-events:none; }   /* attribuzione ESO: decifrabile (obbligo CC) ma sussurrata */
   @media (orientation:portrait){
-    #brand .t{ font-size:8.5vw; } .rpanel{ width:43vw; bottom:11vh; padding:0.9em 1em; } .rpanel .big{ font-size:4.6vw; }
-    #t-log{ max-width:84vw; bottom:25vh; } #chatbar{ font-size:2.5vw; gap:0.6em; padding:0.6em 0.8em; } #chatbar .chips{ gap:0.3em; } #chatbar .chips span{ padding:0 0.3em; }
+    #brand .t{ font-size:8.5vw; } #brand .s{ font-size:2.6vw; letter-spacing:0.4em; } #brand .onair{ font-size:2.3vw; }
+    #livebadge .lv{ font-size:2.6vw; } #livebadge .meta{ font-size:2vw; }
+    .rpanel{ width:44vw; bottom:11vh; padding:0.8em 0.9em; } .rpanel .big{ font-size:4.8vw; } .rpanel .sml{ font-size:2.5vw; } .rpanel .lbl{ font-size:2.1vw; letter-spacing:0.2em; } .rpanel .eta{ font-size:2.8vw; }
+    #t-log{ max-width:84vw; bottom:25vh; font-size:3.2vw; }
+    #chatbar{ font-size:2.4vw; gap:0.6em; padding:0.5em 0.8em; letter-spacing:0.06em; } #chatbar .chips{ gap:0.3em; } #chatbar .chips span{ padding:0 0.3em; }
+    #credit2{ font-size:1.4vw; }
   }
   #err { position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
     padding:24px; color:#f38ba8; background:#000; font-family:ui-monospace,monospace; font-size:13px;
@@ -165,7 +171,7 @@
     <div class="t">ETERNAL FALL</div>
     <div class="s">SPACE RADIO</div>
     <div class="onair"><span class="rdot"></span>ON AIR</div>
-    <canvas id="mwave" width="340" height="48"></canvas>
+    <canvas id="mwave" width="540" height="72"></canvas>
   </div>
 
   <div id="livebadge"><span class="lv"><span class="rdot"></span>LIVE</span><span class="meta">24/7<br>DOCUMENTARY</span></div>
@@ -174,7 +180,7 @@
     <div class="lbl">NOW TRANSMITTING</div>
     <div class="big" id="now-title">ETERNAL FALL</div>
     <div class="sml" id="now-tag">a documentary of the universe</div>
-    <canvas id="wave" width="600" height="64"></canvas>
+    <canvas id="wave" width="1080" height="84"></canvas>
   </div>
 
   <div id="nextpanel" class="rpanel">
@@ -568,13 +574,14 @@ let nebulaField, comet, cluster, derelict, cometTail;
 let pulsar, redgiant, binary, remnant;
 let signal, spores, magnetar, dyson, aurora, duststorm;
 let shower=null, showerT=0, shownShowerLog='';
-let nebBoost=0, galaxies, godray;
+let nebBoost=0, galaxies, godray, starburst=null, sbOp=0, _sbSun=null;   // starburst: croce di diffrazione sui soli hero (accento, il flare resta protagonista)
 // NUOVI CORPI (varietà): istanze + timer individuali
 let lavaWorld, shattered, whitedwarf, variablestar, ringarc, station, lightEcho, bolide, gwRipple, whalePod;
 let lavaTimer=240, shatteredTimer=300, whitedwarfTimer=120, variablestarTimer=110, ringarcTimer=260, stationTimer=200, lightEchoTimer=300, bolideTimer=150, gwTimer=360, whalePodTimer=220;
 let solarEclipse, lunarEclipse;
 let solarEclipseTimer=520+Math.random()*300, lunarEclipseTimer=620+Math.random()*300;   // eventi rari (anche da comando)
 let _echoPending=0;   // eco di luce ~14s dopo una supernova (catena causa→effetto)
+let eclipseDim=0;     // oscuramento scena alla totalità dell'eclissi (0..0.35, decade nel loop → anti-pop)
 const _white=new THREE.Color(0xffffff), _nebCol=new THREE.Color(), _warm=new THREE.Color(0xfff0d8);
 const manFloatTime={value:0}, manFloatAmt={value:1}, manArmOpen={value:0}, manArmBack={value:0};
 // VISORE / TUTA: uniform condivisi (look + flash da reazione urto). uHit lo pilota l'area "reazione urto" (0..1, niente accumulatore → 24/7 ok).
@@ -582,6 +589,11 @@ const uHit={value:0};                                 // 0=nessun urto, sale a ~
 const manGrade={value:new THREE.Color(0x223a6b)};     // tinta regione (= director.grade) per il rim della tuta
 const manKey={value:new THREE.Color(0xfff1de)};       // luce chiave regione (= director.key) per bagliore/riflesso del visore
 const manEnvDir={value:new THREE.Vector3(0,0,1)};     // direzione "finestra" del riflesso sul visore (verso camera)
+const uStarTw={value:0};                              // TWINKLE-STELLA: 0..1, sale quando l'astronauta "si accende" (scintille+alone+visore insieme), decade nel loop
+let manHalo=null;                                     // alone stellare morbido attorno all'astronauta (sprite additiva)
+let manSpike=null;                                    // croce di diffrazione a 4 punte (stile Hubble/JWST): appare SOLO sul twinkle
+let manSparks=null;                                   // ~90 pinpoint sul torso/casco che lampeggiano uno alla volta (leggibili da telefono)
+let manTwT=8+Math.random()*10, manTwE=0, manTwA=0;    // timer/energia/fase-attacco del twinkle periodico (~ogni 15-35s, sale in ~0.4s, decade in ~2s)
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
 // VARIETÀ DI MOVIMENTO a livello di corpo (rotazioni/derive: NON deformano la mesh)
 let barrelTarget=0, barrelCur=0, barrelAxis=0, barrelHold=40;  // capriola lenta su asse alternato (0=Z roll, 1=X tumble); barrelHold=cooldown
@@ -707,13 +719,15 @@ function build(){
   const box=new THREE.Box3().setFromObject(man), sz=new THREE.Vector3(), ct=new THREE.Vector3();
   box.getSize(sz); box.getCenter(ct); const s=1.95/sz.y;
   man.scale.setScalar(s); man.position.set(-ct.x*s,-ct.y*s,-ct.z*s); man.rotation.y=Math.PI;
-  man.traverse(o=>{ if(o.isMesh&&o.material){ o.material.color=new THREE.Color(0xffffff); o.material.metalness=0.16; o.material.roughness=0.78; o.material.envMapIntensity=0.7;
+  let _sparkMesh=null,_sparkVn=0;   // mesh più grande della tuta → ospiterà le scintille-Points (scelto nel traverse)
+  man.traverse(o=>{ if(o.isMesh&&o.material){ o.material.color=new THREE.Color(0xffffff); o.material.metalness=0.16; o.material.roughness=0.78; o.material.envMapIntensity=1.10;   // tuta più luminosa (raccoglie più cielo)
+    if(!o.isSkinnedMesh && o.geometry.attributes.position.count>_sparkVn){ _sparkMesh=o; _sparkVn=o.geometry.attributes.position.count; }
     o.material.normalScale&&o.material.normalScale.set(1.1,1.1);   // un filo più di rilievo dalla normal map → più forma
     o.material.emissive=new THREE.Color(0x000000);                 // base spenta: l'emissive lo usa SOLO il visore (sotto)
     // animazione "caduta libera": gli arti (estremità) ondeggiano lentamente — vertex displacement che preserva il PBR
     o.geometry.computeBoundingBox(); const bb=o.geometry.boundingBox;
     o.material.onBeforeCompile=(sh)=>{ sh.uniforms.uTime=manFloatTime; sh.uniforms.uFloatAmt=manFloatAmt; sh.uniforms.uArmOpen=manArmOpen; sh.uniforms.uArmBack=manArmBack; sh.uniforms.uBMin={value:bb.min.clone()}; sh.uniforms.uBMax={value:bb.max.clone()};
-      sh.uniforms.uHit=uHit; sh.uniforms.uManGrade=manGrade; sh.uniforms.uManKey=manKey; sh.uniforms.uEnvDir=manEnvDir;   // VISORE/TUTA: rim, riflesso, bagliore
+      sh.uniforms.uHit=uHit; sh.uniforms.uManGrade=manGrade; sh.uniforms.uManKey=manKey; sh.uniforms.uEnvDir=manEnvDir; sh.uniforms.uStarTw=uStarTw;   // VISORE/TUTA: rim, riflesso, bagliore, twinkle-stella
       sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform float uArmBack;uniform vec3 uBMin,uBMax;\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.vertexShader.replace('#include <begin_vertex>',
         `#include <begin_vertex>
          vec3 _nr=(position-uBMin)/max(uBMax-uBMin,vec3(1e-4));
@@ -734,30 +748,83 @@ function build(){
          vManNrm=_nr;                                            // coord 0..1 del box → maschera visore nel fragment
          vManNormV=normalize(normalMatrix*objectNormal);`);
       // --- FRAGMENT: rim fresnel sulla tuta (tinta regione) + visore scuro/specchiante con bagliore tenue (flash da urto) ---
-      sh.fragmentShader='uniform float uHit;uniform vec3 uManGrade,uManKey,uEnvDir;\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.fragmentShader
+      sh.fragmentShader='uniform float uHit,uTime,uStarTw;uniform vec3 uManGrade,uManKey,uEnvDir;\nfloat efH31(vec3 p){ p=fract(p*0.1031); p+=dot(p,p.zyx+31.32); return fract((p.x+p.y)*p.z); }\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.fragmentShader
         .replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
           // MASCHERA VISORE: alto nel box (testa) E vetro scuro nel diffuse (luminanza bassa) → solo il vetro, non tutto il casco
           float _vh=smoothstep(0.74,0.9,vManNrm.y);                        // parte alta = testa/casco
           float _diffL=dot(diffuseColor.rgb,vec3(0.299,0.587,0.114));
           float _vDark=smoothstep(0.5,0.22,_diffL);                        // vetro = zona scura
           float _visor=_vh*_vDark;
-          // bagliore visore: tinta = luce chiave regione, sale col flash da urto (uHit). Tenue, soglia bloom alta lo tiene calmo.
-          float _glow=(0.06 + 0.9*uHit)*_visor;
+          // bagliore visore: tinta = luce chiave regione, sale col flash da urto (uHit) e col twinkle-stella. Tenue, soglia bloom alta lo tiene calmo.
+          float _glow=(0.10 + 0.9*uHit + 0.14*uStarTw)*_visor;
           totalEmissiveRadiance += uManKey*_glow;`)
         .replace('#include <opaque_fragment>',`{
           vec3 _V=normalize(vViewPosition);
           float _f=pow(1.0-clamp(dot(normalize(vManNormV),_V),0.0,1.0),3.0);   // fresnel ai bordi
           float _suit=1.0-_visor;
-          // RIM tuta: sottile linea fredda tinta regione sui bordi, additiva e contenuta (no blow-out)
-          outgoingLight += uManGrade*( _f*0.16*_suit );
+          // RIM tuta: linea di luce tinta regione sui bordi + velo bianco-stellare (l'astronauta LUMINOSO, leggibile anche da telefono)
+          outgoingLight += uManGrade*( _f*0.26*_suit );
+          outgoingLight += mix(uManKey,vec3(1.0),0.5)*( _f*_f*0.18*_suit*(1.0+1.4*uStarTw) );   // secondo lobo più stretto e bianco: bordo "di stella"
           // VISORE: riflesso speculare verso la "finestra" (camera) → vetro più tridimensionale, NON più chiaro in pieno
           float _spec=pow(clamp(dot(normalize(vManNormV),normalize(uEnvDir)),0.0,1.0),22.0);
-          outgoingLight += uManKey*( _spec*0.18*_visor );
+          outgoingLight += uManKey*( _spec*0.24*_visor );
+          // GLITTER STELLARE sulla tuta: micro-celle sparse che si ACCENDONO/SPENGONO una alla volta (stesso
+          // linguaggio del campo stellare: clock per-cella desincronizzato, duty basso — mai tutte insieme).
+          // vManNrm = coord 0..1 del box mesh (pre-displacement) → le scintille restano incollate alla tuta.
+          vec3 _gv=vManNrm*22.0; vec3 _gc=floor(_gv);                          // celle grandi → scintille leggibili anche da telefono (1920 CSS)
+          float _gr=efH31(_gc);
+          float _gate=step(0.78,_gr);                                          // solo ~22% delle celle possono scintillare (rarità = linguaggio approvato)
+          vec3 _gf=fract(_gv)-0.5;
+          float _spark=smoothstep(0.26,0.02,dot(_gf,_gf));                     // puntina larga con falloff morbido = mini-alone
+          float _core =smoothstep(0.06,0.0,dot(_gf,_gf));                      // nucleo rovente al centro → fiorisce nel bloom
+          float _a1=uTime*(0.7+_gr*2.1)+_gr*37.0;                              // clock per-cella (uTime wrappato → 24/7 ok)
+          float _w=0.5+0.35*sin(_a1)+0.15*sin(_a1*1.73+_gr*12.6);
+          float _on=smoothstep(0.60,0.86,_w);                                  // curva a S, acceso di rado → scintille rare e nitide
+          float _nvl=0.35+0.65*clamp(dot(normalize(vManNormV),_V),0.0,1.0);    // le facce verso camera brillano di più (micro-facet)
+          outgoingLight += mix(uManKey,vec3(1.0),0.55)*( (_spark*0.75+_core*1.3)*_gate*_on*_nvl*_suit*(1.7+2.6*uStarTw) );   // picco concentrato nel nucleo → bloom senza pump
+          // WRAP-LIGHT stellare: velo di luce sulle facce verso camera, modulato dal diffuse (niente plastica) → la silhouette non è mai un buco scuro
+          float _wrap=0.5+0.5*clamp(dot(normalize(vManNormV),_V),0.0,1.0);
+          outgoingLight += diffuseColor.rgb*mix(uManKey,vec3(1.0),0.6)*( _wrap*0.11*_suit*(1.0+0.4*uStarTw) );
         }
         #include <opaque_fragment>`);
     };
     o.material.needsUpdate=true; o.frustumCulled=false; } });  // tuta opaca + arti animati + rim/visore
   manRig=new THREE.Group(); manRig.add(man); scene.add(manRig);
+  // ALONE STELLARE: alone morbido additivo attorno alla silhouette (depthTest ON → il corpo lo occlude
+  // e resta solo il bordo di luce). Respira piano; nei "twinkle" si accende come una stella.
+  manHalo=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xffffff),opacity:0}));
+  manHalo.scale.setScalar(5.4); manHalo.frustumCulled=false; manRig.add(manHalo);
+  // CROCE DI DIFFRAZIONE (Hubble/JWST): 4 punte sottili, rotazione FISSA (una diffrazione vera non gira).
+  // depthTest ON → il corpo occlude il centro, restano le punte che sbordano dalla silhouette. A riposo invisibile (0 draw).
+  { const cv=document.createElement('canvas'); cv.width=cv.height=256; const x=cv.getContext('2d'); x.translate(128,128);
+    for(let k=0;k<4;k++){ x.save(); x.rotate(k*Math.PI/2); const gr=x.createLinearGradient(0,0,122,0);
+      gr.addColorStop(0,'rgba(255,255,255,.95)'); gr.addColorStop(.25,'rgba(220,230,255,.5)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+      x.fillStyle=gr; x.beginPath(); x.moveTo(0,-3.2); x.lineTo(122,0); x.lineTo(0,3.2); x.fill(); x.restore(); }
+    manSpike=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}));
+    manSpike.scale.setScalar(3.4); manSpike.visible=false; manSpike.frustumCulled=false; manRig.add(manSpike); }
+  // SCINTILLE PUNTUALI: ~90 Points campionati su torso/casco (zona a displacement ~zero: ny>0.52, |nx-0.5|<0.21),
+  // pavimento in pixel fisici come le stelle (psFloor) → veri pinpoint che si accendono uno alla volta, visibili da telefono.
+  if(_sparkMesh && !(ASSETS.astronautAnims&&ASSETS.astronautAnims.length)){
+    const bbS=_sparkMesh.geometry.boundingBox, extS=bbS.max.clone().sub(bbS.min);
+    const P=90, sp=new Float32Array(P*3), sph=new Float32Array(P), ssd=new Float32Array(P);
+    const pa=_sparkMesh.geometry.attributes.position, na=_sparkMesh.geometry.attributes.normal; let n=0,guard=0;
+    while(n<P&&guard++<20000){ const i=(Math.random()*pa.count)|0;
+      const nx=(pa.getX(i)-bbS.min.x)/extS.x, ny=(pa.getY(i)-bbS.min.y)/extS.y;
+      if(Math.abs(nx-0.5)<0.21&&ny>0.52){ const off=extS.y*0.008;
+        sp[n*3]=pa.getX(i)+na.getX(i)*off; sp[n*3+1]=pa.getY(i)+na.getY(i)*off; sp[n*3+2]=pa.getZ(i)+na.getZ(i)*off;
+        sph[n]=Math.random()*6.28318; ssd[n]=0.5+Math.random()*1.7; n++; } }
+    if(n>10){ const sg=new THREE.BufferGeometry();
+      sg.setAttribute('position',new THREE.BufferAttribute(sp.slice(0,n*3),3)); sg.setAttribute('aPhase',new THREE.BufferAttribute(sph.slice(0,n),1)); sg.setAttribute('aSpd',new THREE.BufferAttribute(ssd.slice(0,n),1));
+      manSparks=new THREE.Points(sg,new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+        uniforms:{uTime:manFloatTime,uTw:uStarTw,uPix:{value:PIX}},
+        vertexShader:`attribute float aPhase;attribute float aSpd;uniform float uTime,uPix;varying float vB;
+          void main(){ float w=sin(uTime*aSpd+aPhase); vB=pow(max(w,0.0),24.0);            // pow alto = lampeggio ON/OFF raro, per-punto
+          vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+          gl_PointSize=max(1.7*uPix, uPix*(2.6+2.2*vB)*(9.0/max(-mv.z,1.0))); }`,          // pavimento pixel fisici → leggibile da telefono
+        fragmentShader:`varying float vB;uniform float uTw;
+          void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d); float a=smoothstep(0.5,0.0,r)*0.3+smoothstep(0.12,0.0,r);
+          gl_FragColor=vec4(vec3(1.0,0.98,0.94), a*vB*(0.55+1.1*uTw)); }`}));              // sul twinkle globale i pinpoint sforano nel bloom
+      manSparks.frustumCulled=false; _sparkMesh.add(manSparks); } }   // figlio del mesh → eredita TUTTE le rotazioni gratis
   // (la scritta "I FALL" è quella del modello stesso, sulla schiena)
   // se il modello è riggato (es. da Mixamo) riproduci la sua animazione e spegni quella procedurale
   if(ASSETS.astronautAnims && ASSETS.astronautAnims.length){ manMixer=new THREE.AnimationMixer(man);
@@ -817,6 +884,7 @@ function build(){
     const r={ capsule:M, soul:audio.soulIdx.length, mixPct:Object.fromEntries(CATS.map(c=>[c,+(b[c]/N*100).toFixed(1)])), biasTag:bias.tag, soulKind:soul.kind,
       coperturaPrimoGiro:(seen.size===M&&firstRepeat<0), secondoGiroSenzaRipetizioni:secondFresh };
     audio.voiceLib=sv.lib; audio.capIdx=sv.cap; audio.soulIdx=sv.soul; audio.capByCat=sv.by; audio.voiceRecent=sv.rec; audio._preferTag=sv.tag; audio.voiceBad=sv.bad; audio.playCount=sv.pc; return r; };
+  window.cadutaTwinkle=()=>{ manTwA=1; return 'twinkle'; };   // forza il twinkle-stella dell'astronauta (test; parte con la rampa d'attacco)
   window.cadutaDebugEvent=(w)=>{ if(w==='mystery') mystery.spawn(); else if(w==='parallel') parallel.spawn(); else if(w==='nova') supernova.flash();
     else if(w==='blackhole'){ blackhole.spawn(); blackhole.group.position.set(40,4,-230); }
     else if(w==='comet'){ comet.spawn(); comet.g.position.set(-70,15,-300); }
@@ -888,6 +956,15 @@ function build(){
   // raggio di luce volumetrico (hint) per un Sole davvero vicino: sprite additiva, tenue, niente costo se spenta
   godray=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xffe9c8),opacity:0}));
   godray.center.set(0.5,0.5); godray.frustumCulled=false; godray.renderOrder=-8; godray.visible=false; scene.add(godray);
+  // STARBURST: croce di diffrazione a 6 punte (lamelle di diaframma, stile JWST) sui soli hero — texture 256² una volta, sprite pooled
+  { const cv=document.createElement('canvas'); cv.width=cv.height=256; const g2=cv.getContext('2d');
+    g2.translate(128,128); g2.globalCompositeOperation='lighter';
+    for(let s=0;s<6;s++){ const a=s*Math.PI/3+0.26; const gr=g2.createLinearGradient(0,0,Math.cos(a)*126,Math.sin(a)*126);
+      gr.addColorStop(0,'rgba(255,250,240,0.9)'); gr.addColorStop(0.25,'rgba(200,215,255,0.35)'); gr.addColorStop(1,'rgba(160,190,255,0)');
+      g2.strokeStyle=gr; g2.lineWidth=2.2; g2.beginPath(); g2.moveTo(0,0); g2.lineTo(Math.cos(a)*126,Math.sin(a)*126); g2.stroke(); }
+    const bt=new THREE.CanvasTexture(cv); bt.colorSpace=THREE.SRGBColorSpace;
+    starburst=new THREE.Sprite(new THREE.SpriteMaterial({map:bt,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}));
+    starburst.visible=false; starburst.frustumCulled=false; starburst.renderOrder=-7; scene.add(starburst); }
 
   lensflare=new Lensflare();
   lensflare.addElement(new LensflareElement(ASSETS.flare0,260,0,new THREE.Color(0xffffff)));   // alone centrale ridotto: non brucia il centro
@@ -1231,15 +1308,26 @@ class Parallel{
 }
 class Supernova{
   constructor(){ this.spr=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0,color:new THREE.Color(0xffffff)}));
-    this.spr.visible=false; this.spr.frustumCulled=false; scene.add(this.spr); this.active=false; this.t=0; }
+    this.spr.visible=false; this.spr.frustumCulled=false; scene.add(this.spr); this.active=false; this.t=0;
+    // ANELLO D'URTO: fronte sottile in espansione (forma che cresce → esplosione leggibile anche da telefono)
+    this.ring=new THREE.Mesh(new THREE.RingGeometry(0.92,1.0,64), new THREE.MeshBasicMaterial({color:0xffe9c8,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,opacity:0}));
+    this.ring.visible=false; this.ring.frustumCulled=false; scene.add(this.ring); }
   flash(reason){ this.active=true; this.t=0; _echoPending=14+Math.random()*4;   // dopo la nova arriva l'eco di luce
     const ang=Math.random()*Math.PI*2,rad=200+Math.random()*400;
     this.spr.position.set(Math.cos(ang)*rad,(Math.random()*2-1)*150,-1500); this.spr.scale.setScalar(40); this.spr.visible=true;
+    this.spr.material.color.set(0xffffff);
+    this.ring.position.copy(this.spr.position); this.ring.scale.setScalar(0.001); this.ring.visible=true; this.ring.material.opacity=0;
+    hitFlash=Math.max(hitFlash,0.25);   // l'onda si "sente" sul visore
     $t.log.textContent=(reason||'— a star has died.'); $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),14000);
     if(typeof audio!=='undefined'&&audio.enqueueVoice) audio.enqueueVoice('supernova'); }
-  update(dt){ if(!this.active) return; this.t+=dt; const k=this.t<1.2?(this.t/1.2):Math.max(0,1-(this.t-1.2)/10);
-    this.spr.material.opacity=k*2.0; this.spr.scale.setScalar(40+this.t*120);
-    if(this.t>12){ this.active=false; this.spr.visible=false; } }
+  update(dt){ if(!this.active) return; this.t+=dt;
+    // picco violento (0.35s) + micro-rimbalzo a t≈2s (shock breakout), poi decadimento lungo
+    const k = this.t<0.35 ? this.t/0.35 : Math.max(0, 1-(this.t-0.35)/10) * (1+0.25*Math.exp(-Math.pow((this.t-2.0)*2.0,2)));
+    this.spr.material.opacity=Math.min(k*2.0,2.0); this.spr.scale.setScalar(40+this.t*120);
+    this.spr.material.color.setHSL(0.12-0.10*Math.min(this.t/8,1), 0.55*Math.min(this.t/4,1), 0.85);   // raffreddamento: bianco→oro→rosso (setHSL in place, zero alloc)
+    const rk=Math.min(this.t/9,1); this.ring.scale.setScalar(30+rk*rk*(2-rk)*520);
+    this.ring.material.opacity=Math.max(0,(1-rk))*0.45*Math.min(k*3,1); this.ring.lookAt(camera.position);
+    if(this.t>12){ this.active=false; this.spr.visible=false; this.ring.visible=false; this.ring.material.opacity=0; } }
 }
 
 /* ---------------- buco nero (disco + photon ring + lensing) ---------------- */
@@ -1253,12 +1341,13 @@ class BlackHole{
       vertexShader:`varying float vR;varying float vA;void main(){vR=length(position.xy);vA=atan(position.y,position.x);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:NOISE_GLSL+`varying float vR;varying float vA;uniform float uTime,uInner,uOuter,uOp,uDopp;
         void main(){ float t=clamp((vR-uInner)/(uOuter-uInner),0.0,1.0);
-          float n=fbm(vec3(cos(vA)*3.0,sin(vA)*3.0,uTime*0.35+vR*1.4));
+          float a=vA - uTime*(1.6/max(vR,1.0));                                  // il disco ORBITA (rotazione differenziale: interno più veloce)
+          float n=fbm(vec3(cos(a)*3.0,sin(a)*3.0,uTime*0.10+vR*1.4));
           float bands=0.55+0.7*n;
           vec3 hot=vec3(1.0,0.96,0.86),warm=vec3(1.0,0.5,0.16),cool=vec3(0.45,0.3,0.95);
           vec3 c=mix(hot,warm,smoothstep(0.0,0.6,t)); c=mix(c,cool,smoothstep(0.6,1.0,t));
-          float dopp=0.5+0.95*cos(vA-uDopp);
-          float bright=(1.0-t*0.7)*bands*max(dopp,0.12);
+          float dopp=clamp(0.25+1.30*cos(vA-uDopp),0.06,1.6);                    // beaming Doppler estremo: un lato brucia, l'altro quasi sparisce (lobo FISSO, mai un faro che gira)
+          float bright=(1.0-t*0.7)*bands*dopp;
           float edge=smoothstep(0.0,0.07,t)*smoothstep(1.0,0.88,t);
           gl_FragColor=vec4(c*bright*2.1, bright*edge*uOp); }`});
     this.disk=new THREE.Mesh(new THREE.RingGeometry(1.5,3.6,160,2),this.diskMat); this.disk.rotation.x=Math.PI*0.5-0.32; this.group.add(this.disk);
@@ -1270,7 +1359,7 @@ class BlackHole{
     const ang=Math.random()*Math.PI*2, dist=r*1.4+50+Math.random()*60;
     this.group.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*28,SPAWN_Z-Math.random()*300);
     this.disk.rotation.set(Math.PI*0.5-0.3-Math.random()*0.3,0,Math.random()*0.6);
-    this.diskMat.uniforms.uDopp.value=Math.random()*6.28; this.spin=(Math.random()*2-1)*0.1; this.group.visible=true;
+    this.diskMat.uniforms.uDopp.value=Math.random()*6.28; this.diskMat.uniforms.uTime.value=0; this.spin=(Math.random()*2-1)*0.1; this.group.visible=true;   // uTime a 0 allo spawn: la fase orbitale del disco riparte pulita (mai il salto del wrap)
     $t.log.textContent='— a hole in everything. Light goes in; nothing returns.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),13000);
   }
   update(dt,speed){
@@ -1281,7 +1370,7 @@ class BlackHole{
     const opIn=THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1);
     const opOut=THREE.MathUtils.clamp((outEnd-z)/(this.group.scale.x*1.8+140),0,1); // dissolvenza in uscita (niente pop)
     const op=Math.min(opIn,opOut);
-    this.diskMat.uniforms.uOp.value=op; this.photon.material.opacity=op; this.horizon.material.opacity=op;
+    this.diskMat.uniforms.uOp.value=op; this.photon.material.opacity=Math.min(op*1.3,1); this.horizon.material.opacity=op;   // photon ring +30% → l'anello di luce si legge anche in piccolo
     if(!this.counted && z>-30){ this.counted=true; TEL.blackholes++; }
     if(z>outEnd){ this.active=false; this.group.visible=false; }
   }
@@ -1290,14 +1379,14 @@ const BHLensShader={
   uniforms:{tDiffuse:{value:null},uBH:{value:new THREE.Vector2(-1,-1)},uRadius:{value:0.1},uStrength:{value:0.0},uAspect:{value:1.0}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,1.0);}`,
   fragmentShader:`uniform sampler2D tDiffuse;uniform vec2 uBH;uniform float uRadius,uStrength,uAspect;varying vec2 vUv;
-    void main(){ vec2 uv=vUv;
+    void main(){ vec2 uv=vUv; float shadow=1.0;
       if(uBH.x>=0.0 && uStrength>0.0){
         vec2 d=uv-uBH; d.x*=uAspect; float r=length(d); float R=uRadius;
-        if(r<R*0.40){ gl_FragColor=vec4(0.0,0.0,0.0,1.0); return; }
-        float bend=clamp(uStrength*R*R/(r*r+1e-4),0.0,1.1);
+        shadow=smoothstep(R*0.36,R*0.43,r);                              // ombra a bordo morbido (niente cerchio nero secco)
+        float bend=clamp(uStrength*R*R/(r*r+1e-4),0.0,2.4);              // tetto alzato: la zona di saturazione (plateau) resta DENTRO l'ombra anche a uStrength 0.24
         vec2 dir=d/max(r,1e-4); float nr=r+bend*R; vec2 nd=dir*nr; nd.x/=uAspect; uv=uBH+nd;
       }
-      gl_FragColor=texture2D(tDiffuse, clamp(uv,0.0,1.0)); }`};
+      gl_FragColor=vec4(texture2D(tDiffuse, clamp(uv,0.0,1.0)).rgb*shadow,1.0); }`};
 function updateLens(){
   if(!lensPass) return;
   if(blackhole && blackhole.active){
@@ -1308,7 +1397,8 @@ function updateLens(){
       const angR=Math.atan((blackhole.group.scale.x*2.6)/Math.max(dist,1));
       lensPass.uniforms.uRadius.value=Math.min((angR/((camera.fov*Math.PI/180)/2))*0.5,0.6);
       const op=THREE.MathUtils.clamp((blackhole.group.position.z-SPAWN_Z)/700,0,1);
-      lensPass.uniforms.uStrength.value=0.10*op; lensPass.uniforms.uAspect.value=WIDTH/HEIGHT; lensPass.enabled=op>0; return;   // salta la passata anche durante la rampa iniziale (op=0)
+      const s=0.14+0.10*THREE.MathUtils.clamp((blackhole.group.scale.x-34)/26,0,1);   // lensing più leggibile, scalato col raggio del buco
+      lensPass.uniforms.uStrength.value=s*op; lensPass.uniforms.uAspect.value=WIDTH/HEIGHT; lensPass.enabled=op>0; return;   // salta la passata anche durante la rampa iniziale (op=0)
     }
   }
   lensPass.uniforms.uStrength.value=0.0; lensPass.uniforms.uBH.value.set(-1,-1); lensPass.enabled=false;   // salta la passata se non c'è buco nero in scena
@@ -1353,7 +1443,7 @@ class NebulaField{
 function cometTailTexture(){
   const w=256,h=64,cv=document.createElement('canvas'); cv.width=w; cv.height=h; const c=cv.getContext('2d');
   for(let x=0;x<w;x++){ const fx=1-x/w; for(let y=0;y<h;y++){ const fy=Math.exp(-Math.pow((y/h-0.5)*4.5,2));
-    const a=Math.pow(fx,1.6)*fy; c.fillStyle='rgba(255,255,255,'+a+')'; c.fillRect(x,y,1,1); } }
+    const a=Math.pow(fx,1.5)*fy*(0.78+0.22*Math.sin(y*0.9+x*0.055)); c.fillStyle='rgba(255,255,255,'+a+')'; c.fillRect(x,y,1,1); } }   // striature → coda a filamenti (solo startup)
   const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t;
 }
 class Comet{
@@ -1363,21 +1453,30 @@ class Comet{
     this.core.scale.setScalar(4); this.g.add(this.core);
     this.tail=new THREE.Sprite(new THREE.SpriteMaterial({map:cometTail,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0x9fd0ff)}));
     this.tail.center.set(0.0,0.5); this.g.add(this.tail);  // ancora a sinistra → coda si estende verso destra
-    this.active=false; this.t=0; this.dur=0; this.vel=new THREE.Vector3();
+    // SECONDA CODA (polvere): calda, più larga, divergente rispetto alla coda ionica → firma delle grandi comete (Hale-Bopp)
+    this.tail2=new THREE.Sprite(new THREE.SpriteMaterial({map:cometTail,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xffdcaa)}));
+    this.tail2.center.set(0.0,0.5); this.g.add(this.tail2);
+    this.active=false; this.t=0; this.dur=0; this.vel=new THREE.Vector3(); this._curve=0;
+    this._v1=new THREE.Vector3(); this._v2=new THREE.Vector3();   // scratch per le proiezioni (niente clone per-frame)
   }
   spawn(){
     this.active=true; this.t=0; this.dur=16+Math.random()*12; const side=Math.random()<0.5?-1:1;
     this.g.position.set(side*(70+Math.random()*60),(Math.random()*2-1)*55,-700-Math.random()*300);
     this.vel.set(-side*(7+Math.random()*7),(Math.random()*2-1)*3, 64+Math.random()*36);
     this.tail.scale.set(55+Math.random()*45,11,1); this.tail.material.color.setHSL(0.54+Math.random()*0.12,0.55,0.72);
+    this.tail2.scale.set(this.tail.scale.x*0.8,18.7,1);                         // coda polvere: più corta e larga
+    this._curve=(Math.random()<0.5?-1:1)*(0.12+Math.random()*0.08);             // divergenza polvere/ioni
     this.g.visible=true;
   }
   update(dt){
     if(!this.active) return; this.t+=dt; this.g.position.addScaledVector(this.vel,dt);
-    const cs=this.g.position.clone().project(camera), ss=this.g.position.clone().add(sunDir).project(camera);
+    const cs=this._v1.copy(this.g.position).project(camera), ss=this._v2.copy(this.g.position).add(sunDir).project(camera);   // scratch riusati (zero alloc)
     this.tail.material.rotation=Math.atan2((cs.y-ss.y)*HEIGHT,(cs.x-ss.x)*WIDTH); // estende lontano dal sole
+    this.tail2.material.rotation=this.tail.material.rotation+this._curve;
     const fade=Math.min(this.t/2,(this.dur-this.t)/3,1);
-    this.core.material.opacity=Math.max(0,fade); this.tail.material.opacity=Math.max(0,fade)*0.85;
+    this.core.material.opacity=Math.max(0,fade)*(0.85+0.15*Math.sin(this.t*7.0));  // nucleo che respira (outgassing)
+    this.tail.material.opacity=Math.max(0,fade)*0.85;
+    this.tail2.material.opacity=Math.max(0,fade)*0.45;
     if(this.t>=this.dur||this.g.position.z>50){ this.active=false; this.g.visible=false; }
   }
 }
@@ -1455,7 +1554,8 @@ class Pulsar{
       vertexShader:`varying float vy;varying float vr;void main(){vy=position.y;vr=length(position.xz);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:`varying float vy;varying float vr;uniform vec3 uColor;uniform float uOp;
         void main(){ float along=smoothstep(22.0,0.0,vy); float coneR=max(vy/22.0*1.7,0.001); float radial=smoothstep(1.0,0.12,vr/coneR);
-        gl_FragColor=vec4(uColor, along*radial*0.5*uOp); }`});   // raggio morbido, non cono pieno
+        vec3 col=mix(uColor, vec3(0.85,0.95,1.45), radial*0.6);                     // cuore del fascio oltre-bianco → fiorisce nel bloom
+        gl_FragColor=vec4(col, along*radial*0.5*uOp); }`});   // raggio morbido, non cono pieno
     const cg=new THREE.ConeGeometry(1.7,22,24,1,true); cg.translate(0,11,0);
     this.b1=new THREE.Mesh(cg,this.bmat); this.beams.add(this.b1);
     this.b2=new THREE.Mesh(cg,this.bmat); this.b2.rotation.x=Math.PI; this.beams.add(this.b2);
@@ -1463,10 +1563,25 @@ class Pulsar{
   }
   spawn(){ this.active=true; this._counted=false; const r=0.8+Math.random()*0.8; this.g.scale.setScalar(r);
     const ang=Math.random()*Math.PI*2,dist=30+Math.random()*60; this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*30,SPAWN_Z*0.6-Math.random()*400);
-    this.beams.rotation.set(Math.random()*0.6,0,0.3+Math.random()*0.5); this.spin=2.5+Math.random()*3; this.g.visible=true; }
+    // GEOMETRIA DELLO SWEEP GARANTITA: tilt X = π/2 − tiltZ (± jitter) → il cono spazzato dal fascio
+    // attraversa ~la direzione della camera 2 volte per giro (prima le soglie non erano mai raggiungibili)
+    const zt=0.3+Math.random()*0.5;
+    this.beams.rotation.set(Math.PI/2-zt+(Math.random()*2-1)*0.06,0,zt);
+    this.spin=(Math.random()<0.10)?(7+Math.random()*2):(2.5+Math.random()*3);   // 10% "millisecond pulsar" (cap 7-9 rad/s: ipnotica, mai strobo)
+    this._swCD=0; this.g.visible=true; }
   update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt; this.beams.rotation.y+=this.spin*dt;
     const z=this.g.position.z, op=Math.min(THREE.MathUtils.clamp((z-(SPAWN_Z*0.6))/400,0,1),THREE.MathUtils.clamp((40-z)/40,0,1));
-    this.core.material.opacity=op*(0.55+0.45*Math.abs(Math.sin(this.beams.rotation.y))); this.bmat.uniforms.uOp.value=op;  // core che pulsa col faro
+    // LIGHTHOUSE: quando il fascio spazza la DIREZIONE pulsar→camera (non la z world), il core lampeggia ×3 e la luce "colpisce" il visore (cooldown anti-strobo)
+    this.beams.getWorldQuaternion(_q); _s.set(0,1,0).applyQuaternion(_q);
+    let _dx=camera.position.x-this.g.position.x, _dy=camera.position.y-this.g.position.y, _dz=camera.position.z-this.g.position.z;
+    const _dl=Math.sqrt(_dx*_dx+_dy*_dy+_dz*_dz)||1;
+    const _align=Math.abs(_s.x*_dx+_s.y*_dy+_s.z*_dz)/_dl;                       // |cos| → fascio bipolare: vale per entrambi i coni
+    const sweep=Math.pow(THREE.MathUtils.smoothstep(_align,0.955,0.995),2.0);
+    this.core.material.opacity=op*(0.55+0.45*Math.abs(Math.sin(this.beams.rotation.y)))*(1.0+2.2*sweep);
+    this.core.scale.setScalar(2.6*(1.0+0.7*sweep));
+    if(this._swCD>0) this._swCD-=dt;
+    if(sweep>0.5 && z>-220 && this._swCD<=0){ this._swCD=2.5; hitFlash=Math.max(hitFlash,0.10*op); }
+    this.bmat.uniforms.uOp.value=op;
     if(!this._counted && z>-20){ this._counted=true; TEL.stars++; }
     if(z>45){ this.active=false; this.g.visible=false; } }
 }
@@ -1519,6 +1634,9 @@ class SolarEclipse{
     this.coronaGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xfff4e2),opacity:0})); this.coronaGlow.renderOrder=6; this.g.add(this.coronaGlow);
     this.coronaRing=new THREE.Mesh(new THREE.RingGeometry(1.0,1.55,120), new THREE.MeshBasicMaterial({color:0xfff7ea,transparent:true,depthWrite:false,depthTest:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,opacity:0})); this.coronaRing.renderOrder=7; this.g.add(this.coronaRing);
     this.rays=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xfff2da),opacity:0,rotation:0})); this.rays.renderOrder=5; this.g.add(this.rays);
+    // ANELLO DI DIAMANTE: punto accecante sul limbo lunare un istante prima/dopo la totalità (2 lampi per evento)
+    this.diamond=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xfffbf0),opacity:0})); this.diamond.renderOrder=8; this.g.add(this.diamond);
+    this.rays2=new THREE.Sprite(this.rays.material.clone()); this.rays2.renderOrder=5; this.g.add(this.rays2);   // corona a pennacchi: secondo strato contro-rotante
     this.active=false; this.t=0; this.dur=0; this.R=1; this._counted=false; this._c=new THREE.Color();
   }
   spawn(){
@@ -1526,6 +1644,7 @@ class SolarEclipse{
     this.R=80+Math.random()*45; this.dur=62+Math.random()*22;          // GRANDE + LUNGA (si assiste a lungo)
     this.sun.scale.setScalar(this.R*0.94); this.moon.scale.setScalar(this.R);   // luna un filo più grande → copre tutto il sole
     this.sunGlow.scale.setScalar(this.R*4.6); this.coronaGlow.scale.setScalar(this.R*4.8); this.coronaRing.scale.setScalar(this.R); this.rays.scale.setScalar(this.R*6.0);
+    this.diamond.scale.setScalar(this.R*1.5); this.rays2.scale.setScalar(this.R*5.2); this.diamond.material.opacity=0; this.rays2.material.opacity=0;
     const side=(Math.random()<0.5?-1:1);
     this.g.position.set(side*(110+Math.random()*120),(Math.random()*2-1)*60,-2000-Math.random()*500);   // IN LONTANANZA, davanti → la si vede arrivare
     this.sun.position.set(0,0,0); this.moon.position.set(0,0,this.R*0.7);   // luna verso camera → occlude il sole
@@ -1545,6 +1664,13 @@ class SolarEclipse{
     this.coronaGlow.material.opacity=op*(0.02+0.14*tot);              // …resta la CORONA: alone esterno FIOCO (non riempie il centro)…
     this.coronaRing.material.opacity=0;             // ANELLO rimosso (richiesta): niente cerchio attorno al sole durante l'eclissi
     this.rays.material.opacity=op*0.3*tot; this.rays.material.rotation+=dt*0.05;   // raggi di corona tenui che ruotano lentissimo
+    this.rays2.material.opacity=op*0.22*tot; this.rays2.material.rotation-=dt*0.035;   // pennacchi contro-rotanti → corona viva, mai simmetrica
+    // DIAMANTE: la totalità geometrica inizia a cover≈0.94 (luna R vs sole 0.94R) → finestra centrata sul CONTATTO,
+    // spenta dentro la totalità piena → due lampi netti (ingresso/uscita), mai una luce fissa
+    const dk=THREE.MathUtils.smoothstep(cover,0.88,0.93)*(1-THREE.MathUtils.smoothstep(cover,0.955,0.97));
+    this.diamond.position.set(-Math.sign(mx||1)*this.R*0.92, this.R*0.30, this.R*0.75);
+    this.diamond.material.opacity=op*dk*0.95;
+    eclipseDim=Math.max(eclipseDim, op*tot*0.35);   // alla totalità la scena si spegne ai bordi (iris-down via uVignette, decade nel loop)
     this.coronaGlow.material.color.copy(this._c.set(0xfff4e2)).lerp(director.key,0.18);
     if(!this._counted && this.t>this.dur*0.45){ this._counted=true; TEL.stars++; }
     if(this.t>this.dur+6){ this.active=false; this.g.visible=false; }
@@ -1718,23 +1844,33 @@ class Magnetar{
       vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:`varying vec2 vUv;uniform vec3 uColor;uniform float uOp,uTime,uQuake;
         void main(){ float f=fract(vUv.x*4.0-uTime*1.5); float dash=smoothstep(0.35,0.5,f)*smoothstep(0.65,0.5,f);
-          float b=0.35+0.55*dash+uQuake*1.4; gl_FragColor=vec4(mix(uColor,vec3(1.0),uQuake), b*0.5*uOp); }`});
+          float b=0.35+0.55*dash+uQuake*1.4; gl_FragColor=vec4(mix(uColor,vec3(1.0,0.90,1.30),uQuake), b*0.5*uOp); }`});   // flash bianco-violetto (alieno, non kitsch): sfora nel bloom
     this.arcs=[]; for(let i=0;i<6;i++){ const t=new THREE.Mesh(new THREE.TorusGeometry(1,0.012,6,40,Math.PI*1.3),this.amat); t.rotation.y=i/6*Math.PI*2; t.scale.y=0.55; this.spin.add(t); this.arcs.push(t); }
     this.ring=new THREE.Mesh(new THREE.RingGeometry(0.9,1.0,64),new THREE.MeshBasicMaterial({color:0xcfe6ff,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,opacity:0}));
     this.g.add(this.ring);
-    this.active=false; this._counted=false; this.quake=0; this.ringLife=99; this._loggedQuake=false;
+    this.ring2=new THREE.Mesh(this.ring.geometry,this.ring.material.clone()); this.g.add(this.ring2);   // secondo fronte d'urto (sfalsato di 0.15s), riusa la geometria
+    this.active=false; this._counted=false; this.quake=0; this.ringLife=99; this._loggedQuake=false; this.pre=0; this.spinBoost=0; this._r2=99;
   }
   spawn(){ this.active=true; this._counted=false; this._loggedQuake=false; const r=0.7+Math.random()*0.6; this.g.scale.setScalar(r);
     const ang=Math.random()*Math.PI*2,dist=40+Math.random()*70; this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*30,SPAWN_Z*0.6-Math.random()*400);
-    this.spin.rotation.set(Math.random()*0.8,0,0.3+Math.random()*0.6); this.quake=0; this.ringLife=99; this.amat.uniforms.uTime.value=0; this.g.visible=true; }
-  update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt; this.spin.rotation.y+=dt*0.5; this.amat.uniforms.uTime.value+=dt;
-    if(this.quake<=0 && Math.random()<0.0015){ this.quake=1; this.ringLife=0;
-      if(!this._loggedQuake){ this._loggedQuake=true; $t.log.textContent='— a magnetar. Even its silence is violent.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } }
+    this.spin.rotation.set(Math.random()*0.8,0,0.3+Math.random()*0.6); this.quake=0; this.ringLife=99; this.amat.uniforms.uTime.value=0;
+    this.pre=0; this.spinBoost=0; this._r2=99; this.ring2.material.opacity=0; this.g.visible=true; }
+  update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt;
+    // STARQUAKE in 3 atti: (1) precursore — gli archi accelerano ×6 per 0.5s; (2) rilascio — flash violetto + doppio fronte; (3) glitch — la rotazione resta più veloce e decade
+    this.spin.rotation.y+=dt*(0.5+this.spinBoost); this.spinBoost=Math.max(0,this.spinBoost-dt*0.15);
+    const chg=this.pre>0?6.0*(1-this.pre/0.5):0; this.amat.uniforms.uTime.value+=dt*(1+chg);
+    if(this.pre<=0 && this.quake<=0 && Math.random()<0.0015) this.pre=0.5;
+    if(this.pre>0){ this.pre-=dt; if(this.pre<=0){ this.quake=1; this.ringLife=0; this._r2=-0.15; this.spinBoost=0.35;
+      if(this.g.position.z>-150) hitFlash=Math.max(hitFlash,0.18);
+      if(!this._loggedQuake){ this._loggedQuake=true; $t.log.textContent='— a magnetar. Even its silence is violent.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } } }
     if(this.quake>0) this.quake=Math.max(0,this.quake-dt*0.8);
     const z=this.g.position.z, op=Math.min(THREE.MathUtils.clamp((z-(SPAWN_Z*0.6))/400,0,1),THREE.MathUtils.clamp((42-z)/42,0,1));
     this.amat.uniforms.uOp.value=op; this.amat.uniforms.uQuake.value=this.quake; this.core.material.opacity=op*(0.6+0.4*this.quake);
     if(this.ringLife<1.2){ this.ringLife+=dt; const lr=this.ringLife/1.2; this.ring.scale.setScalar(1.0+lr*8.0); this.ring.material.opacity=(1.0-lr)*0.5*op; this.ring.lookAt(camera.position); }
     else this.ring.material.opacity=0;
+    if(this._r2<1.2){ this._r2+=dt; const lr=Math.max(0,this._r2)/1.2, r2on=this._r2>=0?1:0;   // durante il ritardo (−0.15..0) il secondo fronte resta SPENTO
+      this.ring2.scale.setScalar(1.0+lr*8.0); this.ring2.material.opacity=r2on*Math.max(0,(1.0-lr))*0.35*op; this.ring2.lookAt(camera.position); }
+    else this.ring2.material.opacity=0;
     if(!this._counted && z>-20){ this._counted=true; TEL.stars++; }
     if(z>45){ this.active=false; this.g.visible=false; } }
 }
@@ -1777,13 +1913,15 @@ class AuroraCurtain{
     this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
     this.mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
       uniforms:{uTime:{value:0},uOp:{value:0},uSeed:{value:0},uGrade:{value:new THREE.Color(0x223a6b)}},
-      vertexShader:`varying vec2 vUv;uniform float uTime;void main(){vUv=uv;vec3 p=position;p.x+=sin(p.y*3.0+uTime*0.4)*0.04;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}`,
+      vertexShader:`varying vec2 vUv;uniform float uTime;void main(){vUv=uv;vec3 p=position;p.x+=sin(p.y*3.0+uTime*0.4)*0.10+sin(p.y*7.0+uTime*1.1)*0.03;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}`,   // la tenda SVENTOLA (doppia armonica)
       fragmentShader:NOISE_GLSL+`varying vec2 vUv;uniform float uTime,uOp,uSeed;uniform vec3 uGrade;
         void main(){
-          float rays=fbm(vec3(vUv.x*7.0+uSeed, vUv.y*1.1+uTime*0.05, uSeed*0.5));   // tendine/streamer verticali
+          float rays=fbm(vec3(vUv.x*13.0+uSeed, vUv.y*1.1-uTime*0.12, uSeed*0.5));   // dita FINI che CORRONO verso l'alto (il movimento-firma delle aurore)
           float n=fbm(vec3(vUv.x*5.0+uTime*0.06,vUv.y*1.4,uSeed));
-          float ribbon=smoothstep(0.42,0.92,mix(n,rays,0.5))*pow(1.0-vUv.y,1.2);
-          vec3 col=mix(vec3(0.2,1.0,0.4),vec3(1.0,0.2,0.7),vUv.y); col=mix(col,uGrade,0.3);
+          float ribbon=smoothstep(0.42,0.92,mix(n,rays,0.5))*pow(1.0-vUv.y,1.2)*(0.8+0.2*sin(uTime*1.7+vUv.x*4.0));   // onde di luminosità che percorrono la tenda
+          vec3 col=mix(vec3(0.2,1.0,0.4),vec3(1.0,0.2,0.7),vUv.y);
+          col=mix(col,vec3(1.0,0.18,0.25),smoothstep(0.70,0.95,vUv.y)*0.5);         // cappello rosso SAR d'alta quota (realismo, non accento UI)
+          col=mix(col,uGrade,0.3);
           // sfuma TUTTI e quattro i bordi del piano → niente rettangolo
           float edge=smoothstep(0.0,0.16,vUv.x)*smoothstep(1.0,0.84,vUv.x)
                     *smoothstep(0.0,0.10,vUv.y)*smoothstep(1.0,0.78,vUv.y);
@@ -1836,9 +1974,9 @@ function currentShower(){ if(window._forceShower) return window._forceShower; co
 
 /* ---------------- passata cinematografica ---------------- */
 const CineShader={
-  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.020},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.7},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)},uSharp:{value:0.30},uPix:{value:1.0},uRocket:{value:0}},
+  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.020},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeHi:{value:new THREE.Color(0xfff1de)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.7},uHalation:{value:0.4},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)},uSharp:{value:0.30},uPix:{value:1.0},uRocket:{value:0}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,1.0);}`,
-  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uContrast,uGW,uSharp,uPix,uRocket;uniform vec2 uRes,uGWDir;uniform vec3 uGrade;varying vec2 vUv;
+  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uHalation,uContrast,uGW,uSharp,uPix,uRocket;uniform vec2 uRes,uGWDir;uniform vec3 uGrade,uGradeHi;varying vec2 vUv;
     float rnd(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
     void main(){ vec2 uv=vUv;
       if(uGW>0.0){ float ph=dot(uv,uGWDir)*42.0 - uTime*6.0; uv += uGWDir*sin(ph)*uGW; }   // onda gravitazionale: increspa tutto il campo
@@ -1867,22 +2005,40 @@ const CineShader={
         for(int wi=0;wi<12;wi++){ float wtt=(float(wi)+jit)/12.0; vec3 ws=texture2D(tDiffuse,uv-stp*wtt).rgb; float ww=1.0-wtt*0.55; wAcc+=ws*ww; wT+=ww; }
         wAcc/=wT; col=mix(col,max(col,wAcc),uRocket*smoothstep(0.012,0.16,crd)); }
       float ga=uGradeAmt*4.0;
-      vec3 lift=(uGrade-0.5)*0.08*ga;                                  // split-tone tenue: ombre verso la tinta regione
-      col=col*(1.0+lift)+lift*0.35;
+      // SPLIT-TONE a due assi (da colorist): ombre → tinta regione, highlight → key light del preset.
+      // Luma-preservante (tinta normalizzata) → 18 palette bicolori coerenti con l'illuminazione 3D, senza bruciare i core.
+      float Lg=dot(col,vec3(0.2126,0.7152,0.0722));
+      float shM=1.0-smoothstep(0.08,0.42,Lg);                          // maschera ombre
+      float hiM=smoothstep(0.45,1.05,Lg);                              // maschera highlight
+      vec3 lift=(uGrade-0.5)*0.10*ga;
+      col=col*(1.0+lift*shM)+lift*0.35*shM;                            // ombre verso la tinta regione (mascherato)
+      vec3 hiT=uGradeHi/max(dot(uGradeHi,vec3(0.3333)),0.001);         // tinta key luma-neutra
+      col*=mix(vec3(1.0),hiT,hiM*0.14*ga);                             // highlight verso la key del preset
       float L=dot(col,vec3(0.2126,0.7152,0.0722));
       float satHi=1.0-smoothstep(0.6,1.4,L)*0.4;                       // alte luci desaturate (i core bloomati restano luce)
       col=mix(vec3(L),col,mix(1.0,1.14,ga)*satHi);                     // saturazione contenuta
+      // HALATION da pellicola: alone caldo d'emulsione attorno ai core (prima della spalla → mai clipping)
+      if(uHalation>0.001){ vec2 hx=(1.0/uRes)*7.0;
+        vec3 hs=max(texture2D(tDiffuse,uv+hx).rgb-0.6,vec3(0.0))
+              + max(texture2D(tDiffuse,uv-hx).rgb-0.6,vec3(0.0));
+        float hL=dot(hs,vec3(0.3333));
+        col+=hL*vec3(1.0,0.52,0.26)*0.07*uHalation; }
       // curva filmica gentile: contrasto nei toni medi, spalla che PROTEGGE i core bloomati (restano luce)
       vec3 contr=clamp((col-0.42)*mix(1.0,1.16,uContrast)+0.42,0.0,4.0);
       float shoulder=1.0-smoothstep(0.85,1.6,L)*0.6;                   // sopra ~0.85 (highlight) il contrasto si annulla
       col=mix(col,contr,shoulder);                                    // contrasto solo dove non sono highlight
       col*=0.945;                                                      // deep-space: appena meno acceso (era 0.94)
       col=max(col,0.0);
-      // veil anamorfico tenue: 2 tap orizzontali, solo sugli highlight, tinta regione → striscia di luce discreta
-      if(uStreak>0.001){ vec2 sx=vec2((1.0/uRes.x)*6.0,0.0);
-        float hl=smoothstep(0.78,1.3,L);
-        vec3 st=texture2D(tDiffuse,uv+sx).rgb+texture2D(tDiffuse,uv-sx).rgb;
-        col+=st*0.5*hl*uStreak*0.06*mix(uGrade*2.0,vec3(1.0),0.7); }   // additivo minimo: non schiarisce le ombre
+      // STREAK ANAMORFICA vera: 6 tap orizzontali thresholded a distanza quadratica (±5/±20/±45px), peso 1/i², dither anti-banding.
+      // La luce dei core (soli, supernove, pulsar) si allunga in una lama orizzontale blu-fredda — linguaggio "space movie", sobrio.
+      if(uStreak>0.001){ vec2 sx=vec2(1.0/uRes.x,0.0);
+        float jd=rnd(uv*uRes)*0.35+0.85;                               // dither 0.85-1.2 sulla distanza → niente bande
+        vec3 acc=vec3(0.0);
+        for(int i=1;i<=3;i++){ float fi=float(i); vec2 o=sx*(fi*fi*5.0*jd);
+          acc+=(max(texture2D(tDiffuse,uv+o).rgb-0.72,vec3(0.0))
+              + max(texture2D(tDiffuse,uv-o).rgb-0.72,vec3(0.0)))*(1.0/(fi*fi)); }
+        vec3 anam=mix(vec3(0.55,0.72,1.05), mix(uGrade*2.0,vec3(1.0),0.6), 0.35);  // blu-freddo con 35% di tinta regione
+        col+=acc*uStreak*0.09*anam; }
       float vig=smoothstep(1.18,0.10,r2*2.05);                         // caduta più morbida e leggermente più ampia
       vig=vig*vig*(3.0-2.0*vig);                                       // smoothstep^2: spalla del vignette più dolce
       vec3 edgeTint=mix(uGrade,vec3(1.0),0.58);
@@ -1897,7 +2053,11 @@ function applyDirector(){
   if(sky){ sky.material.color.copy(director.grade).lerp(_white,0.90).multiplyScalar(Math.max(IS_LIVE?0.98:0.92,c.skyBright)*(IS_LIVE?1.06:1.0));   // sfondo tinto SOLO 10% dal mood → i cieli ESO restano reali e LUMINOSI (come gen_25), non attenuati — in place, niente alloc
     if(sky2 && sky2.visible) sky2.material.color.copy(sky.material.color); }   // durante il crossfade tingi anche lo sfondo entrante
   if(keyLight){ keyLight.color.copy(_white).lerp(director.key,0.5); keyLight.intensity=c.kInt; }   // tinta regione attenuata
-  if(cinePass) cinePass.uniforms.uGrade.value.copy(director.grade);
+  if(cinePass){ cinePass.uniforms.uGrade.value.copy(director.grade);
+    cinePass.uniforms.uGradeHi.value.copy(director.key);                                     // split-tone: highlight verso la key del preset
+    cinePass.uniforms.uStreak.value=0.30+c.aB*0.55;                                          // streak anamorfica: quasi zero in abisso, canta in lampo/oro
+    const _warmth=THREE.MathUtils.clamp((director.key.r-director.key.b)*1.5+0.5,0,1);
+    cinePass.uniforms.uHalation.value=_warmth*0.7; }                                         // halation piena nei mood caldi, micro-presenza nei freddi
 }
 // SFONDI: crossfade verso una nebulosa diversa ogni ~5-9 min (lazy-load + dispose → 1-2 texture in VRAM)
 function cycleSky(target){ if(skyFading||skyLoading||!sky2) return; let n=(typeof target==='number')?((target%SKY_FILES.length)+SKY_FILES.length)%SKY_FILES.length:skyIdx;
@@ -2163,14 +2323,16 @@ class WhalePod{
   constructor(){
     this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
     this.bodyMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,
-      uniforms:{uOp:{value:0},uGrade:{value:new THREE.Color(0x223a6b)},uGlow:{value:new THREE.Color(0x3fd6c8)}},
+      uniforms:{uOp:{value:0},uTime:{value:0},uGrade:{value:new THREE.Color(0x223a6b)},uGlow:{value:new THREE.Color(0x3fd6c8)}},
       vertexShader:`varying vec3 vN;varying vec2 vUv;void main(){vUv=uv;vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-      fragmentShader:`varying vec3 vN;varying vec2 vUv;uniform float uOp;uniform vec3 uGrade,uGlow;
+      fragmentShader:`varying vec3 vN;varying vec2 vUv;uniform float uOp,uTime;uniform vec3 uGrade,uGlow;
         void main(){ float rim=pow(1.0-abs(vN.z),2.5);
-          float stripe=smoothstep(0.06,0.0,abs(vUv.y-0.5))*smoothstep(0.95,0.3,vUv.x);
+          float wave=0.55+0.45*sin(vUv.x*8.0-uTime*3.0);                                    // onda di luce che SCORRE lungo il fianco (propulsione bioluminescente)
+          float stripe=smoothstep(0.06,0.0,abs(vUv.y-0.5))*smoothstep(0.95,0.3,vUv.x)*wave;
+          float dots=smoothstep(0.96,1.0,sin(vUv.x*40.0)*sin(vUv.y*18.0))*step(vUv.y,0.45); // fotofori ventrali (capodoglio abissale)
           vec3 base=uGrade*0.10;
-          vec3 c=base + rim*uGrade*0.5 + stripe*uGlow*0.7;
-          float a=(0.55 + rim*0.45 + stripe*0.6)*uOp;
+          vec3 c=base + rim*uGrade*0.5 + stripe*uGlow*0.7 + dots*uGlow*0.8;
+          float a=(0.55 + rim*0.45 + stripe*0.6 + dots*0.3)*uOp;
           gl_FragColor=vec4(c,a); }`});
     this.finMat=new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0x2fbfb0),opacity:0});
     this.whales=[]; const N=IS_MOBILE?2:3;
@@ -2194,18 +2356,26 @@ class WhalePod{
     this.vx=-side*(2.0+Math.random()*2.0); this.vy=(Math.random()*2-1)*0.6;
     const baseScale=10+Math.random()*9;
     for(let i=0;i<this.whales.length;i++){ const w=this.whales[i];
-      const s=baseScale*(0.7+Math.random()*0.5); w.scale.setScalar(s); w.userData.sc=s; w.userData.ph=Math.random()*6.28;
-      w.position.set((Math.random()*2-1)*40,(Math.random()*2-1)*22,(Math.random()*2-1)*60);
-      w.rotation.y=(this.vx<0?1:-1)*0.5 + (Math.random()*2-1)*0.3; }
+      if(i===this.whales.length-1 && i>0){                                       // IL PICCOLO del branco: nuota accanto alla prima, fase sfalsata
+        const m=this.whales[0], s=baseScale*0.4; w.scale.setScalar(s); w.userData.sc=s;
+        w.userData.ph=m.userData.ph+0.8;
+        w.position.copy(m.position).add(_s.set(0.9,-0.35,1.3).multiplyScalar(m.userData.sc));   // offset scalato con la madre → mai compenetrato
+        w.rotation.y=m.rotation.y+0.1;
+      } else {
+        const s=baseScale*(0.7+Math.random()*0.5); w.scale.setScalar(s); w.userData.sc=s; w.userData.ph=Math.random()*6.28;
+        w.position.set((Math.random()*2-1)*40,(Math.random()*2-1)*22,(Math.random()*2-1)*60);
+        w.rotation.y=(this.vx<0?1:-1)*0.5 + (Math.random()*2-1)*0.3; } }
     this.g.visible=true;
     $t.log.textContent='— vast, slow shapes crossing the dark. They have no eyes for us.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000);
   }
   update(dt,speed){ if(!this.active) return; this.t+=dt;
     this.g.position.z+=speed*dt; this.g.position.x+=this.vx*dt; this.g.position.y+=this.vy*dt;
     this.bodyMat.uniforms.uGrade.value.copy(director.grade);
+    this.bodyMat.uniforms.uTime.value=shaderTime;                                // wrappato → igiene 24/7
     for(const w of this.whales){ const u=w.userData; const ph=this.t*0.6+u.ph;
       w.rotation.z=Math.sin(ph)*0.10; w.position.y+=Math.sin(ph)*dt*1.2;
       const beat=0.6+0.4*Math.sin(ph*1.3);
+      u.tail.scale.set(2.6*(0.85+0.30*beat),2.0*(0.85+0.30*beat),1);             // colpo di coda FISICO (scala, non solo alpha)
       u.tail.material.opacity=beat; u.finL.material.opacity=beat*0.8; u.finR.material.opacity=beat*0.8; }
     const z=this.g.position.z;
     const op=Math.min(THREE.MathUtils.clamp((z-this.z0)/600,0,1),
@@ -2304,6 +2474,7 @@ function applyTier(){
   for(const L of starLayers) L.mat.uniforms.uPix.value=PIX;
   if(fastDust) fastDust.material.uniforms.uPix.value=PIX;
   if(spores) spores.mat.uniforms.uPix.value=PIX; if(cluster) cluster.mat.uniforms.uPix.value=PIX;   // dimensione punti coerente col pixelRatio
+  if(manSparks) manSparks.material.uniforms.uPix.value=PIX;
   bloomDiv = tier>=2 ? 4 : 2;   // sotto carico il bloom scende a 1/4 di risoluzione
   onResize();
 }
@@ -2349,7 +2520,7 @@ function animate(){
 
   // anniversari + supernova rara
   const day=Math.floor((Date.now()-TEL.launch)/86400000);
-  if(day!==lastDay){ if([1,7,30,100,200,365,500,730,1000].includes(day)) supernova.flash('— DAY '+day+'. The sky marks it.'); lastDay=day; }
+  if(day!==lastDay){ if([1,7,30,100,200,365,500,730,1000].includes(day) && !supernova.active) supernova.flash('— DAY '+day+'. The sky marks it.'); lastDay=day; }   // guardia !active come gli altri call site: mai resettare l'anello a metà espansione
   if(!supernova.active && Math.random()<dt/240) supernova.flash();
 
   // luce 3/4 laterale: i pianeti mostrano la superficie (lato illuminato + terminatore);
@@ -2358,9 +2529,10 @@ function animate(){
   sunDir.set(Math.sin(lt)*0.8,0.42+Math.sin(lt*0.7)*0.15,Math.cos(lt)*0.45).normalize();
   keyLight.position.copy(sunDir).multiplyScalar(20); rimLight.position.copy(sunDir).multiplyScalar(-18);
 
-  // esposizione adattiva (morbida)
+  // esposizione adattiva (morbida) + BREATHING da DP: due sinusoidi incommensurabili ±2.5% → il quadro è "vivo", mai periodico
   exposureCur += (director.cur.exposure - exposureCur)*Math.min(1,dt*0.6);
-  renderer.toneMappingExposure=Math.max(IS_LIVE?1.03:0.90,exposureCur*(IS_LIVE?1.08:0.95));   // PAVIMENTO esposizione → mai troppo scura; su LIVE pavimento più alto + lift ~13% (lo stream YouTube scurisce, mobile compreso)
+  const breathe=1.0+Math.sin(shaderTime*0.131)*0.014+Math.sin(shaderTime*0.048+1.3)*0.011;
+  renderer.toneMappingExposure=Math.max(IS_LIVE?1.03:0.90,exposureCur*(IS_LIVE?1.08:0.95)*breathe);   // breathe DENTRO il max: il PAVIMENTO resta garantito (mai troppo scura; su LIVE pavimento più alto, lo stream YouTube scurisce)
 
   sky.rotation.y+=dt*0.0016; sky.rotation.x=Math.sin(shaderTime*0.004)*0.05;
   // campo stellare volumetrico: ogni strato scorre a velocità diversa (parallasse) e ricicla senza pop
@@ -2407,6 +2579,14 @@ function animate(){
       godray.material.opacity=godray.material.opacity+(gk*0.34 - godray.material.opacity)*Math.min(1,dt*2.0); }
     else if(godray.material.opacity>0.002){ godray.material.opacity+= -godray.material.opacity*Math.min(1,dt*2.0); }
     else { godray.material.opacity=0; godray.visible=false; } }
+  // starburst di diffrazione sul sole hero: accento (cap 0.45 — flare+godray restano protagonisti), rotazione FISSA (realismo ottico)
+  if(starburst){ if(nearSun!==_sbSun){ if(nearSun&&_sbSun) sbOp=0; _sbSun=nearSun; }   // cambio di sole hero → la croce riparte da 0 (mai teletrasporto a piena opacità)
+    const sbTgt=nearSun?THREE.MathUtils.clamp((nearSunK-0.4)*1.6,0,0.45):0;
+    sbOp+=(sbTgt-sbOp)*Math.min(1,dt*2.0);                            // rampa due lati → anti-pop
+    if(nearSun){ starburst.position.copy(nearSun.mesh.position); starburst.position.z+=14;   // davanti al disco → il depth test non mangia le punte
+      const sbs=nearSun.mesh.scale.x*(2.4+Math.sin(shaderTime*1.7)*0.06); starburst.scale.set(sbs,sbs,1); }   // micro-shimmer (senza sole resta all'ultima posizione e DISSOLVE)
+    starburst.material.opacity=sbOp;
+    starburst.visible=sbOp>0.01; }                                    // hide solo a opacità ~0 (come il godray)
   // (B) BUFFETING: se il pianeta più vicino è un raro flyby ravvicinato, calcola quanto siamo dentro la ghiera d'atmosfera
   planetBuffet=0;
   if(nearestPlanet && nearestPlanet._graze){ const pm=nearestPlanet.mesh, r=pm.scale.x;
@@ -2507,6 +2687,18 @@ function animate(){
   // VISORE/TUTA: tinte regione + direzione "finestra"; decadimento scalari del colpo; flash visore (UNICO writer di uHit)
   manGrade.value.copy(director.grade); manKey.value.copy(director.key).lerp(_white,0.35);
   manEnvDir.value.set(0,0,1);                                   // in view-space la camera guarda -z → +z punta verso di lei
+  // TWINKLE-STELLA: ogni ~15-35s l'astronauta "si accende" per ~2s (scintille, alone e visore insieme) → luccica come una stella
+  manTwT-=dt; if(manTwT<=0){ manTwT=15+Math.random()*20; manTwA=1; }
+  if(manTwA>0){ manTwE=Math.min(1,manTwE+dt*2.4); if(manTwE>=1) manTwA=0; }   // ATTACCO in rampa (~0.4s): niente pop-on, si "accende" davvero
+  else manTwE=Math.max(0,manTwE-dt*0.55);
+  const _twk=manTwE*manTwE*(3-2*manTwE);                        // easing morbido (niente scatto on/off)
+  uStarTw.value=_twk;
+  if(manHalo){ manHalo.material.color.copy(director.key).lerp(_white,0.6);
+    manHalo.material.opacity=0.11+0.045*Math.sin(mt*0.45)+0.24*_twk; }   // alone che respira; sul twinkle fiorisce
+  if(manSpike){ manSpike.material.color.copy(director.key).lerp(_white,0.75);
+    manSpike.material.opacity=0.34*_twk*_twk;                           // quadratico → appare solo sul picco, fade dolce a due lati
+    manSpike.scale.setScalar(3.0+0.9*_twk);                             // le punte si allungano mentre brilla (respiro da stella)
+    manSpike.visible=manSpike.material.opacity>0.004; }                 // igiene: zero draw a riposo
   if(astHitCD>0) astHitCD-=dt;
   hitFlash =Math.max(0,hitFlash -dt*2.2);   // ~0.45s di flash
   hitTremor=Math.max(0,hitTremor-dt*1.4);   // ~0.7s di tremore
@@ -2559,7 +2751,12 @@ function animate(){
   camera.fov=baseFov+Math.sin(camPhase*0.045)*1.0 + slingE*3.0 + rocketE*7.0; camera.updateProjectionMatrix();   // FOV si allarga DOLCEMENTE con la velocità (niente vibrazione "tamburo")
 
   cinePass.uniforms.uTime.value=shaderTime; cinePass.uniforms.uRocket.value=rocketE;
+  eclipseDim=Math.max(0,eclipseDim-dt*0.8);                                           // decadimento morbido (l'eclissi lo ricarica finché è in totalità)
+  cinePass.uniforms.uVignette.value=1.0+rocketE*0.22+director.surge*0.08+eclipseDim;  // tunnel in warp + iris-down alla totalità dell'eclissi
+  cinePass.uniforms.uGrain.value=Math.min(0.026, 0.020*(1.0+director.surge*0.30));    // la camera "sente" la caduta; nero pulito per l'encoder
   bloomPass.strength=Math.min(0.78, 0.36+director.cur.aB*0.30+director.surge*0.20);   // bloom ridotto + cap più basso → il centro non si brucia, dettagli/UI restano leggibili
+  bloomPass.threshold=Math.max(0.82, 0.90-director.cur.neb*0.06-director.surge*0.02); // firma per-mood: nursery morbida (~0.84), abisso chirurgico (0.90); pavimento 0.82 (il jitter di regione porta neb fino a ~1.09)
+  bloomPass.radius=Math.min(0.85, 0.48+director.cur.aB*0.28+director.surge*0.12+rocketE*0.10);   // alone ampio nei mood luminosi e in warp
 
   composer.render();
   telUpdate(dt); updateAccent(dt); updateSky(dt);   // accento UI + crossfade sfondi col mood
