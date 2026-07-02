@@ -560,7 +560,7 @@ function updateGalaxies(dt,speed){ if(!galaxies) return;
 let sky,sky2,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
 // SFONDI multipli (varietà): Via Lattea + 8 nebulose equirettangolari (assets/skies/), crossfade lazy-load (1-2 texture in VRAM alla volta)
 const SKY_FILES=['milkyway_8k.jpg'].concat(Array.from({length:50},(_,i)=>'skies/gen_'+String(i+1).padStart(2,'0')+'.jpg'));   // Via Lattea grezza (iniziale) + 50 varianti reali ESO (come gen_25)
-const SKY_QV='?v=10';       // cache-buster degli sfondi: BUMPA questo numero ogni volta che rigeneri i gen_ (v10 = rigenerati a 6000px, risoluzione nativa ESO)
+const SKY_QV='?v=11';       // cache-buster degli sfondi: BUMPA a ogni rigenerazione (v11 = canvas 8192, banda a dettaglio ~nativo, JPEG q95 senza chroma subsampling)
 const SKY_ROT_MIN=1;        // la rotazione pesca SOLO dai gen_ belli (indici 1..50), mai la Via Lattea grezza scura (0)
 let skyIdx=0, skyT=0, skyEvery=2, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;   // primo gen bello ~2s dopo l'avvio, poi rotazione 3-5.5 min
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
@@ -607,10 +607,10 @@ let fatT=150+Math.random()*180, fatClock=-1, fatAmp=0;   // prossimo ciclo tra ~
 // helmet = casco a bolla procedurale per gli animali "nudi": coordinate 0..1 nel box del modello + raggio relativo all'altezza (si tarano con cadutaHelmet).
 const CHARACTERS=[
   {name:'astronaut', file:'assets/astronaut.glb?v=2', credit:'Astronaut © Poly/Google'},
-  {name:'astrodog',  file:'assets/characters/astrodog.glb',  credit:'AstroDoggo © merrychuu (CC BY)'},   // già in tuta col suo casco
-  {name:'cat',       file:'assets/characters/cat.glb',       credit:'Cat © Empire (CC BY)',        float:0.85, yaw:0, helmet:{x:0.5,y:0.815,z:0.87,r:0.235}},   // tarato col char-viewer (testa a +z)
-  {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © BlueMesh (CC BY)',  float:0.8, helmet:{x:0.5,y:1.39,z:0.135,r:0.17}, hide:['circle']},   // hy>1: la posa scheletrica è più alta del bbox; circle = disco di terra da nascondere
-  {name:'elephant',  file:'assets/characters/elephant.glb',  credit:'Elephant © denys4624 (CC BY)', float:0.8, yaw:0, helmet:{x:0.5,y:0.72,z:0.68,r:0.30}},     // tarato col char-viewer (proboscide fuori bolla)
+  {name:'astrodog',  file:'assets/characters/astrodog.glb',  credit:'AstroDoggo © merrychuu (CC BY)', float:1.15},   // già in tuta col suo casco; nuotata umanoide vivace
+  {name:'cat',       file:'assets/characters/cat.glb',       credit:'Cat © Empire (CC BY)',        float:1.15, quad:1, yaw:0, helmet:{x:0.5,y:0.815,z:0.87,r:0.235}},   // tarato col char-viewer (testa a +z)
+  {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © BlueMesh (CC BY)',  float:0.8, animSpeed:0.55, helmet:{x:0.5,y:0.90,z:0.12,r:0.13}, hide:['circle']},   // animata (camminata lenta); casco tarato sul box POSATO (skinned-aware)
+  {name:'elephant',  file:'assets/characters/elephant.glb',  credit:'Elephant © denys4624 (CC BY)', float:1.1, quad:1, yaw:0, helmet:{x:0.5,y:0.72,z:0.68,r:0.30}},     // tarato col char-viewer (proboscide fuori bolla)
 ];
 let charRoster=[], charIdx=0, charT=600+Math.random()*600, charSwapAt=-1;   // rotazione ogni ~10-20 min, swap al picco del twinkle-flash
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
@@ -736,30 +736,58 @@ function build(){
   // PERSONAGGI: setupCharacter applica a QUALSIASI GLB la stessa pipeline dell'astronauta
   // (scala a 1.95, materiale-stella con glitter/rim/wrap/ciclo-grasso, scintille-Points, casco a bolla per gli animali).
   function setupCharacter(root,def,anims){
-  const box=new THREE.Box3().setFromObject(root), sz=new THREE.Vector3(), ct=new THREE.Vector3();
+  if(def.hide) root.traverse(o=>{ if(o.isMesh && def.hide.some(h=>(o.name||'').toLowerCase().includes(h))) o.visible=false; });   // mesh di servizio (dischi di terra, anatomia) nascoste PRIMA della misura
+  // MIXER prima della misura: per i modelli riggati il box va calcolato sulla POSA VISIBILE (skeleton), non sul bind della geometria
+  let mixer=null;
+  if(anims&&anims.length){ mixer=new THREE.AnimationMixer(root); anims.forEach(c=>mixer.clipAction(c).play());
+    mixer.timeScale=(def.animSpeed!==undefined?def.animSpeed:0.6);   // clip rallentata: in assenza di gravità i movimenti sono lenti e sognanti
+    mixer.update(0.001); console.log('character '+def.name+': animazione attiva ('+anims.length+' clip)'); }
+  // BOX consapevole dello skinning (SkinnedMesh.computeBoundingBox usa i vertici POSATI)
+  root.updateMatrixWorld(true);
+  const box=new THREE.Box3(); { const tb=new THREE.Box3(); let any=false;
+    root.traverse(o=>{ if(o.isMesh && o.visible){
+      if(o.isSkinnedMesh && o.computeBoundingBox){ o.computeBoundingBox(); tb.copy(o.boundingBox); }
+      else { if(!o.geometry.boundingBox) o.geometry.computeBoundingBox(); tb.copy(o.geometry.boundingBox); }
+      tb.applyMatrix4(o.matrixWorld); if(any) box.union(tb); else { box.copy(tb); any=true; } } }); }
+  const sz=new THREE.Vector3(), ct=new THREE.Vector3();
   box.getSize(sz); box.getCenter(ct); const s=(def.scale||1)*2.15/sz.y;   // personaggio un filo più GRANDE in quadro (era 1.95)
   root.scale.setScalar(s); root.position.set(-ct.x*s,-ct.y*s,-ct.z*s); root.rotation.y=(def.yaw!==undefined?def.yaw:Math.PI);
-  if(def.hide) root.traverse(o=>{ if(o.isMesh && def.hide.some(h=>(o.name||'').toLowerCase().includes(h))) o.visible=false; });   // mesh di servizio (dischi di terra, anatomia) nascoste
+  const uQuad={value:def.quad?1:0};   // 1 = nuotata da QUADRUPEDE (pagaiata diagonale, collo/coda), 0 = umanoide
   let _sparkMesh=null,_sparkVn=0;   // mesh più grande → ospiterà le scintille-Points (scelto nel traverse)
-  root.traverse(o=>{ if(o.isMesh&&o.material){ o.material.color=new THREE.Color(0xffffff); o.material.metalness=0.16; o.material.roughness=0.78; o.material.envMapIntensity=1.10;   // tuta più luminosa (raccoglie più cielo)
+  root.traverse(o=>{ if(o.isMesh&&o.material){
+    if(!o.material.isMeshStandardMaterial){   // materiali legacy (unlit/phong/specGloss) → convertiti a PBR: niente crash uniforms, e prendono luce
+      const old=o.material; o.material=new THREE.MeshStandardMaterial({map:old.map||null,color:(old.color?old.color.clone():new THREE.Color(0xffffff)),roughness:0.8,metalness:0.05,transparent:!!old.transparent,side:old.side!==undefined?old.side:THREE.FrontSide}); }
+    if(o.material.map) o.material.color=new THREE.Color(0xffffff);   // con texture: colore neutro; senza: si preserva la tinta del modello
+    o.material.metalness=0.16; o.material.roughness=0.78; o.material.envMapIntensity=1.10;   // tuta più luminosa (raccoglie più cielo)
     if(!o.isSkinnedMesh && o.geometry.attributes.position.count>_sparkVn){ _sparkMesh=o; _sparkVn=o.geometry.attributes.position.count; }
     o.material.normalScale&&o.material.normalScale.set(1.1,1.1);   // un filo più di rilievo dalla normal map → più forma
     o.material.emissive=new THREE.Color(0x000000);                 // base spenta: l'emissive lo usa SOLO il visore (sotto)
     // animazione "caduta libera": gli arti (estremità) ondeggiano lentamente — vertex displacement che preserva il PBR
     o.geometry.computeBoundingBox(); const bb=o.geometry.boundingBox;
-    o.material.onBeforeCompile=(sh)=>{ sh.uniforms.uTime=manFloatTime; sh.uniforms.uFloatAmt=manFloatAmt; sh.uniforms.uArmOpen=manArmOpen; sh.uniforms.uArmBack=manArmBack; sh.uniforms.uBMin={value:bb.min.clone()}; sh.uniforms.uBMax={value:bb.max.clone()}; sh.uniforms.uFatV=uFat;
+    o.material.onBeforeCompile=(sh)=>{ sh.uniforms.uTime=manFloatTime; sh.uniforms.uFloatAmt=manFloatAmt; sh.uniforms.uArmOpen=manArmOpen; sh.uniforms.uArmBack=manArmBack; sh.uniforms.uBMin={value:bb.min.clone()}; sh.uniforms.uBMax={value:bb.max.clone()}; sh.uniforms.uFatV=uFat; sh.uniforms.uQuad=uQuad;
       sh.uniforms.uHit=uHit; sh.uniforms.uManGrade=manGrade; sh.uniforms.uManKey=manKey; sh.uniforms.uEnvDir=manEnvDir; sh.uniforms.uStarTw=uStarTw;   // VISORE/TUTA: rim, riflesso, bagliore, twinkle-stella
-      sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform float uArmBack;uniform float uFatV;uniform vec3 uBMin,uBMax;\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.vertexShader.replace('#include <begin_vertex>',
+      sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform float uArmBack;uniform float uFatV;uniform float uQuad;uniform vec3 uBMin,uBMax;\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.vertexShader.replace('#include <begin_vertex>',
         `#include <begin_vertex>
          vec3 _nr=(position-uBMin)/max(uBMax-uBMin,vec3(1e-4));
          float _h=(uBMax.y-uBMin.y); float _ax=_nr.x-0.5; float _side=_ax>=0.0?1.0:-1.0;
          float _arm=smoothstep(0.42,1.0,abs(_ax)*2.0); float _leg=smoothstep(0.5,0.02,_nr.y); float _t=uTime*0.95;
-         transformed.y += sin(_t + _side*0.4)*_h*0.055*_arm*uFloatAmt;            // braccia su/giù (ridotte: meno stiramento)
-         transformed.z += sin(_t*0.85 + 1.2)*_h*0.05*_arm*uFloatAmt;              // braccia avanti/dietro
-         transformed.x += sin(_t*0.9)*_h*0.025*_arm*_side*uFloatAmt;              // braccia apri/chiudi
-         transformed.z += sin(_t*0.8 + _side*3.14159)*_h*0.12*_leg*uFloatAmt;     // gambe a forbice
-         transformed.x += sin(_t*0.7)*_h*0.06*_leg*_side*uFloatAmt;
-         transformed.y += sin(_t*0.6 + _side*3.14159)*_h*0.05*_leg*uFloatAmt;
+         float _bip=uFloatAmt*(1.0-uQuad); float _qd=uFloatAmt*uQuad;              // umanoide vs QUADRUPEDE (mai insieme)
+         transformed.y += sin(_t + _side*0.4)*_h*0.055*_arm*_bip;                 // braccia su/giù (ridotte: meno stiramento)
+         transformed.z += sin(_t*0.85 + 1.2)*_h*0.05*_arm*_bip;                   // braccia avanti/dietro
+         transformed.x += sin(_t*0.9)*_h*0.025*_arm*_side*_bip;                   // braccia apri/chiudi
+         transformed.z += sin(_t*0.8 + _side*3.14159)*_h*0.12*_leg*_bip;          // gambe a forbice
+         transformed.x += sin(_t*0.7)*_h*0.06*_leg*_side*_bip;
+         transformed.y += sin(_t*0.6 + _side*3.14159)*_h*0.05*_leg*_bip;
+         // NUOTATA QUADRUPEDE: zampe che PAGAIANO a coppie diagonali, collo/testa e coda che ondeggiano, onda dolce lungo il corpo
+         float _qz=(_nr.z-0.5)*2.0;                                               // -1 dietro .. +1 davanti
+         float _legQ=smoothstep(0.55,0.15,_nr.y);                                 // zampe = parte bassa
+         float _diag=_side*(step(0.0,_qz)*2.0-1.0);                               // coppie diagonali (trotto)
+         transformed.z += sin(_t*1.25 + _diag*1.5708)*_h*0.10*_legQ*_qd;          // pagaiata avanti/indietro
+         transformed.y += cos(_t*1.25 + _diag*1.5708)*_h*0.05*_legQ*_qd;          // e su/giù (circolare)
+         float _extQ=smoothstep(0.5,0.9,_nr.y)*smoothstep(0.30,0.85,abs(_qz));    // collo/testa + coda (estremi alti)
+         transformed.x += sin(_t*0.7 + _qz*1.2)*_h*0.05*_extQ*_qd;                // ondeggio laterale del collo e della coda
+         transformed.y += sin(_t*0.9 + _qz*2.0)*_h*0.04*_extQ*_qd;                // annuire dolce
+         transformed.y += sin(_t*0.55 + _nr.z*2.5)*_h*0.025*_qd;                  // onda che percorre il corpo (delfino lentissimo)
          transformed.x += sin(_t*0.5 + _nr.y*3.0)*_h*0.014*uFloatAmt;
          transformed.x += _h*0.09*_arm*_side*uArmOpen;            // CELEBRAZIONE: braccia aperte (ridotta, niente più stiramento)
          transformed.y += _h*0.03*_arm*uArmOpen;                  // braccia leggermente alzate
@@ -852,8 +880,6 @@ function build(){
           void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d); float a=smoothstep(0.5,0.0,r)*0.3+smoothstep(0.12,0.0,r);
           gl_FragColor=vec4(vec3(1.0,0.98,0.94), a*vB*(0.7+1.3*uTw)); }`}));               // sul twinkle globale i pinpoint sforano nel bloom
       sparks.frustumCulled=false; _sparkMesh.add(sparks); } }   // figlio del mesh → eredita TUTTE le rotazioni gratis
-  let mixer=null;
-  if(anims&&anims.length){ mixer=new THREE.AnimationMixer(root); anims.forEach(c=>mixer.clipAction(c).play()); console.log('character '+def.name+': animazione attiva ('+anims.length+' clip)'); }
   return {root,def,sparks,mixer,animated:!!(anims&&anims.length)};
   }
   // personaggio iniziale = astronauta (obbligatorio); gli animali si caricano in background dopo l'avvio

@@ -87,7 +87,7 @@ def main():
         sat = float(rng.uniform(1.05, 1.35))
         arr = process(base, roll, flip, vscale, voff, tint, gain, gamma, sat)
         fn = f"{OUTDIR}/sample_{k+1}_{name}.jpg" if SAMPLE else f"{OUTDIR}/gen_{k+1:02d}.jpg"
-        Image.fromarray(arr, "RGB").save(fn, quality=90)
+        Image.fromarray(arr, "RGB").save(fn, quality=95, subsampling=0)   # stelle = punti colorati 1px: niente chroma 4:2:0 (sbiadisce i colori stellari)
         if SAMPLE or (k+1) % 10 == 0 or k == 0: print("ok", os.path.basename(fn), "tint=%s gain=%.2f gamma=%.2f" % (name, gain, gamma))
     print("done", items)
 

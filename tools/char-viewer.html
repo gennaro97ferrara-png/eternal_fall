@@ -20,7 +20,15 @@ const dl=new THREE.DirectionalLight(0xffffff,2.2); dl.position.set(2,3,4); scene
 const dl2=new THREE.DirectionalLight(0x8899ff,0.8); dl2.position.set(-3,1,-2); scene.add(dl2);
 new GLTFLoader().load(M,(g)=>{
   const root=g.scene; scene.add(root);
-  const box=new THREE.Box3().setFromObject(root), sz=new THREE.Vector3(), ct=new THREE.Vector3();
+  // stessa misura di setupCharacter: mixer in posa + box consapevole dello skinning
+  if(g.animations&&g.animations.length){ const mx=new THREE.AnimationMixer(root); g.animations.forEach(a=>mx.clipAction(a).play()); mx.update(0.001); }
+  root.updateMatrixWorld(true);
+  const box=new THREE.Box3(); { const tb=new THREE.Box3(); let any=false;
+    root.traverse(o=>{ if(o.isMesh && o.visible){
+      if(o.isSkinnedMesh && o.computeBoundingBox){ o.computeBoundingBox(); tb.copy(o.boundingBox); }
+      else { if(!o.geometry.boundingBox) o.geometry.computeBoundingBox(); tb.copy(o.geometry.boundingBox); }
+      tb.applyMatrix4(o.matrixWorld); if(any) box.union(tb); else { box.copy(tb); any=true; } } }); }
+  const sz=new THREE.Vector3(), ct=new THREE.Vector3();
   box.getSize(sz); box.getCenter(ct);
   // casco-guida in wireframe alle coordinate normalizzate della def
   const hm=new THREE.Mesh(new THREE.SphereGeometry(1,20,14), new THREE.MeshBasicMaterial({color:0x66e6d8,wireframe:true,transparent:true,opacity:0.7}));
