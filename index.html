@@ -3805,7 +3805,8 @@ function zoomLoadCfg(){ if(zoomCfgP) return zoomCfgP;
     const arr=(lv&&lv.levels)||lv, out=[];
     if(Array.isArray(arr)) for(const e of arr){ if(!e||!e.file||!e.angle_deg) continue;
       const f=String(e.file), aw=+e.angle_deg[0], ah=+e.angle_deg[1]; if(!(aw>0)||!(ah>0)) continue;
-      out.push({file:(f.indexOf('/')>=0?f:'assets/zoom/'+f), aw, ah, aIn:aw, lgA:Math.log(aw), lgB:Math.log(aw*ZOOM_FADE_LO), credit:e.credit||'', state:0, tex:null, ldGen:-1}); }   // state: 0=da caricare 1=in volo 2=pronto 3=rotto (saltato); aIn = Θ di aggancio (il primo della catena viene riancorato a Θ0 per-dive)
+      const pxw=(e.px&&+e.px[0])||0, pxh=(e.px&&+e.px[1])||0;      // dimensioni native del JPEG (per il resize adattivo in zLoadLevel)
+      out.push({file:(f.indexOf('/')>=0?f:'assets/zoom/'+f), aw, ah, pxw, pxh, aIn:aw, lgA:Math.log(aw), lgB:Math.log(aw*ZOOM_FADE_LO), credit:e.credit||'', state:0, tex:null, ldGen:-1}); }   // state: 0=da caricare 1=in volo 2=pronto 3=rotto (saltato); aIn = Θ di aggancio (il primo della catena viene riancorato a Θ0 per-dive)
     out.sort((a,b)=>b.aw-a.aw);                                   // catena dal campo più largo al più stretto
     if(!out.length) throw new Error('levels.json vuoto/invalido');
     zoomGC=(gc&&gc.skies)||gc; if(!zoomGC||typeof zoomGC!=='object') throw new Error('sky-gc.json invalido');
@@ -3865,8 +3866,16 @@ function zSlotOf(i){ if(!zoomQuads) return null; return zoomQuads[0].lv===i?zoom
 function zFreeTex(L){ if(!L.tex) return; try{ if(L.tex.image&&L.tex.image.close) L.tex.image.close(); }catch(_){} try{L.tex.dispose();}catch(_){} L.tex=null; }
 // carica un livello: fetch → createImageBitmap (decode fuori dal main thread, flip in decodifica) → Texture
 function zLoadLevel(i){ const L=zoomLevels[i]; if(L.state!==0) return; L.state=1; const gen=zoomGen; L.ldGen=gen;   // ldGen: il marker "in volo" appartiene a QUESTO load (un resolve stantio non tocca quello di un dive nuovo)
+  // texture ADATTIVA al canvas reale: su finestra piccola non servono 8192px e l'upload sincrono
+  // (texImage2D+mipmap, ~150MB) può stallare il processo GPU sotto pressione di memoria ("Page
+  // Unresponsive" su Mac carichi). Budget: ~2.2 texel per px fisico (M scende fino a ~0.47),
+  // full-res solo quando il canvas è largo ≥3800px (live/rec 4K). Il resize è nel decoder, off-thread.
+  const _cw=(renderer&&renderer.domElement)?renderer.domElement.width:1920;
+  const _tw=Math.min(L.pxw||8192, Math.max(2048, Math.ceil(_cw*2.2/256)*256));
   fetch(L.file).then(r=>{ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })
-    .then(b=>createImageBitmap(b,{imageOrientation:'flipY',premultiplyAlpha:'none',colorSpaceConversion:'none'}))
+    .then(b=>{ const o={imageOrientation:'flipY',premultiplyAlpha:'none',colorSpaceConversion:'none'};
+      if(L.pxw&&L.pxh&&_tw<L.pxw){ o.resizeWidth=_tw; o.resizeHeight=Math.round(_tw*L.pxh/L.pxw); o.resizeQuality='high'; }
+      return createImageBitmap(b,o); })
     .then(bmp=>{ if(gen!==zoomGen||zoomState==='idle'){ try{bmp.close();}catch(_){} if(L.ldGen===gen&&L.state===1) L.state=0; return; }   // dive finito/cambiato nel frattempo → niente residenza
       const t=new THREE.Texture(bmp); t.flipY=false; t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO;
       t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.magFilter=THREE.LinearFilter;
