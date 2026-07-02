@@ -2189,8 +2189,8 @@ const CineShader={
 
 function applyDirector(){
   const c=director.cur;
-  if(sky){ sky.material.color.copy(director.grade).lerp(_white,0.90).multiplyScalar(Math.max(IS_LIVE?0.98:0.92,c.skyBright)*(IS_LIVE?1.06:1.0));   // sfondo tinto SOLO 10% dal mood → i cieli ESO restano reali e LUMINOSI (come gen_25), non attenuati — in place, niente alloc
-    if(sky2 && sky2.visible) sky2.material.color.copy(sky.material.color); }   // durante il crossfade tingi anche lo sfondo entrante
+  if(sky){ sky.material.color.copy(director.grade).lerp(_white,0.90).multiplyScalar(Math.max(IS_LIVE?0.98:0.92,c.skyBright)*(IS_LIVE?1.06:1.0)*zoomSkyDim);   // sfondo tinto SOLO 10% dal mood → i cieli ESO restano reali e LUMINOSI (come gen_25), non attenuati — in place, niente alloc; ×zoomSkyDim (1 a riposo): il deep zoom oscura la sfera nelle fasi profonde
+    if(sky2 && sky2.visible) sky2.material.color.copy(sky.material.color); }   // durante il crossfade tingi anche lo sfondo entrante (eredita anche il dim)
   if(keyLight){ keyLight.color.copy(_white).lerp(director.key,0.5); keyLight.intensity=c.kInt; }   // tinta regione attenuata
   if(cinePass){ cinePass.uniforms.uGrade.value.copy(director.grade);
     cinePass.uniforms.uGradeHi.value.copy(director.key);                                     // split-tone: highlight verso la key del preset
@@ -3800,6 +3800,7 @@ let zoomCurI=-1, zoomNxtI=-1;      // indice livello corrente/entrante (-1 = L0 
 let zoomGCu=0.5, zoomGCv=0.5, zoomFlip=false, zoomProcOp=0, zoomHandoff=false, _zCycleDone=false, zoomGen=0;   // zoomGen: scarta i load in volo di un dive precedente
 let zoomAimed=false, zoomAimT=0, zoomArmT=0;   // puntamento GC (il cielo ruota finché il bersaglio non è in asse) + watchdog dello stato 'arm'
 let zoomHoldT=0, zoomRebirth=0, zoomHold=10, zoomWorldMul=1, zoomWorldBoost=5;   // loop infinito: respiro nel procedurale + rinascita su nuovo cielo; boost velocità mondo ×5: lo sfondo zoom cresce ~8%/s (esponenziale) → i corpi devono crescere PIÙ in fretta o l'occhio li incolla al flusso ("cadono insieme")
+let zoomSkyDim=1;   // oscuramento sfera sky (×tint in applyDirector, 1 a riposo): il puntamento avviene AL BUIO (blink — la sfera che ruota leggerebbe come "camera che gira" coi pianeti incollati) e nelle fasi procedurali dietro il flusso non si vede niente
 const ZOOM_ENV_FLOOR=0.35;   // polvere/nebbie mai del tutto a zero durante il dive: i pianeti restano "dentro" la scena
 const ZP_N=2500, ZP_RMIN=14, ZP_RMAX=4800, ZP_Z=-4200;   // finale procedurale: disco di stelle in flusso radiale
 const _zDir=new THREE.Vector3(), _zUp=new THREE.Vector3(), _zFwd=new THREE.Vector3(), _zM=new THREE.Matrix4(), _zZero=new THREE.Vector3(0,0,0);   // scratch riusati (zero alloc per-frame)
@@ -3944,7 +3945,7 @@ function zoomFinishExit(){
   if(zoomRig) zoomRig.visible=false;
   zoomCurI=-1; zoomNxtI=-1; zoomProcOp=0; zoomHandoff=false; zoomT=0; zoomFovKick=0;
   zoomAimed=false; zoomAimT=0; zoomSkyPitch=0;   // puntamento azzerato (il residuo di pitch è già rientrato in rampa durante l'exit)
-  zoomHoldT=0; zoomRebirth=0; zoomWorldMul=1;    // loop: contatori rinascita e velocità mondo ai valori di riposo
+  zoomHoldT=0; zoomRebirth=0; zoomWorldMul=1; zoomSkyDim=1;   // loop: contatori rinascita, velocità mondo e oscuramento sfera ai valori di riposo
   zoomSkyRotMul=1; zoomEnvMul=1; zoomState='idle';
   console.log('[zoom] dive concluso — caduta normale ripresa');
 }
@@ -3973,15 +3974,23 @@ function deepZoomUpdate(dt){
   // visivamente una deriva) finché il bersaglio non è in asse: mai 90s di zoom "a vuoto" fuori inquadratura.
   if(dive&&!zoomAimed){
     zoomAimT+=dt; camera.getWorldDirection(_zFwd);
+    // BLINK: la sfera che ruota a vista leggerebbe come "camera che gira" (coi pianeti fermi =
+    // incollati alla camera). Quindi: si ruota SOLO al buio (zoomSkyDim→0, gestito sotto) e lì
+    // il servo va a passo pieno → converge in pochi frame; il cielo riemerge già puntato.
+    const dark=zoomSkyDim<0.05, cap=dark?50:0.0;                                      // a sfera visibile NON si ruota (cap 0)
     const eYawRaw=Math.atan2(_zFwd.x,_zFwd.z)-Math.atan2(_zDir.x,_zDir.z);
     const eYaw=Math.atan2(Math.sin(eYawRaw),Math.cos(eYawRaw));                       // errore di azimut avvolto in ±π
     const eP=Math.asin(THREE.MathUtils.clamp(_zFwd.y,-1,1))-Math.asin(THREE.MathUtils.clamp(_zDir.y,-1,1));
-    sky.rotation.y+=THREE.MathUtils.clamp(eYaw*2*dt,-0.25*dt,0.25*dt);                // ruotare il cielo di +δ sposta l'azimut del GC di +δ
-    zoomSkyPitch=THREE.MathUtils.clamp(zoomSkyPitch+THREE.MathUtils.clamp(eP*2*dt,-0.12*dt,0.12*dt),-0.6,0.6);   // v=0.5 → serve solo il beccheggio verso l'asse camera (~5°)
-    if(_zDir.angleTo(_zFwd)<0.02||zoomAimT>25){                                       // in asse (<~1.1°) o paracadute 25s
-      zoomAimed=true; zoomFovKick=2;                                                  // micro-kick FOV +2° all'inizio VERO del tuffo
-      console.log('[zoom] puntamento GC in '+zoomAimT.toFixed(1)+'s (residuo '+(_zDir.angleTo(_zFwd)*180/Math.PI).toFixed(2)+'°) → tuffo'); }
+    sky.rotation.y+=THREE.MathUtils.clamp(eYaw*2,-cap,cap)*dt;                        // ruotare il cielo di +δ sposta l'azimut del GC di +δ
+    zoomSkyPitch=THREE.MathUtils.clamp(zoomSkyPitch+THREE.MathUtils.clamp(eP*2,-cap*0.5,cap*0.5)*dt,-0.6,0.6);   // v=0.5 → serve solo il beccheggio verso l'asse camera (~5°)
+    if((dark&&_zDir.angleTo(_zFwd)<0.02)||zoomAimT>25){                               // in asse (<~1.1°) o paracadute 25s
+      zoomAimed=true; zoomFovKick=2;                                                  // micro-kick FOV +2° all'inizio VERO del tuffo (il cielo riemerge col dim sotto)
+      console.log('[zoom] blink-puntamento GC in '+zoomAimT.toFixed(1)+'s (residuo '+(_zDir.angleTo(_zFwd)*180/Math.PI).toFixed(2)+'°) → tuffo'); }
   }
+  // oscuramento sfera: 0 durante puntamento e fasi procedurali (dietro il flusso NON si deve vedere
+  // il cielo a scala normale), torna 1 col nuovo ciclo/uscita; rampa ~0.7s
+  const dimTgt=(zoomState==='dive')?Math.min(zoomAimed?1:0,1-zoomProcOp):1;
+  zoomSkyDim+=(dimTgt-zoomSkyDim)*Math.min(1,dt*1.4);
   const rf=(zoomState==='exit')?(1-smooth(0,1,zoomExitT/zoomExitDur)):1;          // fade-out globale del rig in uscita
   if(dive&&zoomAimed&&!zoomHandoff){
     // preload: il successivo parte a metà (in log Θ) della finestra del livello attivo; al più 2 visibili + 1 in volo
