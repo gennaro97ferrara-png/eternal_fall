@@ -17,6 +17,12 @@ descrizione del video YouTube**:
 - Milky Way panorama © ESO / Serge Brunier — Creative Commons Attribution 4.0 (https://www.eso.org/public/images/eso0932a/). Le 50 varianti di sfondo sono derivate da questa immagine (rotazione/tinta/compressione, `tools/vary-skies.py`).
 - Texture dei pianeti © Solar System Scope (https://www.solarsystemscope.com/textures/) — Creative Commons Attribution 4.0.
 
+## Deep Zoom (zoom infinito nel centro galattico, `assets/zoom/`)
+
+- Deep Star Maps 2020 — NASA/Goddard Space Flight Center Scientific Visualization Studio; dati Gaia DR2 / Hipparcos-2 / Tycho-2 (https://svs.gsfc.nasa.gov/4851).
+- VISTA VVV: mosaico da 9 gigapixel del bulge galattico © ESO/VVV Survey/D. Minniti — CC BY 4.0; acknowledgement: Ignacio Toledo, Martin Kornmesser (https://www.eso.org/public/images/eso1242a/).
+- HAWK-I GALACTICNUCLEUS: il centro galattico nel vicino infrarosso © ESO/Nogueras-Lara et al. — CC BY 4.0 (https://www.eso.org/public/images/eso1920a/).
+
 ## Musica e voce
 
 - 13 tracce generate con ElevenLabs Music (licenza d'uso commerciale ElevenLabs).

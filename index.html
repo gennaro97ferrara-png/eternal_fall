@@ -970,7 +970,8 @@ function build(){
   window.cadutaVoiceStatus=()=>audio?{lib:audio.voiceLib.length,capsule:audio.capIdx.length,identitarie:audio.soulIdx.length,perCategoria:Object.fromEntries(Object.entries(audio.capByCat||{}).map(([k,v])=>[k,v.length])),busy:audio.voiceBusy,prossimaIn:Math.max(0,(audio.voiceEvery-audio.voiceT)|0)+'s',refrainIn:Math.max(0,(audio.soulEvery-audio.soulT)|0)+'s',ultime:(audio.voiceRecent||[]).slice(-6).map(i=>(audio.voiceLib[i]||{}).id||i)}:'audio non pronto';
   window.cadutaSpeak=(tag)=>{ if(!audio)return'audio non pronto'; if(tag) audio.enqueueVoice(tag); audio.voiceT=audio.voiceEvery; return tag?('prossima capsula → '+tag):'capsula forzata ora'; };   // forza subito una capsula (opz. con tag fenomeno)
   window.cadutaAccent=(f)=>{ if(f) applyAccent(f); return {famiglia:_accFam, disponibili:ACCENT_FAMS.map(x=>x.name)}; };   // forza/ispeziona la famiglia d'accento dinamico
-  window.cadutaSky=(i)=>{ if(typeof i==='number'){ skyFading=false; skyLoading=false; if(sky2)sky2.visible=false; } cycleSky(typeof i==='number'?i:undefined); return {caricando:SKY_FILES[skyPendIdx], attuale:SKY_FILES[skyIdx], sfondi:SKY_FILES.length}; };   // cambia sfondo (test/anteprima); bypassa il crossfade in corso
+  window.cadutaSky=(i)=>{ if(zoomState!=='idle') return 'deep zoom in corso ('+zoomState+') — cadutaZoomStop() prima di cambiare sfondo';   // l'ancora GC (u/v/flip) è agganciata allo sfondo del dive: mai swap sotto i quad
+    if(typeof i==='number'){ skyFading=false; skyLoading=false; if(sky2)sky2.visible=false; } cycleSky(typeof i==='number'?i:undefined); return {caricando:SKY_FILES[skyPendIdx], attuale:SKY_FILES[skyIdx], sfondi:SKY_FILES.length}; };   // cambia sfondo (test/anteprima); bypassa il crossfade in corso
   window.cadutaScene=(name)=>{ const p=PRESETS.find(x=>x.name===name); if(!p) return PRESETS.map(x=>x.name);   // salta a un mood (test/anteprima)
     director.from=Object.assign({},director.cur); director.from.grade=director.grade.getHex(); director.from.key=director.key.getHex();
     director.to=Object.assign({},p); director.t=0; director.dur=2; director.hold=600; return 'scena → '+name; };
@@ -2198,7 +2199,7 @@ function cycleSky(target){ if(skyFading||skyLoading||!sky2) return; let n=(typeo
   }, undefined, ()=>{ skyLoading=false; });   // errore di rete → annulla, riprova al prossimo giro (niente crash)
 }
 function updateSky(dt){ if(!sky2) return;
-  skyT+=dt; if(skyT>=skyEvery){ skyT=0; skyEvery=180+Math.random()*150; cycleSky(); }   // cambia sfondo ogni ~3-5.5 min (varietà)
+  skyT+=dt; if(skyT>=skyEvery && zoomState==='idle'){ skyT=0; skyEvery=180+Math.random()*150; cycleSky(); }   // cambia sfondo ogni ~3-5.5 min (varietà); MAI durante un DEEP ZOOM
   if(skyFading){ skyFade+=dt/3; const a=skyFade<1?(skyFade*skyFade*(3-2*skyFade)):1; sky2.material.opacity=a;
     if(skyFade>=1){ const old=sky.material.map; sky.material.map=sky2.material.map; sky.material.needsUpdate=true;
       sky2.material.opacity=0; sky2.material.map=null; sky2.visible=false; skyFading=false; skyIdx=skyPendIdx;
@@ -2957,6 +2958,7 @@ function applyTier(){
   if(fastDust) fastDust.material.uniforms.uPix.value=PIX;
   if(spores) spores.mat.uniforms.uPix.value=PIX; if(cluster) cluster.mat.uniforms.uPix.value=PIX;   // dimensione punti coerente col pixelRatio
   if(manSparks) manSparks.material.uniforms.uPix.value=PIX;
+  if(zoomStarsMat) zoomStarsMat.uniforms.uPix.value=PIX;   // stelle procedurali DEEP ZOOM allineate al pixelRatio
   bloomDiv = tier>=2 ? 4 : 2;   // sotto carico il bloom scende a 1/4 di risoluzione
   onResize();
 }
@@ -3016,7 +3018,7 @@ function animate(){
   const breathe=1.0+Math.sin(shaderTime*0.131)*0.014+Math.sin(shaderTime*0.048+1.3)*0.011;
   renderer.toneMappingExposure=Math.max(IS_LIVE?1.03:0.90,exposureCur*(IS_LIVE?1.08:0.95)*breathe);   // breathe DENTRO il max: il PAVIMENTO resta garantito (mai troppo scura; su LIVE pavimento più alto, lo stream YouTube scurisce)
 
-  sky.rotation.y+=dt*0.0016; sky.rotation.x=Math.sin(shaderTime*0.004)*0.05;
+  sky.rotation.y+=dt*0.0016*zoomSkyRotMul; sky.rotation.x=Math.sin(shaderTime*0.004)*0.05*zoomSkyRotMul+zoomSkyPitch;   // ×zoomSkyRotMul: DEEP ZOOM congela la rotazione con rampa; +zoomSkyPitch: beccheggio di puntamento GC (0 a riposo = identico a prima)
   // campo stellare volumetrico: ogni strato scorre a velocità diversa (parallasse) e ricicla senza pop
   for(const L of starLayers){ L.mat.uniforms.uTime.value=shaderTime; const dzL=speed*dt*L.mul, p=L.pos;
     for(let i=0;i<L.count;i++){ p[i*3+2]+=dzL; if(p[i*3+2]>L.zF){ p[i*3]=(Math.random()*2-1)*L.half; p[i*3+1]=(Math.random()*2-1)*L.half; p[i*3+2]=L.zN; } }
@@ -3025,11 +3027,11 @@ function animate(){
   for(const s of nebSheets){ s.m.position.z+=speed*dt*0.30; s.mat.uniforms.uTime.value=shaderTime; s.m.lookAt(camera.position);
     s.mat.uniforms.uColor.value.copy(director.grade).lerp(_white,0.18);
     const zs=s.m.position.z, ops=Math.min(THREE.MathUtils.clamp((zs+6000)/1500,0,1),THREE.MathUtils.clamp((-300-zs)/1500,0,1))*(0.08+director.cur.neb*0.12);
-    s.mat.uniforms.uOp.value=ops;
+    s.mat.uniforms.uOp.value=ops*zoomEnvMul;   // ×zoomEnvMul: DEEP ZOOM pulisce le nebulose (1 a riposo)
     if(zs>-300){ s.m.position.set((Math.random()*2-1)*900,(Math.random()*2-1)*500,-6000); s.mat.uniforms.uSeed.value=Math.random()*10; } }
 
   // polvere (+ stiramento in raffica)
-  dustMat.uniforms.uTime.value=shaderTime; dustMat.uniforms.uAmt.value=director.cur.dust*0.5;   // opacità polvere dimezzata
+  dustMat.uniforms.uTime.value=shaderTime; dustMat.uniforms.uAmt.value=director.cur.dust*0.5*zoomEnvMul;   // opacità polvere dimezzata (×zoomEnvMul: DEEP ZOOM la pulisce, 1 a riposo)
   dustMat.uniforms.uStretch.value=1+THREE.MathUtils.clamp(speed/40,0,1)*0.45+director.surge*1.6+slingE*3.2+rocketE*2.5;   // + scie lunghe "warp" quando si precipita come un razzo
   dustMat.uniforms.uColor.value.copy(director.grade).lerp(_white,0.6);
   const dz=speed*dt*1.6;
@@ -3037,7 +3039,7 @@ function animate(){
   dustGeo.attributes.position.needsUpdate=true;
   // polvere ravvicinata veloce (parallasse forte davanti all'uomo)
   { const u=fastDust.userData; fastDust.material.uniforms.uColor.value.copy(director.grade).lerp(_white,0.6);
-    fastDust.material.uniforms.uAmt.value=0.4+director.cur.dust*0.6; const dzf=speed*dt*2.4;
+    fastDust.material.uniforms.uAmt.value=(0.4+director.cur.dust*0.6)*zoomEnvMul; const dzf=speed*dt*2.4;   // ×zoomEnvMul: DEEP ZOOM (1 a riposo)
     for(let i=0;i<u.N;i++){ u.pos[i*3+2]+=dzf; if(u.pos[i*3+2]>60) u.re(i,-60); }
     fastDust.geometry.attributes.position.needsUpdate=true; }
 
@@ -3258,7 +3260,8 @@ function animate(){
   camLookY += (ly2-camLookY)*Math.min(1,dt*2.2);
   tmpLook.set(camLookX,camLookY,0); camera.lookAt(tmpLook);
   camera.rotation.z+=Math.sin(camPhase*0.03)*0.010;
-  camera.fov=baseFov+Math.sin(camPhase*0.045)*1.0 + slingE*3.0 + rocketE*7.0; camera.updateProjectionMatrix();   // FOV si allarga DOLCEMENTE con la velocità (niente vibrazione "tamburo")
+  camera.fov=baseFov+Math.sin(camPhase*0.045)*1.0 + slingE*3.0 + rocketE*7.0 + zoomFovKick; camera.updateProjectionMatrix();   // FOV si allarga DOLCEMENTE con la velocità (niente vibrazione "tamburo") + micro-kick DEEP ZOOM (0 a riposo)
+  deepZoomUpdate(dt);   // DEEP ZOOM (zoom infinito): no-op totale se spento
 
   cinePass.uniforms.uTime.value=shaderTime; cinePass.uniforms.uRocket.value=rocketE;
   eclipseDim=Math.max(0,eclipseDim-dt*0.8);                                           // decadimento morbido (l'eclissi lo ricarica finché è in totalità)
@@ -3767,6 +3770,270 @@ window.cadutaMusicPause=()=>!!(audio.music&&audio.music.setEnabled(false));
 window.cadutaMusicPlay=()=>!!(audio.music&&audio.music.setEnabled(true));
 window.cadutaMusicStatus=()=>audio.music?audio.music.status():{enabled:false,title:'audio non avviato'};
 
+/* ==================== DEEP ZOOM (zoom infinito) ==================== */
+// Evento di regia "deep dive": zoom continuo verso il CENTRO GALATTICO dello sfondo IN ONDA —
+// catena di immagini reali annidate (assets/zoom/levels.json, L1..L6) + finale procedurale infinito.
+// Vedi tools/zoom/SPEC.md. TUTTO SPENTO di default: senza cadutaZoom() — o senza i manifest in
+// assets/zoom/ — la scena è IDENTICA a prima (gli hook zoomSkyRotMul/zoomEnvMul/zoomFovKick/zoomSkyPitch valgono 1/1/0/0).
+const ZOOM_DIST=4500;        // distanza locale dei quad nel rig (tra la sfera sky a 6000 e le stelle)
+const ZOOM_FADE_LO=0.72;     // il livello i entra su Θ ∈ [A_i, 0.72·A_i] (smoothstep in log Θ)
+const ZOOM_PROC_K=0.45;      // il finale procedurale prende il testimone sotto Θ = A_ultimo·0.45
+// Convenzione UV→direzione di SphereGeometry (three r160, assets/vendor/three):
+//   vertex = (-cos(φ)·sinθ, cosθ, sin(φ)·sinθ) con φ=u·2π, θ=v_geo·π e uv.y = 1 - v_geo;
+//   gli sfondi usano TextureLoader (flipY=true) → la frazione v DALL'ALTO dell'immagine = v_geo.
+// Se il marker-test (SPEC §5) trova specchio/offset, la correzione è QUI in una riga:
+const ZOOM_UV_SIGN_X=1, ZOOM_UV_SIGN_Z=1, ZOOM_UV_OFF_U=0;   // segni assi locali + offset di fase su u (in giri)
+let zoomState='idle';        // idle | arm (attende fine crossfade sky) | dive | exit
+let zoomT=0, zoomExitT=0, zoomExitDur=4, zoomDur=90, zoomMode='once', zoomK=0.09, zoomKOpt=null;
+let zoomTheta0=82, zoomTheta=82;   // Θ = gradi di cielo reale coperti dall'hFOV (driver master del dive)
+let zoomSkyRotMul=1, zoomEnvMul=1, zoomFovKick=0, zoomSkyPitch=0;   // HOOK letti da animate()/updateSky — inerti a riposo (1/1/0/0)
+let zoomLevels=null, zoomGC=null, zoomCfgP=null, _zoomWarn=false;   // manifest lazy (primo cadutaZoom)
+let zoomRig=null, zoomQuads=null, zoomStars=null, zoomStarsMat=null, zoomStarsPos=null;
+let zoomCurI=-1, zoomNxtI=-1;      // indice livello corrente/entrante (-1 = L0 sfera sky, -2 = catena foto finita)
+let zoomGCu=0.5, zoomGCv=0.5, zoomFlip=false, zoomProcOp=0, zoomHandoff=false, _zCycleDone=false, zoomGen=0;   // zoomGen: scarta i load in volo di un dive precedente
+let zoomAimed=false, zoomAimT=0, zoomArmT=0;   // puntamento GC (il cielo ruota finché il bersaglio non è in asse) + watchdog dello stato 'arm'
+const ZP_N=2500, ZP_RMIN=14, ZP_RMAX=4800, ZP_Z=-4200;   // finale procedurale: disco di stelle in flusso radiale
+const _zDir=new THREE.Vector3(), _zUp=new THREE.Vector3(), _zFwd=new THREE.Vector3(), _zM=new THREE.Matrix4(), _zZero=new THREE.Vector3(0,0,0);   // scratch riusati (zero alloc per-frame)
+const _zNeutral=new THREE.Color(1,1,1).multiplyScalar(IS_LIVE?1.06:1.0);   // "bianco" dei livelli profondi: stesso boost live del tint sky
+
+// manifest lazy: levels.json ({levels:[{file,angle_deg:[w,h],credit,px}]}) + sky-gc.json ({skies:{file:{u,v,flip}}})
+function zoomLoadCfg(){ if(zoomCfgP) return zoomCfgP;
+  zoomCfgP=Promise.all([
+    fetch('assets/zoom/levels.json',{signal:AbortSignal.timeout(20000)}).then(r=>{ if(!r.ok) throw new Error('levels.json http '+r.status); return r.json(); }),   // timeout: mai 'arm' appeso per sempre
+    fetch('assets/zoom/sky-gc.json',{signal:AbortSignal.timeout(20000)}).then(r=>{ if(!r.ok) throw new Error('sky-gc.json http '+r.status); return r.json(); })
+  ]).then(([lv,gc])=>{
+    const arr=(lv&&lv.levels)||lv, out=[];
+    if(Array.isArray(arr)) for(const e of arr){ if(!e||!e.file||!e.angle_deg) continue;
+      const f=String(e.file), aw=+e.angle_deg[0], ah=+e.angle_deg[1]; if(!(aw>0)||!(ah>0)) continue;
+      out.push({file:(f.indexOf('/')>=0?f:'assets/zoom/'+f), aw, ah, aIn:aw, lgA:Math.log(aw), lgB:Math.log(aw*ZOOM_FADE_LO), credit:e.credit||'', state:0, tex:null, ldGen:-1}); }   // state: 0=da caricare 1=in volo 2=pronto 3=rotto (saltato); aIn = Θ di aggancio (il primo della catena viene riancorato a Θ0 per-dive)
+    out.sort((a,b)=>b.aw-a.aw);                                   // catena dal campo più largo al più stretto
+    if(!out.length) throw new Error('levels.json vuoto/invalido');
+    zoomGC=(gc&&gc.skies)||gc; if(!zoomGC||typeof zoomGC!=='object') throw new Error('sky-gc.json invalido');
+    zoomLevels=out; return true;
+  }).catch(err=>{ if(!_zoomWarn){ _zoomWarn=true; console.warn('[zoom] manifest assenti/invalidi → deep zoom disattivo:',err&&err.message); }
+    zoomLevels=null; zoomCfgP=null; return false; });             // niente cache del fallimento: un prossimo cadutaZoom riprova
+  return zoomCfgP;
+}
+// uv del centro galattico → direzione MONDO sulla sfera sky (convenzione SphereGeometry r160 + rotazione corrente)
+function zoomGcWorldDir(out){
+  const phi=(zoomGCu+ZOOM_UV_OFF_U)*6.283185307, th=zoomGCv*Math.PI;
+  out.set(-Math.cos(phi)*Math.sin(th)*ZOOM_UV_SIGN_X, Math.cos(th), Math.sin(phi)*Math.sin(th)*ZOOM_UV_SIGN_Z);
+  return out.applyQuaternion(sky.quaternion).normalize();
+}
+// rig + 2 slot quad riusati + layer stelle procedurali: costruiti UNA volta, al primo dive (lazy)
+function zoomBuildRig(){ if(zoomRig) return;
+  zoomRig=new THREE.Group(); zoomRig.visible=false; scene.add(zoomRig);
+  zoomQuads=[];
+  for(let q=0;q<2;q++){
+    const mat=new THREE.MeshBasicMaterial({map:null,transparent:true,opacity:0,depthWrite:false,depthTest:true,fog:false});   // toneMapped default true = come la sfera sky
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(1,1),mat);
+    m.position.z=-ZOOM_DIST; m.renderOrder=-9.5; m.visible=false; m.frustumCulled=false;   // tra sfera sky (-10) e stelle (-9)
+    zoomRig.add(m); zoomQuads.push({mesh:m,lv:-1,op:0});
+  }
+  // finale L∞: ~2500 stelle in flusso radiale dal centro (modellate su makeStarLayer: psFloor 1.7·uPix, additive)
+  const pos=new Float32Array(ZP_N*3), asz=new Float32Array(ZP_N), aph=new Float32Array(ZP_N);
+  for(let i=0;i<ZP_N;i++){ const a=Math.random()*6.28318, r=ZP_RMIN*Math.exp(Math.random()*Math.log(ZP_RMAX/ZP_RMIN));   // log-uniforme = stato stazionario del flusso esponenziale (denso al centro)
+    pos[i*3]=Math.cos(a)*r; pos[i*3+1]=Math.sin(a)*r; pos[i*3+2]=ZP_Z;
+    asz[i]=0.5+Math.random()*Math.random()*3.0; aph[i]=Math.random()*6.28318; }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('aSize',new THREE.BufferAttribute(asz,1)); g.setAttribute('aPhase',new THREE.BufferAttribute(aph,1));
+  zoomStarsMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+    uniforms:{uTime:{value:0},uPix:{value:PIX},uOp:{value:0}},
+    vertexShader:`attribute float aSize;attribute float aPhase;uniform float uTime,uPix;varying float vA;
+      void main(){ float r=length(position.xy);
+      vA=smoothstep(${ZP_RMIN.toFixed(1)},${(ZP_RMIN*3).toFixed(1)},r)*(1.0-smoothstep(${(ZP_RMAX*0.82).toFixed(1)},${ZP_RMAX.toFixed(1)},r));   // nasce presso l'asse e muore al bordo senza pop
+      vA*=0.80+0.20*sin(uTime*1.6+aPhase);                              // twinkle minimo per-stella (uTime = shaderTime wrappato → 24/7 ok)
+      vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+      float psGeom=aSize*uPix*(0.35+1.8*r/${ZP_RMAX.toFixed(1)})*(4300.0/max(-mv.z,1.0));   // cresce "avvicinandosi" (verso il bordo)
+      float psFloor=1.7*uPix; float ps=max(psGeom,psFloor);              // PAVIMENTO in pixel fisici come gli star layer: mai sub-pixel
+      vA*=mix(1.0,clamp(psGeom/psFloor,0.70,1.0),step(psGeom,psFloor)); // compensa SOLO quando clampa (come makeStarLayer)
+      gl_PointSize=ps; }`,
+    fragmentShader:`uniform float uOp;varying float vA;
+      void main(){ vec2 d=gl_PointCoord-0.5; float dist=length(d);
+      float halo=smoothstep(0.5,0.0,dist), core=smoothstep(0.22,0.0,dist), peak=smoothstep(0.06,0.0,dist);
+      vec3 col=mix(vec3(0.78,0.84,1.0),vec3(1.0),peak);
+      gl_FragColor=vec4(col,(halo*0.25+core*1.1+peak*0.9)*vA*uOp); }`});
+  zoomStars=new THREE.Points(g,zoomStarsMat); zoomStars.frustumCulled=false; zoomStars.renderOrder=-9.3; zoomStars.visible=false;
+  zoomRig.add(zoomStars); zoomStarsPos=pos;
+}
+// prossimo livello USABILE della catena dopo i (salta i rotti; -2 = catena finita → nessuno)
+function zNextUsable(i){ if(!zoomLevels||i===-2) return -1;
+  for(let j=(i<0?0:i+1);j<zoomLevels.length;j++) if(zoomLevels[j].state!==3) return j; return -1; }
+function zSlotOf(i){ if(!zoomQuads) return null; return zoomQuads[0].lv===i?zoomQuads[0]:(zoomQuads[1].lv===i?zoomQuads[1]:null); }
+// libera texture + bitmap di un livello (close è idempotente: innocuo se l'upload l'ha già chiusa)
+function zFreeTex(L){ if(!L.tex) return; try{ if(L.tex.image&&L.tex.image.close) L.tex.image.close(); }catch(_){} try{L.tex.dispose();}catch(_){} L.tex=null; }
+// carica un livello: fetch → createImageBitmap (decode fuori dal main thread, flip in decodifica) → Texture
+function zLoadLevel(i){ const L=zoomLevels[i]; if(L.state!==0) return; L.state=1; const gen=zoomGen; L.ldGen=gen;   // ldGen: il marker "in volo" appartiene a QUESTO load (un resolve stantio non tocca quello di un dive nuovo)
+  fetch(L.file).then(r=>{ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })
+    .then(b=>createImageBitmap(b,{imageOrientation:'flipY',premultiplyAlpha:'none',colorSpaceConversion:'none'}))
+    .then(bmp=>{ if(gen!==zoomGen||zoomState==='idle'){ try{bmp.close();}catch(_){} if(L.ldGen===gen&&L.state===1) L.state=0; return; }   // dive finito/cambiato nel frattempo → niente residenza
+      const t=new THREE.Texture(bmp); t.flipY=false; t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO;
+      t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.magFilter=THREE.LinearFilter;
+      t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;
+      // CHIRALITÀ: la sfera BackSide mostra ogni file equirect SPECCHIATO (da dentro, u cresce verso SINISTRA);
+      // i livelli sono nel verso reale del cielo → vanno specchiati quando il file sky NON è flippato.
+      // flip:true = file già specchiato da vary-skies → la sfera lo mostra dritto → livelli dritti.
+      if(!zoomFlip){ t.repeat.x=-1; t.offset.x=1; }                      // (uv resta in [0,1], il clamp non entra mai)
+      t.onUpdate=function(){ try{ if(t.image&&t.image.close) t.image.close(); }catch(_){} t.onUpdate=null; };   // bitmap liberata DOPO l'upload GPU
+      t.needsUpdate=true; if(L.tex) zFreeTex(L); L.tex=t; L.state=2;     // zFreeTex prima: mai orfani se un doppio load dovesse sfuggire
+      try{ renderer.initTexture(t); }catch(_){} })                       // upload GPU ADESSO (preload, lontano dai crossfade): niente stall texImage2D+mipmap al primo bind
+    .catch(err=>{ if(gen!==zoomGen){ if(L.ldGen===gen&&L.state===1) L.state=0; return; }
+      L.state=3; console.warn('[zoom] livello saltato ('+L.file+'):',err&&err.message); });   // rotto → la catena lo scavalca allungando il precedente (mai crash)
+}
+// aggancia il livello i allo slot libero: il NUOVO renderizza sopra il vecchio (crossfade per copertura)
+function zAttachLevel(i){
+  const s=(zoomQuads[0].lv<0)?zoomQuads[0]:zoomQuads[1], o=(s===zoomQuads[0])?zoomQuads[1]:zoomQuads[0];
+  s.lv=i; s.op=0; s.mesh.visible=true; s.mesh.renderOrder=-9.45; o.mesh.renderOrder=-9.5;
+  s.mesh.material.map=zoomLevels[i].tex; s.mesh.material.opacity=0; s.mesh.material.needsUpdate=true;
+  zoomNxtI=i;
+}
+// libera uno slot (e opzionalmente la texture del suo livello → VRAM)
+function zDropSlot(s,disp){ const i=s.lv; s.lv=-1; s.op=0; s.mesh.visible=false; s.mesh.material.map=null; s.mesh.material.needsUpdate=true;
+  if(disp&&i>=0){ const L=zoomLevels[i]; zFreeTex(L); if(L.state===2) L.state=0; } }
+// avvio vero del dive (dopo l'eventuale attesa del crossfade sky in corso)
+function zoomStartDive(){
+  const key='assets/'+SKY_FILES[skyIdx], gc=zoomGC[key];
+  if(!gc){ console.warn('[zoom] sfondo senza aggancio GC in sky-gc.json:',key); zoomState='idle'; return; }
+  zoomGCu=+gc.u||0; zoomGCv=(gc.v===undefined)?0.5:+gc.v; zoomFlip=!!gc.flip;
+  zoomBuildRig();
+  const hf=2*Math.atan(Math.tan(camera.fov*Math.PI/360)*camera.aspect)*180/Math.PI;   // hFOV CORRENTE in gradi (vale anche in 4K rec)
+  zoomTheta0=hf; zoomTheta=hf;
+  let lastA=0; for(let i=zoomLevels.length-1;i>=0;i--){ if(zoomLevels[i].state!==3){ lastA=zoomLevels[i].aw; break; } }
+  const thetaEnd=Math.max(lastA,0.01)*ZOOM_PROC_K;
+  zoomK=zoomKOpt||Math.log(zoomTheta0/Math.max(thetaEnd,1e-4))/(zoomDur*0.85);   // default: la catena foto dura ~85% di dur
+  zoomT=0; zoomCurI=-1; zoomNxtI=-1; zoomProcOp=0; zoomHandoff=false; _zCycleDone=false; zoomGen++;   // gen nuova per i load (il micro-kick FOV parte a puntamento finito)
+  zoomAimed=false; zoomAimT=0;                       // prima del tuffo: PUNTAMENTO (il cielo ruota finché il GC non è davanti alla camera)
+  zoomRig.visible=true; zoomStars.visible=false; zoomStarsMat.uniforms.uOp.value=0;
+  zoomStarsMat.uniforms.uPix.value=(typeof _rec4k!=='undefined'&&_rec4k)?1:PIX;
+  for(const L of zoomLevels){ L.aIn=L.aw; L.lgA=Math.log(L.aw); L.lgB=L.lgA+Math.log(ZOOM_FADE_LO); }   // finestre di fade ai default (il primo viene riancorato sotto)
+  const c=zNextUsable(-1); if(c>=0){ const L1=zoomLevels[c];
+    // PRIMO crossfade = contro la SFERA (che non zooma: scala fissa 1) → finestra ancorata a Θ0, non ad A1:
+    // a opacità 0 il rapporto di scala è 1.0 e cresce solo mentre la sfera viene coperta (SPEC §4 "scale-matched")
+    L1.aIn=(L1.aw>=hf*0.6)?hf*0.98:L1.aw;            // solo se il livello copre ~lo schermo (catena degradata → finestra classica)
+    L1.lgA=Math.log(L1.aIn); L1.lgB=L1.lgA+Math.log(ZOOM_FADE_LO);
+    zLoadLevel(c); }                                 // L1 parte subito
+  zoomState='dive';
+  console.log('[zoom] dive: '+key+' (u '+zoomGCu.toFixed(4)+', v '+zoomGCv.toFixed(3)+', flip '+zoomFlip+') · Θ0 '+hf.toFixed(1)+'° · k '+zoomK.toFixed(4)+' · '+zoomMode+' '+zoomDur+'s');
+}
+function zoomBeginExit(sec){ if(zoomState==='exit') return; zoomState='exit'; zoomExitT=0; zoomExitDur=sec; }
+// fine uscita: TUTTO smontato/azzerato → un nuovo dive parte pulito, zero texture zoom residenti
+function zoomFinishExit(){
+  if(zoomQuads) for(const s of zoomQuads) zDropSlot(s,true);
+  if(zoomLevels) for(const L of zoomLevels){ zFreeTex(L); L.state=0; }   // VRAM+bitmap a zero; anche i "rotti" riprovano al prossimo dive
+  zoomGen++;   // i load ancora in volo di QUESTO dive si auto-scartano
+  if(zoomStars){ zoomStars.visible=false; zoomStarsMat.uniforms.uOp.value=0; }
+  if(zoomRig) zoomRig.visible=false;
+  zoomCurI=-1; zoomNxtI=-1; zoomProcOp=0; zoomHandoff=false; zoomT=0; zoomFovKick=0;
+  zoomAimed=false; zoomAimT=0; zoomSkyPitch=0;   // puntamento azzerato (il residuo di pitch è già rientrato in rampa durante l'exit)
+  zoomSkyRotMul=1; zoomEnvMul=1; zoomState='idle';
+  console.log('[zoom] dive concluso — caduta normale ripresa');
+}
+// update per-frame (chiamato da animate() DENTRO il try/catch, dopo la riga camera.fov): zero allocazioni
+function deepZoomUpdate(dt){
+  if(zoomState==='idle') return;
+  if(zoomState==='arm'){ zoomArmT+=dt;
+    if(zoomArmT>30){ zoomState='idle'; console.warn('[zoom] arm scaduto (30s: manifest o crossfade sky mai pronti) → dive annullato'); return; }   // watchdog: mai 'arm' per sempre (sbloccherebbe anche la rotazione sfondi)
+    if(!zoomLevels||skyFading||skyLoading) return; zoomStartDive(); if(zoomState!=='dive') return; }   // attende manifest + fine crossfade sky (poll, mai blocking)
+  if(zoomAimed) zoomT+=dt;   // il tempo del dive scorre solo a PUNTAMENTO finito (Θ resta Θ0 durante la panoramica)
+  const dive=(zoomState==='dive');
+  // rampe globali (ripristinate in uscita): rotazione sky congelata in 2s, neb/polvere puliti in 4s, kick FOV decay ~1.5s
+  zoomSkyRotMul=dive?Math.max(0,zoomSkyRotMul-dt/2):Math.min(1,zoomSkyRotMul+dt/2);
+  zoomEnvMul   =dive?Math.max(0,zoomEnvMul-dt/4)  :Math.min(1,zoomEnvMul+dt/3);
+  zoomFovKick*=Math.exp(-dt/1.5);
+  if(!dive) zoomSkyPitch*=Math.exp(-dt/1.5);   // uscita: il pitch di puntamento rientra in rampa (il crossfade sfondo forzato maschera il residuo)
+  // Θ(t)=Θ0·exp(-k·t); dopo l'handoff al procedurale resta congelato (il flusso radiale porta lo zoom all'infinito)
+  if(!zoomHandoff) zoomTheta=Math.max(zoomTheta0*Math.exp(-zoomK*zoomT),1e-4);
+  const hf=2*Math.atan(Math.tan(camera.fov*Math.PI/360)*camera.aspect)*180/Math.PI, lg=Math.log(zoomTheta);
+  // rig orientato per-frame: -Z verso il GC dello sfondo corrente, up = asse della banda (Y locale della sfera)
+  zoomGcWorldDir(_zDir); _zUp.set(0,1,0).applyQuaternion(sky.quaternion);
+  _zM.lookAt(_zZero,_zDir,_zUp); zoomRig.quaternion.setFromRotationMatrix(_zM);   // Matrix4.lookAt(eye,target,up): +Z=eye−target → il -Z del rig punta al GC
+  // PUNTAMENTO: il GC può essere OVUNQUE sulla sfera (rotazione sky accumulata) — la camera resta
+  // sull'astronauta (vincolo di regia), quindi è il CIELO a ruotare (servo yaw+pitch, panoramica ≤ ~14°/s,
+  // visivamente una deriva) finché il bersaglio non è in asse: mai 90s di zoom "a vuoto" fuori inquadratura.
+  if(dive&&!zoomAimed){
+    zoomAimT+=dt; camera.getWorldDirection(_zFwd);
+    const eYawRaw=Math.atan2(_zFwd.x,_zFwd.z)-Math.atan2(_zDir.x,_zDir.z);
+    const eYaw=Math.atan2(Math.sin(eYawRaw),Math.cos(eYawRaw));                       // errore di azimut avvolto in ±π
+    const eP=Math.asin(THREE.MathUtils.clamp(_zFwd.y,-1,1))-Math.asin(THREE.MathUtils.clamp(_zDir.y,-1,1));
+    sky.rotation.y+=THREE.MathUtils.clamp(eYaw*2*dt,-0.25*dt,0.25*dt);                // ruotare il cielo di +δ sposta l'azimut del GC di +δ
+    zoomSkyPitch=THREE.MathUtils.clamp(zoomSkyPitch+THREE.MathUtils.clamp(eP*2*dt,-0.12*dt,0.12*dt),-0.6,0.6);   // v=0.5 → serve solo il beccheggio verso l'asse camera (~5°)
+    if(_zDir.angleTo(_zFwd)<0.02||zoomAimT>25){                                       // in asse (<~1.1°) o paracadute 25s
+      zoomAimed=true; zoomFovKick=2;                                                  // micro-kick FOV +2° all'inizio VERO del tuffo
+      console.log('[zoom] puntamento GC in '+zoomAimT.toFixed(1)+'s (residuo '+(_zDir.angleTo(_zFwd)*180/Math.PI).toFixed(2)+'°) → tuffo'); }
+  }
+  const rf=(zoomState==='exit')?(1-smooth(0,1,zoomExitT/zoomExitDur)):1;          // fade-out globale del rig in uscita
+  if(dive&&zoomAimed&&!zoomHandoff){
+    // preload: il successivo parte a metà (in log Θ) della finestra del livello attivo; al più 2 visibili + 1 in volo
+    const base=(zoomNxtI>=0)?zoomNxtI:zoomCurI, c=zNextUsable(base);
+    if(c>=0){ const L=zoomLevels[c], prevA=(base>=0)?zoomLevels[base].aw:zoomTheta0;
+      if(L.state===0 && zoomTheta<=Math.sqrt(Math.max(prevA,L.aw)*L.aw)) zLoadLevel(c); }
+    // aggancio: quando Θ entra nella finestra del candidato pronto → slot libero (se in ritardo, il rate-limit sotto evita il pop)
+    if(zoomNxtI<0){ const c2=zNextUsable(zoomCurI);
+      if(c2>=0){ const L2=zoomLevels[c2];
+        if(zoomTheta<=L2.aIn){ if(L2.state===2) zAttachLevel(c2); else if(L2.state===0) zLoadLevel(c2); } } }   // aIn: per il primo della catena è ~Θ0 (fade contro la sfera), poi = A_i
+  }
+  // quad attivi: scala apparente (mai dolly/FOV) + opacità (finestra in log Θ, rate-limited) + tinta di continuità
+  for(let q=0;q<2;q++){ const s=zoomQuads[q]; if(s.lv<0) continue; const L=zoomLevels[s.lv];
+    // legge di scala LINEARE (C¹, mai clampata): un punto a 'a' gradi dal GC finisce a schermo in
+    // D·a_rad·(hf/Θ) per QUALSIASI livello → i quad consecutivi combaciano ESATTAMENTE su tutta la
+    // sovrapposizione (non solo al centro) e lo zoom non si congela mai (la tan(θ/2)+clamp 170° sì:
+    // con rapporti di catena ~3-4 stallava ~30s su 76 e sfasava ogni crossfade di 2-4×)
+    const w=ZOOM_DIST*(L.aw*Math.PI/180)*(hf/zoomTheta);
+    s.mesh.scale.set(w,w*(L.ah/L.aw),1);
+    let tgt=(s.lv===zoomNxtI)?smooth(L.lgA,L.lgB,lg):1;                   // entrante: smoothstep su Θ∈[A,0.72A]; corrente: pieno
+    if(zoomProcOp>=0.995 && s.lv===zoomCurI && zoomNxtI<0) tgt=0;         // il procedurale ha preso il testimone → l'ultima foto "si risolve in stelle"
+    s.op+=THREE.MathUtils.clamp(tgt-s.op,-dt/1.2,dt/1.2);                 // rate-limit → mai pop (anche con load in ritardo)
+    s.mesh.material.opacity=s.op*rf;
+    s.mesh.material.color.copy(sky.material.color).lerp(_zNeutral,Math.min(1,s.lv*0.5));   // L1 = tinta sky corrente (applyDirector, boost live incluso) → neutro da L3
+  }
+  // promozione: l'entrante è pieno E copre anche in verticale (finestre strette/portrait!) →
+  // il precedente sparisce e libera la sua texture (VRAM)
+  if(zoomNxtI>=0){ const sn=zSlotOf(zoomNxtI), Ln=zoomLevels[zoomNxtI];
+    const covV=(Ln.ah*Math.PI/180)*(hf/zoomTheta)*0.5>=Math.tan(camera.fov*Math.PI/360)*1.06;   // mezza altezza del quad ≥ mezza altezza viewport (+6% per roll/sway camera)
+    if(sn&&sn.op>=0.995&&covV){ const so=(zoomCurI>=0)?zSlotOf(zoomCurI):null; if(so) zDropSlot(so,true); zoomCurI=zoomNxtI; zoomNxtI=-1; } }
+  // finale procedurale: entra un filo sopra l'esaurimento dell'ultima foto e porta lo zoom all'infinito
+  let lastA=0; for(let i=zoomLevels.length-1;i>=0;i--){ if(zoomLevels[i].state!==3){ lastA=zoomLevels[i].aw; break; } }
+  const pA=(lastA>0)?lastA*ZOOM_PROC_K:Math.max(zoomTheta0*Math.exp(-zoomK*zoomDur*0.85),1e-4);   // tutti i livelli rotti → entra comunque a fine catena teorica
+  const pTgt=dive?smooth(Math.log(pA),Math.log(pA*0.62),lg):zoomProcOp;
+  zoomProcOp+=THREE.MathUtils.clamp(pTgt-zoomProcOp,-dt/2,dt/2);
+  if(zoomProcOp>=0.995 && !zoomHandoff && zoomNxtI<0){                    // handoff completo quando l'ultima foto è sfumata
+    const so=(zoomCurI>=0)?zSlotOf(zoomCurI):null;
+    if(!so||so.op<=0.003){ if(so) zDropSlot(so,true); zoomCurI=-2; zoomHandoff=true; } }
+  zoomStarsMat.uniforms.uOp.value=zoomProcOp*rf*0.9;
+  zoomStarsMat.uniforms.uTime.value=shaderTime;
+  if(typeof _rec4k!=='undefined') zoomStarsMat.uniforms.uPix.value=_rec4k?1:PIX;   // sempre allineato (anche dopo un batch 4K)
+  const vis=zoomProcOp>0.001; if(zoomStars.visible!==vis) zoomStars.visible=vis;
+  if(vis){ const f=Math.exp(zoomK*dt), P=zoomStarsPos, R2=ZP_RMAX*ZP_RMAX;   // flusso radiale r·exp(k·dt): stesso passo dello zoom; CPU, zero alloc
+    for(let i=0;i<ZP_N;i++){ let x=P[i*3]*f, y=P[i*3+1]*f;
+      if(x*x+y*y>R2){ const a=Math.random()*6.28318, r=ZP_RMIN*(0.3+Math.random()*0.7); x=Math.cos(a)*r; y=Math.sin(a)*r; }   // respawn DENTRO il nucleo invisibile (r≤RMIN, dove vA=0) → mai pop
+      P[i*3]=x; P[i*3+1]=y; }
+    zoomStars.geometry.attributes.position.needsUpdate=true; }
+  // uscita: mode 'once' dopo dur → fade 4s + NUOVO sfondo casuale (cycleSky rispetta SKY_ROT_MIN) + ripristini
+  if(zoomState==='dive' && zoomMode==='once' && zoomT>=zoomDur) zoomBeginExit(4);
+  if(zoomState==='exit'){ zoomExitT+=dt;
+    if(!_zCycleDone){ _zCycleDone=true; skyT=0; skyEvery=180+Math.random()*150;   // orologio rotazione sfondi azzerato: il cielo post-dive vive un intervallo pieno (niente doppio cambio back-to-back)
+      if(!skyFading&&!skyLoading) cycleSky(); }   // UNA volta: forza il crossfade verso un nuovo cielo mentre il rig sfuma (se uno è già in corso, vale quello)
+    if(zoomExitT>=zoomExitDur) zoomFinishExit(); }
+}
+// API console (nessun evento chat, nessun trigger del Director — solo manuale):
+//   cadutaZoom({dur:90, mode:'once'|'loop', k:null}) · cadutaZoomStop()
+window.cadutaZoom=(opts)=>{ opts=opts||{};
+  if(!built||!sky||!sky2) return 'scena non pronta (premi ENTER prima)';
+  if(zoomState!=='idle') return 'dive già in corso ('+zoomState+') — cadutaZoomStop() per uscire';
+  zoomDur=Math.max(20,+opts.dur||90); zoomMode=(opts.mode==='loop')?'loop':'once'; zoomKOpt=(+opts.k>0)?+opts.k:null;
+  zoomState='arm'; zoomArmT=0;                                            // il dive parte quando manifest pronti E nessun crossfade sky in corso (watchdog 30s)
+  zoomLoadCfg().then(ok=>{ if(!ok&&zoomState==='arm') zoomState='idle'; });
+  return 'deep zoom armato ('+zoomMode+', '+zoomDur+'s)'+((skyFading||skyLoading)?' — attendo la fine del crossfade sfondo':'');
+};
+window.cadutaZoomStop=()=>{ if(zoomState==='idle') return 'nessun dive in corso';
+  if(zoomState==='arm'){ zoomState='idle'; return 'dive annullato'; }
+  if(zoomState!=='exit') zoomBeginExit(3); return 'uscita dal dive (~3s)'; };
+// diagnostica dive (console/verifica): stato, Θ, livelli attivi, texture residenti
+window.cadutaZoomInfo=()=>({ state:zoomState, aimed:zoomAimed, t:+zoomT.toFixed(1), theta:+zoomTheta.toFixed(3),
+  cur:zoomCurI, nxt:zoomNxtI, proc:+zoomProcOp.toFixed(2),
+  levels:zoomLevels?zoomLevels.map(L=>L.state):null, tex:renderer.info.memory.textures });
+
 /* ---------------- REGISTRAZIONE clip 4K (locale): forza 3840x2160, 16:9 pieno, scena pulita; musica a parte ---------------- */
 let _rec4k=false,_recW=3840,_recH=2160;
 window.cadutaListTracks=()=>{ try{ return (audio.music.library||[]).map((t,i)=>i+': '+t.title); }catch(e){ return 'audio non avviato (premi ENTER prima)'; } };
@@ -3800,7 +4067,7 @@ function _efRecClip(sec,name){ return new Promise(res=>{ try{
   }catch(err){ console.warn('[clip] err',err.message); res(); } }); }
 function _ef4kForce(){ renderer.setPixelRatio(1); renderer.setSize(_recW,_recH,false); camera.aspect=_recW/_recH; camera.updateProjectionMatrix();
   if(composer){ composer.setPixelRatio(1); composer.setSize(_recW,_recH); if(bloomPass) bloomPass.setSize(Math.floor(_recW/bloomDiv),Math.floor(_recH/bloomDiv)); if(cinePass){ cinePass.uniforms.uRes.value.set(_recW,_recH); cinePass.uniforms.uPix.value=1; } }
-  for(const L of starLayers) L.mat.uniforms.uPix.value=1; if(typeof dustMat!=='undefined'&&dustMat) dustMat.uniforms.uPix.value=1; if(fastDust) fastDust.material.uniforms.uPix.value=1; }
+  for(const L of starLayers) L.mat.uniforms.uPix.value=1; if(typeof dustMat!=='undefined'&&dustMat) dustMat.uniforms.uPix.value=1; if(fastDust) fastDust.material.uniforms.uPix.value=1; if(zoomStarsMat) zoomStarsMat.uniforms.uPix.value=1; }
 // BATCH 4K: forza 3840x2160 e registra in fila N clip. SOLO con ?rec=1. Scene = stringa evento, oppure {event,region}.
 window.cadutaBatch=async(opts={})=>{
   if(!_recOK()) return 'apri l\'URL con &rec=1 per registrare (es. ?live=1&rec=1) — bloccato sul live';

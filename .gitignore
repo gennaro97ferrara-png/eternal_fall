@@ -24,3 +24,9 @@ permanent.json
 /assets/skies/*.jpg
 /assets/skies/_base/
 assets/characters/*.glb
+
+# livelli zoom infinito (grandi, rigenerabili con tools/zoom/build-levels.py)
+/assets/zoom/*.jpg
+/assets/zoom/_src/
+/assets/zoom/_cache/
+/assets/zoom/contact/
