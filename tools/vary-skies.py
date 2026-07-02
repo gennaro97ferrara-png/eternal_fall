@@ -13,7 +13,7 @@ import sys, os
 import numpy as np
 from PIL import Image
 
-OUTW = 6144; OUTDIR = "assets/skies"; N = 50; SAMPLE = False
+OUTW = 6144; OUTDIR = "assets/skies"; N = 50; SAMPLE = False; VSCALE = None   # VSCALE = override compressione verticale (None = random 0.58-0.72; più alto = banda meno schiacciata → più risoluzione/spessa)
 BASES = ["assets/milkyway_8k.jpg"]   # ESO/Brunier — Via Lattea reale dettagliata (come gen_25), variata per rotazione+tinta
 args = sys.argv[1:]; i = 0
 while i < len(args):
@@ -21,6 +21,7 @@ while i < len(args):
     if a == "--w": OUTW = int(args[i+1]); i += 2
     elif a == "--out": OUTDIR = args[i+1]; i += 2
     elif a == "--base": BASES = [args[i+1]]; i += 2
+    elif a == "--vscale": VSCALE = float(args[i+1]); i += 2
     elif a == "--sample": SAMPLE = True; i += 1
     elif a.isdigit(): N = int(a); i += 1
     else: i += 1
@@ -80,7 +81,7 @@ def main():
         base = bases[0] if (len(bases) < 2 or k % 3 != 2) else bases[1]   # ~2/3 Via Lattea ESO, ~1/3 campo stellare
         roll = int(rng.integers(0, OUTW))
         flip = bool(rng.integers(0, 2))
-        vscale = float(rng.uniform(0.58, 0.72))    # banda "intera" e sottile, cielo nero su/giù
+        vscale = VSCALE if VSCALE is not None else float(rng.uniform(0.58, 0.72))    # banda "intera" e sottile, cielo nero su/giù (VSCALE alto = meno schiacciata → più risoluzione)
         voff = int(rng.integers(-int(OUTH*0.04), int(OUTH*0.04)))
         name, tint = TINTS[k % len(TINTS)]
         gain = float(rng.uniform(1.0, 1.25))
