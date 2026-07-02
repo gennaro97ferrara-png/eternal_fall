@@ -34,6 +34,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+KillMode=process
 ExecStart=/bin/bash /root/ef-supervise.sh
 Restart=always
 RestartSec=5
