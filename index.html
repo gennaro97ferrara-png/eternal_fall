@@ -611,9 +611,9 @@ const CHARACTERS=[
   // displacement per-vertex lacererebbe; il movimento del corpo è RIGIDO a livello di gruppo (wiggle → beccheggio/
   // rollio/pagaiata + i tumble di caduta) così non si "spezzano" mai. La giraffa ha la SUA animazione (camminata).
   {name:'astrodog',  file:'assets/characters/astrodog.glb',  credit:'AstroDoggo © merrychuu (CC BY)', float:0, wiggle:1.0},   // già in tuta col suo casco
-  {name:'cat',       file:'assets/characters/cat.glb',       credit:'Cat © Empire (CC BY)',        float:0, wiggle:1.2, yaw:0, helmet:{x:0.5,y:0.815,z:0.87,r:0.235}},   // tarato col char-viewer (testa a +z)
-  {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © BlueMesh (CC BY)',  scale:1.6, wiggle:0.65, animSpeed:0.6, helmet:{x:0.5,y:0.90,z:0.12,r:0.13}, hide:['circle']},   // PIÙ GRANDE (1.6); animata (camminata); casco sul box POSATO
-  {name:'elephant',  file:'assets/characters/elephant.glb',  credit:'Elephant © denys4624 (CC BY)', float:0, wiggle:0.9, yaw:0, helmet:{x:0.5,y:0.72,z:0.68,r:0.30}},     // tarato col char-viewer (proboscide fuori bolla)
+  {name:'cat',       file:'assets/characters/cat.glb',       credit:'Cat © Empire (CC BY)',        float:0, limb:1.0, wiggle:0.8, yaw:0, helmet:{x:0.5,y:0.815,z:0.87,r:0.235}},   // limb = coda/collo/zampe (model-space); wiggle ridotto (ora il corpo si muove)
+  {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © BlueMesh (CC BY)',  scale:1.6, wiggle:0.65, animSpeed:0.6, helmet:{x:0.5,y:0.90,z:0.12,r:0.13}, hide:['circle']},   // PIÙ GRANDE (1.6); animata (camminata) → niente limb procedurale
+  {name:'elephant',  file:'assets/characters/elephant.glb',  credit:'Elephant © denys4624 (CC BY)', float:0, limb:0.9, wiggle:0.65, yaw:0, helmet:{x:0.5,y:0.72,z:0.68,r:0.30}},     // limb = proboscide/coda/zampe; movimento più ponderato
 ];
 let charRoster=[], charIdx=0, charT=600+Math.random()*600, charSwapAt=-1;   // rotazione ogni ~10-20 min, swap al picco del twinkle-flash
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
@@ -755,7 +755,9 @@ function build(){
   const sz=new THREE.Vector3(), ct=new THREE.Vector3();
   box.getSize(sz); box.getCenter(ct); const s=(def.scale||1)*2.15/sz.y;   // personaggio un filo più GRANDE in quadro (era 1.95)
   root.scale.setScalar(s); root.position.set(-ct.x*s,-ct.y*s,-ct.z*s); root.rotation.y=(def.yaw!==undefined?def.yaw:Math.PI);
-  const uQuad={value:def.quad?1:0};   // 1 = nuotata da QUADRUPEDE (pagaiata diagonale, collo/coda), 0 = umanoide
+  root.updateMatrixWorld(true);
+  const _rootInv=new THREE.Matrix4().copy(root.matrixWorld).invert();   // per portare i vertici di OGNI mesh in un unico MODEL-SPACE (Y su, Z lunghezza) = spazio di `box`
+  const uLimb={value:def.limb||0};    // ampiezza del movimento ARTI (coda/collo/zampe) per gli animali quadrupedi; 0 = astronauta (usa il suo mesh-deform bipede)
   let _sparkMesh=null,_sparkVn=0;   // mesh più grande → ospiterà le scintille-Points (scelto nel traverse)
   root.traverse(o=>{ if(o.isMesh&&o.material){
     if(!o.material.isMeshStandardMaterial){   // materiali legacy (unlit/phong/specGloss) → convertiti a PBR: niente crash uniforms, e prendono luce
@@ -767,39 +769,50 @@ function build(){
     o.material.emissive=new THREE.Color(0x000000);                 // base spenta: l'emissive lo usa SOLO il visore (sotto)
     // animazione "caduta libera": gli arti (estremità) ondeggiano lentamente — vertex displacement che preserva il PBR
     o.geometry.computeBoundingBox(); const bb=o.geometry.boundingBox;
-    o.material.onBeforeCompile=(sh)=>{ sh.uniforms.uTime=manFloatTime; sh.uniforms.uFloatAmt=manFloatAmt; sh.uniforms.uArmOpen=manArmOpen; sh.uniforms.uArmBack=manArmBack; sh.uniforms.uBMin={value:bb.min.clone()}; sh.uniforms.uBMax={value:bb.max.clone()}; sh.uniforms.uFatV=uFat; sh.uniforms.uQuad=uQuad;
+    const _m2m=new THREE.Matrix4().multiplyMatrices(_rootInv,o.matrixWorld);   // vertici mesh-local → MODEL-SPACE unificato (indipendente dallo scale del root)
+    const _dir=new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().copy(_m2m).invert());   // rimanda lo spostamento da model-space a mesh-local
+    o.material.onBeforeCompile=(sh)=>{ sh.uniforms.uTime=manFloatTime; sh.uniforms.uFloatAmt=manFloatAmt; sh.uniforms.uArmOpen=manArmOpen; sh.uniforms.uArmBack=manArmBack; sh.uniforms.uBMin={value:bb.min.clone()}; sh.uniforms.uBMax={value:bb.max.clone()}; sh.uniforms.uFatV=uFat;
+      sh.uniforms.uLimb=uLimb; sh.uniforms.uM2Model={value:_m2m}; sh.uniforms.uDir={value:_dir}; sh.uniforms.uMMin={value:box.min.clone()}; sh.uniforms.uMMax={value:box.max.clone()};   // MOVIMENTO ARTI in model-space unificato
       sh.uniforms.uHit=uHit; sh.uniforms.uManGrade=manGrade; sh.uniforms.uManKey=manKey; sh.uniforms.uEnvDir=manEnvDir; sh.uniforms.uStarTw=uStarTw;   // VISORE/TUTA: rim, riflesso, bagliore, twinkle-stella
-      sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform float uArmBack;uniform float uFatV;uniform float uQuad;uniform vec3 uBMin,uBMax;\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.vertexShader.replace('#include <begin_vertex>',
+      sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform float uArmBack;uniform float uFatV;uniform float uLimb;uniform mat4 uM2Model;uniform mat3 uDir;uniform vec3 uBMin,uBMax,uMMin,uMMax;\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.vertexShader.replace('#include <begin_vertex>',
         `#include <begin_vertex>
          vec3 _nr=(position-uBMin)/max(uBMax-uBMin,vec3(1e-4));
          float _h=(uBMax.y-uBMin.y); float _ax=_nr.x-0.5; float _side=_ax>=0.0?1.0:-1.0;
          float _arm=smoothstep(0.42,1.0,abs(_ax)*2.0); float _leg=smoothstep(0.5,0.02,_nr.y); float _t=uTime*0.95;
-         float _bip=uFloatAmt*(1.0-uQuad); float _qd=uFloatAmt*uQuad;              // umanoide vs QUADRUPEDE (mai insieme)
+         float _bip=uFloatAmt;                                                    // deform BIPEDE: solo l'astronauta (gli animali hanno uFloatAmt=0)
          transformed.y += sin(_t + _side*0.4)*_h*0.055*_arm*_bip;                 // braccia su/giù (ridotte: meno stiramento)
          transformed.z += sin(_t*0.85 + 1.2)*_h*0.05*_arm*_bip;                   // braccia avanti/dietro
          transformed.x += sin(_t*0.9)*_h*0.025*_arm*_side*_bip;                   // braccia apri/chiudi
          transformed.z += sin(_t*0.8 + _side*3.14159)*_h*0.12*_leg*_bip;          // gambe a forbice
          transformed.x += sin(_t*0.7)*_h*0.06*_leg*_side*_bip;
          transformed.y += sin(_t*0.6 + _side*3.14159)*_h*0.05*_leg*_bip;
-         // NUOTATA QUADRUPEDE: zampe che PAGAIANO a coppie diagonali, collo/testa e coda che ondeggiano, onda dolce lungo il corpo
-         float _qz=(_nr.z-0.5)*2.0;                                               // -1 dietro .. +1 davanti
-         float _legQ=smoothstep(0.55,0.15,_nr.y);                                 // zampe = parte bassa
-         float _diag=_side*(step(0.0,_qz)*2.0-1.0);                               // coppie diagonali (trotto)
-         transformed.z += sin(_t*1.25 + _diag*1.5708)*_h*0.10*_legQ*_qd;          // pagaiata avanti/indietro
-         transformed.y += cos(_t*1.25 + _diag*1.5708)*_h*0.05*_legQ*_qd;          // e su/giù (circolare)
-         float _extQ=smoothstep(0.5,0.9,_nr.y)*smoothstep(0.30,0.85,abs(_qz));    // collo/testa + coda (estremi alti)
-         transformed.x += sin(_t*0.7 + _qz*1.2)*_h*0.05*_extQ*_qd;                // ondeggio laterale del collo e della coda
-         transformed.y += sin(_t*0.9 + _qz*2.0)*_h*0.04*_extQ*_qd;                // annuire dolce
-         transformed.y += sin(_t*0.55 + _nr.z*2.5)*_h*0.025*_qd;                  // onda che percorre il corpo (delfino lentissimo)
+         // MOVIMENTO ARTI (animali): in MODEL-SPACE unificato (Y su, Z lunghezza) → coerente su tutte le mesh del modello,
+         // spostamento CONTINUO in funzione della posizione (nessuno strappo). Coda/collo/testa/zampe si muovono "un minimo".
+         if(uLimb>0.001){
+           vec3 _mp=(uM2Model*vec4(position,1.0)).xyz;
+           vec3 _mn=(_mp-uMMin)/max(uMMax-uMMin,vec3(1e-4));                       // 0..1 nell'INTERO modello
+           float _H=(uMMax.y-uMMin.y); float _tl=uTime*0.9; vec3 _dd=vec3(0.0);
+           float _er=0.35+0.65*(1.0-4.0*_mn.z*(1.0-_mn.z));                        // ampiezza cresce dolce verso le estremità
+           _dd.x+=sin(_tl-_mn.z*3.0)*_H*0.022*_er;                                 // onda spinale dolce (ondeggio laterale)
+           float _hd=smoothstep(0.45,0.92,_mn.z)*smoothstep(0.40,0.95,_mn.y);      // collo/testa: davanti + alto
+           _dd.y+=sin(_tl*1.1)*_H*0.028*_hd; _dd.x+=sin(_tl*0.8+0.6)*_H*0.022*_hd; // annuire + oscillazione laterale del collo
+           float _tlm=smoothstep(0.45,0.06,_mn.z);                                 // coda: dietro
+           _dd.x+=sin(_tl*1.3+1.5)*_H*0.03*_tlm; _dd.y+=cos(_tl*1.3+1.5)*_H*0.016*_tlm;   // frusta dolce della coda
+           float _lg=smoothstep(0.5,0.12,_mn.y);                                   // zampe: in basso
+           _dd.z+=sin(_tl*1.5+(_mn.z-0.5)*4.0)*_H*0.045*_lg;                        // pagaiata avanti/dietro (alternata per z, simmetrica L/R → niente strappo)
+           _dd.y+=cos(_tl*1.5+(_mn.z-0.5)*4.0)*_H*0.022*_lg;
+           transformed += uDir*_dd*uLimb;                                          // riporta lo spostamento in mesh-local
+         }
          transformed.x += sin(_t*0.5 + _nr.y*3.0)*_h*0.014*uFloatAmt;
-         transformed.x += _h*0.09*_arm*_side*uArmOpen;            // CELEBRAZIONE: braccia aperte (ridotta, niente più stiramento)
-         transformed.y += _h*0.03*_arm*uArmOpen;                  // braccia leggermente alzate
-         transformed.x += _h*0.10*_leg*_side*uArmOpen;            // gambe un po' aperte
-         transformed.z += _h*0.10*_arm*uArmBack;                  // FIONDA: braccia indietro (ridotta)
-         transformed.z += _h*0.15*_leg*uArmBack;                  // gambe trascinate dalla spinta
-         // CICLO GRASSO: gonfiaggio lungo le normali, pesato sulla pancia (testa/piedi quasi intatti) → "ingrassa" e poi "dimagrisce"
+         // CELEBRAZIONE + FIONDA + CICLO GRASSO: usano coord PER-MESH (giuste solo per l'astronauta, mesh singola) → gate su uFloatAmt (animali=0)
+         transformed.x += _h*0.09*_arm*_side*uArmOpen*_bip;       // CELEBRAZIONE: braccia aperte (ridotta, niente più stiramento)
+         transformed.y += _h*0.03*_arm*uArmOpen*_bip;             // braccia leggermente alzate
+         transformed.x += _h*0.10*_leg*_side*uArmOpen*_bip;       // gambe un po' aperte
+         transformed.z += _h*0.10*_arm*uArmBack*_bip;             // FIONDA: braccia indietro (ridotta)
+         transformed.z += _h*0.15*_leg*uArmBack*_bip;             // gambe trascinate dalla spinta
+         // CICLO GRASSO: gonfiaggio lungo le normali, pesato sulla pancia (testa/piedi quasi intatti) → "ingrassa" e poi "dimagrisce" (solo astronauta)
          float _fatW=0.35+0.85*smoothstep(0.16,0.42,_nr.y)*(1.0-smoothstep(0.52,0.86,_nr.y));
-         transformed += objectNormal*(_h*0.075*_fatW*uFatV);
+         transformed += objectNormal*(_h*0.075*_fatW*uFatV*_bip);
          vManNrm=_nr;                                            // coord 0..1 del box → maschera visore nel fragment
          vManNormV=normalize(normalMatrix*objectNormal);`);
       // --- FRAGMENT: rim fresnel sulla tuta (tinta regione) + visore scuro/specchiante con bagliore tenue (flash da urto) ---
