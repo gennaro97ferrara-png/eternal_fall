@@ -578,6 +578,9 @@ let nebBoost=0, galaxies, godray, starburst=null, sbOp=0, _sbSun=null;   // star
 // NUOVI CORPI (varietà): istanze + timer individuali
 let lavaWorld, shattered, whitedwarf, variablestar, ringarc, station, lightEcho, bolide, gwRipple, whalePod;
 let lavaTimer=240, shatteredTimer=300, whitedwarfTimer=120, variablestarTimer=110, ringarcTimer=260, stationTimer=200, lightEchoTimer=300, bolideTimer=150, gwTimer=360, whalePodTimer=220;
+// VISITATORI (nuovi elementi casuali): stelle cadenti, navicella, razzo, UFO
+let shootingStars=[], shootTimer=25;
+let starship=null, starshipTimer=200+Math.random()*200, rocketShip=null, rocketTimer=320+Math.random()*240, ufo=null, ufoTimer=260+Math.random()*280;
 let solarEclipse, lunarEclipse;
 let solarEclipseTimer=520+Math.random()*300, lunarEclipseTimer=620+Math.random()*300;   // eventi rari (anche da comando)
 let _echoPending=0;   // eco di luce ~14s dopo una supernova (catena causa→effetto)
@@ -593,7 +596,9 @@ const uStarTw={value:0};                              // TWINKLE-STELLA: 0..1, s
 let manHalo=null;                                     // alone stellare morbido attorno all'astronauta (sprite additiva)
 let manSpike=null;                                    // croce di diffrazione a 4 punte (stile Hubble/JWST): appare SOLO sul twinkle
 let manSparks=null;                                   // ~90 pinpoint sul torso/casco che lampeggiano uno alla volta (leggibili da telefono)
-let manTwT=8+Math.random()*10, manTwE=0, manTwA=0;    // timer/energia/fase-attacco del twinkle periodico (~ogni 15-35s, sale in ~0.4s, decade in ~2s)
+let manTwT=8+Math.random()*10, manTwE=0, manTwA=0;    // timer/energia/fase-attacco del twinkle periodico (~ogni 12-28s, sale in ~0.4s, decade in ~2s)
+const uFat={value:0};                                 // CICLO INGRASSA/DIMAGRISCE: 0=normale, 1=grasso (gonfiaggio lungo le normali, pesato sulla pancia)
+let fatT=150+Math.random()*180, fatClock=-1, fatAmp=0;   // prossimo ciclo tra ~2.5-5.5 min; fatClock>=0 = ciclo in corso
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
 // VARIETÀ DI MOVIMENTO a livello di corpo (rotazioni/derive: NON deformano la mesh)
 let barrelTarget=0, barrelCur=0, barrelAxis=0, barrelHold=40;  // capriola lenta su asse alternato (0=Z roll, 1=X tumble); barrelHold=cooldown
@@ -726,9 +731,9 @@ function build(){
     o.material.emissive=new THREE.Color(0x000000);                 // base spenta: l'emissive lo usa SOLO il visore (sotto)
     // animazione "caduta libera": gli arti (estremità) ondeggiano lentamente — vertex displacement che preserva il PBR
     o.geometry.computeBoundingBox(); const bb=o.geometry.boundingBox;
-    o.material.onBeforeCompile=(sh)=>{ sh.uniforms.uTime=manFloatTime; sh.uniforms.uFloatAmt=manFloatAmt; sh.uniforms.uArmOpen=manArmOpen; sh.uniforms.uArmBack=manArmBack; sh.uniforms.uBMin={value:bb.min.clone()}; sh.uniforms.uBMax={value:bb.max.clone()};
+    o.material.onBeforeCompile=(sh)=>{ sh.uniforms.uTime=manFloatTime; sh.uniforms.uFloatAmt=manFloatAmt; sh.uniforms.uArmOpen=manArmOpen; sh.uniforms.uArmBack=manArmBack; sh.uniforms.uBMin={value:bb.min.clone()}; sh.uniforms.uBMax={value:bb.max.clone()}; sh.uniforms.uFatV=uFat;
       sh.uniforms.uHit=uHit; sh.uniforms.uManGrade=manGrade; sh.uniforms.uManKey=manKey; sh.uniforms.uEnvDir=manEnvDir; sh.uniforms.uStarTw=uStarTw;   // VISORE/TUTA: rim, riflesso, bagliore, twinkle-stella
-      sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform float uArmBack;uniform vec3 uBMin,uBMax;\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.vertexShader.replace('#include <begin_vertex>',
+      sh.vertexShader='uniform float uTime;uniform float uFloatAmt;uniform float uArmOpen;uniform float uArmBack;uniform float uFatV;uniform vec3 uBMin,uBMax;\nvarying vec3 vManNrm;varying vec3 vManNormV;\n'+sh.vertexShader.replace('#include <begin_vertex>',
         `#include <begin_vertex>
          vec3 _nr=(position-uBMin)/max(uBMax-uBMin,vec3(1e-4));
          float _h=(uBMax.y-uBMin.y); float _ax=_nr.x-0.5; float _side=_ax>=0.0?1.0:-1.0;
@@ -745,6 +750,9 @@ function build(){
          transformed.x += _h*0.10*_leg*_side*uArmOpen;            // gambe un po' aperte
          transformed.z += _h*0.10*_arm*uArmBack;                  // FIONDA: braccia indietro (ridotta)
          transformed.z += _h*0.15*_leg*uArmBack;                  // gambe trascinate dalla spinta
+         // CICLO GRASSO: gonfiaggio lungo le normali, pesato sulla pancia (testa/piedi quasi intatti) → "ingrassa" e poi "dimagrisce"
+         float _fatW=0.35+0.85*smoothstep(0.16,0.42,_nr.y)*(1.0-smoothstep(0.52,0.86,_nr.y));
+         transformed += objectNormal*(_h*0.075*_fatW*uFatV);
          vManNrm=_nr;                                            // coord 0..1 del box → maschera visore nel fragment
          vManNormV=normalize(normalMatrix*objectNormal);`);
       // --- FRAGMENT: rim fresnel sulla tuta (tinta regione) + visore scuro/specchiante con bagliore tenue (flash da urto) ---
@@ -764,7 +772,7 @@ function build(){
           float _suit=1.0-_visor;
           // RIM tuta: linea di luce tinta regione sui bordi + velo bianco-stellare (l'astronauta LUMINOSO, leggibile anche da telefono)
           outgoingLight += uManGrade*( _f*0.26*_suit );
-          outgoingLight += mix(uManKey,vec3(1.0),0.5)*( _f*_f*0.18*_suit*(1.0+1.4*uStarTw) );   // secondo lobo più stretto e bianco: bordo "di stella"
+          outgoingLight += mix(uManKey,vec3(1.0),0.5)*( _f*_f*0.22*_suit*(1.0+1.4*uStarTw) );   // secondo lobo più stretto e bianco: bordo "di stella"
           // VISORE: riflesso speculare verso la "finestra" (camera) → vetro più tridimensionale, NON più chiaro in pieno
           float _spec=pow(clamp(dot(normalize(vManNormV),normalize(uEnvDir)),0.0,1.0),22.0);
           outgoingLight += uManKey*( _spec*0.24*_visor );
@@ -773,7 +781,7 @@ function build(){
           // vManNrm = coord 0..1 del box mesh (pre-displacement) → le scintille restano incollate alla tuta.
           vec3 _gv=vManNrm*22.0; vec3 _gc=floor(_gv);                          // celle grandi → scintille leggibili anche da telefono (1920 CSS)
           float _gr=efH31(_gc);
-          float _gate=step(0.78,_gr);                                          // solo ~22% delle celle possono scintillare (rarità = linguaggio approvato)
+          float _gate=step(0.75,_gr);                                          // ~25% delle celle possono scintillare (rarità = linguaggio approvato)
           vec3 _gf=fract(_gv)-0.5;
           float _spark=smoothstep(0.26,0.02,dot(_gf,_gf));                     // puntina larga con falloff morbido = mini-alone
           float _core =smoothstep(0.06,0.0,dot(_gf,_gf));                      // nucleo rovente al centro → fiorisce nel bloom
@@ -781,10 +789,10 @@ function build(){
           float _w=0.5+0.35*sin(_a1)+0.15*sin(_a1*1.73+_gr*12.6);
           float _on=smoothstep(0.60,0.86,_w);                                  // curva a S, acceso di rado → scintille rare e nitide
           float _nvl=0.35+0.65*clamp(dot(normalize(vManNormV),_V),0.0,1.0);    // le facce verso camera brillano di più (micro-facet)
-          outgoingLight += mix(uManKey,vec3(1.0),0.55)*( (_spark*0.75+_core*1.3)*_gate*_on*_nvl*_suit*(1.7+2.6*uStarTw) );   // picco concentrato nel nucleo → bloom senza pump
+          outgoingLight += mix(uManKey,vec3(1.0),0.55)*( (_spark*0.9+_core*1.5)*_gate*_on*_nvl*_suit*(2.0+3.0*uStarTw) );   // picco concentrato nel nucleo → bloom senza pump
           // WRAP-LIGHT stellare: velo di luce sulle facce verso camera, modulato dal diffuse (niente plastica) → la silhouette non è mai un buco scuro
           float _wrap=0.5+0.5*clamp(dot(normalize(vManNormV),_V),0.0,1.0);
-          outgoingLight += diffuseColor.rgb*mix(uManKey,vec3(1.0),0.6)*( _wrap*0.11*_suit*(1.0+0.4*uStarTw) );
+          outgoingLight += diffuseColor.rgb*mix(uManKey,vec3(1.0),0.6)*( _wrap*0.13*_suit*(1.0+0.4*uStarTw) );
         }
         #include <opaque_fragment>`);
     };
@@ -806,24 +814,29 @@ function build(){
   // pavimento in pixel fisici come le stelle (psFloor) → veri pinpoint che si accendono uno alla volta, visibili da telefono.
   if(_sparkMesh && !(ASSETS.astronautAnims&&ASSETS.astronautAnims.length)){
     const bbS=_sparkMesh.geometry.boundingBox, extS=bbS.max.clone().sub(bbS.min);
-    const P=90, sp=new Float32Array(P*3), sph=new Float32Array(P), ssd=new Float32Array(P);
+    const P=130, sp=new Float32Array(P*3), sph=new Float32Array(P), ssd=new Float32Array(P), snr=new Float32Array(P*3), sfw=new Float32Array(P);
     const pa=_sparkMesh.geometry.attributes.position, na=_sparkMesh.geometry.attributes.normal; let n=0,guard=0;
-    while(n<P&&guard++<20000){ const i=(Math.random()*pa.count)|0;
+    const _ss=(a,b,x)=>{ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); };
+    while(n<P&&guard++<30000){ const i=(Math.random()*pa.count)|0;
       const nx=(pa.getX(i)-bbS.min.x)/extS.x, ny=(pa.getY(i)-bbS.min.y)/extS.y;
       if(Math.abs(nx-0.5)<0.21&&ny>0.52){ const off=extS.y*0.008;
         sp[n*3]=pa.getX(i)+na.getX(i)*off; sp[n*3+1]=pa.getY(i)+na.getY(i)*off; sp[n*3+2]=pa.getZ(i)+na.getZ(i)*off;
+        snr[n*3]=na.getX(i); snr[n*3+1]=na.getY(i); snr[n*3+2]=na.getZ(i);
+        sfw[n]=extS.y*0.075*(0.35+0.85*_ss(0.16,0.42,ny)*(1-_ss(0.52,0.86,ny)));   // stesso peso-pancia del vertex della tuta → i punti restano incollati anche da grasso
         sph[n]=Math.random()*6.28318; ssd[n]=0.5+Math.random()*1.7; n++; } }
     if(n>10){ const sg=new THREE.BufferGeometry();
       sg.setAttribute('position',new THREE.BufferAttribute(sp.slice(0,n*3),3)); sg.setAttribute('aPhase',new THREE.BufferAttribute(sph.slice(0,n),1)); sg.setAttribute('aSpd',new THREE.BufferAttribute(ssd.slice(0,n),1));
+      sg.setAttribute('aNrm',new THREE.BufferAttribute(snr.slice(0,n*3),3)); sg.setAttribute('aFatW',new THREE.BufferAttribute(sfw.slice(0,n),1));
       manSparks=new THREE.Points(sg,new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
-        uniforms:{uTime:manFloatTime,uTw:uStarTw,uPix:{value:PIX}},
-        vertexShader:`attribute float aPhase;attribute float aSpd;uniform float uTime,uPix;varying float vB;
+        uniforms:{uTime:manFloatTime,uTw:uStarTw,uPix:{value:PIX},uFat:uFat},
+        vertexShader:`attribute float aPhase;attribute float aSpd;attribute vec3 aNrm;attribute float aFatW;uniform float uTime,uPix,uFat;varying float vB;
           void main(){ float w=sin(uTime*aSpd+aPhase); vB=pow(max(w,0.0),24.0);            // pow alto = lampeggio ON/OFF raro, per-punto
-          vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+          vec3 p=position+aNrm*(aFatW*uFat);                                               // segue la superficie gonfiata del ciclo grasso
+          vec4 mv=modelViewMatrix*vec4(p,1.0); gl_Position=projectionMatrix*mv;
           gl_PointSize=max(1.7*uPix, uPix*(2.6+2.2*vB)*(9.0/max(-mv.z,1.0))); }`,          // pavimento pixel fisici → leggibile da telefono
         fragmentShader:`varying float vB;uniform float uTw;
           void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d); float a=smoothstep(0.5,0.0,r)*0.3+smoothstep(0.12,0.0,r);
-          gl_FragColor=vec4(vec3(1.0,0.98,0.94), a*vB*(0.55+1.1*uTw)); }`}));              // sul twinkle globale i pinpoint sforano nel bloom
+          gl_FragColor=vec4(vec3(1.0,0.98,0.94), a*vB*(0.7+1.3*uTw)); }`}));               // sul twinkle globale i pinpoint sforano nel bloom
       manSparks.frustumCulled=false; _sparkMesh.add(manSparks); } }   // figlio del mesh → eredita TUTTE le rotazioni gratis
   // (la scritta "I FALL" è quella del modello stesso, sulla schiena)
   // se il modello è riggato (es. da Mixamo) riproduci la sua animazione e spegni quella procedurale
@@ -885,6 +898,8 @@ function build(){
       coperturaPrimoGiro:(seen.size===M&&firstRepeat<0), secondoGiroSenzaRipetizioni:secondFresh };
     audio.voiceLib=sv.lib; audio.capIdx=sv.cap; audio.soulIdx=sv.soul; audio.capByCat=sv.by; audio.voiceRecent=sv.rec; audio._preferTag=sv.tag; audio.voiceBad=sv.bad; audio.playCount=sv.pc; return r; };
   window.cadutaTwinkle=()=>{ manTwA=1; return 'twinkle'; };   // forza il twinkle-stella dell'astronauta (test; parte con la rampa d'attacco)
+  window.cadutaFat=(x)=>{ if(typeof x==='number'){ fatClock=-1; fatT=300; uFat.value=Math.max(0,Math.min(1.2,x)); return 'uFat='+uFat.value.toFixed(2); }
+    fatClock=0; fatAmp=0.9; return 'ciclo ingrassa/dimagrisce avviato (~65s)'; };   // cadutaFat() = ciclo intero; cadutaFat(0.8) = valore fisso di test
   window.cadutaDebugEvent=(w)=>{ if(w==='mystery') mystery.spawn(); else if(w==='parallel') parallel.spawn(); else if(w==='nova') supernova.flash();
     else if(w==='blackhole'){ blackhole.spawn(); blackhole.group.position.set(40,4,-230); }
     else if(w==='comet'){ comet.spawn(); comet.g.position.set(-70,15,-300); }
@@ -913,6 +928,10 @@ function build(){
     else if(w==='bolide'){ bolide.spawn(); bolide.pts.position.set(20,30,-150); }
     else if(w==='gw'){ gwRipple.spawn(); }
     else if(w==='whales'){ whalePod.spawn(); whalePod.g.position.set(60,6,-400); }
+    else if(w==='ship'){ starship.spawn(); }
+    else if(w==='rocket'){ rocketShip.spawn(); }
+    else if(w==='ufo'){ ufo.spawn(); }
+    else if(w==='shooting'){ const fs=shootingStars.find(s=>!s.active); if(fs) fs.spawn(); }
     else if(w==='eclipsesolar'||w==='eclipse'){ solarEclipse.spawn(); }
     else if(w==='eclipselunar'){ lunarEclipse.spawn(); }
     else if(w==='supernova'){ supernova.flash(); }
@@ -980,6 +999,8 @@ function build(){
   signal=new TheSignal(); spores=new SporeBloom(); magnetar=new Magnetar(); dyson=new DysonSwarm(); aurora=new AuroraCurtain(); duststorm=new DustStorm();
   lavaWorld=new LavaWorld(); shattered=new ShatteredWorld(ag,astMat); whitedwarf=new WhiteDwarf(); variablestar=new VariableStar(); ringarc=new RingArc(); station=new StationTumble(); lightEcho=new LightEcho(); bolide=new BolideSplit(); gwRipple=new GWRipple(); whalePod=new WhalePod();
   solarEclipse=new SolarEclipse(); lunarEclipse=new LunarEclipse();
+  for(let i=0;i<3;i++) shootingStars.push(new ShootingStar());   // pool: nelle piogge ne sfrecciano anche 2-3 insieme
+  starship=new Starship(); rocketShip=new RocketShip(); ufo=new UFO();
   for(let i=0;i<2;i++) ownedPlanets.push(new OwnedPlanet());   // pianeti permanenti (acquisti): pool che ruota sul catalogo
   loadPermanent();
   galaxies=[]; const gHues=[0.6,0.08,0.58,0.52,0.12];
@@ -1265,7 +1286,8 @@ window.cadutaDebugHit=(n)=>{ hitFlipTarget+=6.28318*(n||4); hitFlash=Math.max(hi
 /* ---------------- asteroidi ---------------- */
 const _m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_e=new THREE.Euler(),_s=new THREE.Vector3(),_p=new THREE.Vector3();
 function astRe(i,z){ const ang=Math.random()*Math.PI*2,rad=12+Math.random()*70;
-  astData[i]={x:Math.cos(ang)*rad,y:(Math.random()*2-1)*45,z,s:0.4+Math.random()*Math.random()*7,rx:Math.random()*Math.PI,ry:Math.random()*Math.PI,rz:Math.random()*Math.PI,vrx:(Math.random()*2-1)*0.5,vry:(Math.random()*2-1)*0.5,vrz:(Math.random()*2-1)*0.5}; }
+  const _sz=0.4+Math.random()*Math.random()*7;
+  astData[i]={x:Math.cos(ang)*rad,y:(Math.random()*2-1)*45,z,s:(Math.random()<0.04?_sz*2.2+2.5:_sz),rx:Math.random()*Math.PI,ry:Math.random()*Math.PI,rz:Math.random()*Math.PI,vrx:(Math.random()*2-1)*0.5,vry:(Math.random()*2-1)*0.5,vrz:(Math.random()*2-1)*0.5}; }   // 4% massi GIGANTI → passaggi ravvicinati da brivido
 function wispSpawn(w){ w.active=true; const sz=60+Math.random()*120; w.mesh.scale.set(sz,sz,1);
   const ang=Math.random()*Math.PI*2,rad=20+Math.random()*70; w.mesh.position.set(Math.cos(ang)*rad,(Math.random()*2-1)*40,-700-Math.random()*500);
   w.mesh.rotation.z=Math.random()*Math.PI; w.spin=(Math.random()*2-1)*0.05;
@@ -2389,6 +2411,138 @@ class WhalePod{
   }
 }
 
+/* ---------------- STELLE CADENTI: streak veloci e nitide (frequenti nelle piogge di meteore) ---------------- */
+class ShootingStar{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
+    this.head=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xffffff),opacity:0}));
+    this.head.scale.setScalar(1.6); this.g.add(this.head);
+    this.trail=new THREE.Sprite(new THREE.SpriteMaterial({map:cometTail,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xcfe2ff),opacity:0}));
+    this.trail.center.set(0.0,0.5); this.g.add(this.trail);
+    this.active=false; this.t=0; this.dur=0; this.vel=new THREE.Vector3(); this._v1=new THREE.Vector3(); this._v2=new THREE.Vector3();
+  }
+  spawn(){ this.active=true; this.t=0; this.dur=1.1+Math.random()*0.7;
+    const side=Math.random()<0.5?-1:1;
+    this.g.position.set(side*(30+Math.random()*70), 18+Math.random()*45, -160-Math.random()*240);
+    this.vel.set(-side*(90+Math.random()*70), -(30+Math.random()*40), 30+Math.random()*30);   // sfreccia in diagonale
+    const L=30+Math.random()*26; this.trail.scale.set(L,2.2,1);
+    this.trail.material.color.setHSL(0.55+Math.random()*0.08,0.5,0.75);
+    this.g.visible=true; }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.g.position.addScaledVector(this.vel,dt); this.g.position.z+=speed*dt*0.4;
+    const cs=this._v1.copy(this.g.position).project(camera), ps=this._v2.copy(this.g.position).addScaledVector(this.vel,-0.1).project(camera);
+    this.trail.material.rotation=Math.atan2((ps.y-cs.y)*HEIGHT,(ps.x-cs.x)*WIDTH);   // coda DIETRO la testa (scratch, zero alloc)
+    const f=Math.max(0,Math.min(this.t/0.15,(this.dur-this.t)/0.4,1));               // fade a due lati veloce
+    this.head.material.opacity=f*0.95; this.trail.material.opacity=f*0.7;
+    if(this.t>=this.dur){ this.active=false; this.g.visible=false; } }
+}
+/* ---------------- NAVICELLA: passaggio maestoso, luci di via lampeggianti, scia dei motori ---------------- */
+class Starship{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
+    const hull=new THREE.MeshStandardMaterial({color:0x8f99ad,roughness:0.42,metalness:0.85,envMapIntensity:1.2,transparent:true,opacity:0}); this.hullMat=hull;
+    const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.5,3.4,6,14),hull); body.rotation.x=Math.PI/2; this.g.add(body);   // fusoliera lungo z
+    const wing=new THREE.Mesh(new THREE.BoxGeometry(4.6,0.08,1.3),hull); wing.position.z=0.9; this.g.add(wing);
+    const tail=new THREE.Mesh(new THREE.BoxGeometry(0.08,1.2,0.9),hull); tail.position.set(0,0.55,1.4); this.g.add(tail);
+    this.cabMat=new THREE.MeshStandardMaterial({color:0x223048,roughness:0.15,metalness:0.9,emissive:new THREE.Color(0x9fd9ff),emissiveIntensity:0.4,transparent:true,opacity:0});
+    const cab=new THREE.Mesh(new THREE.SphereGeometry(0.42,16,12),this.cabMat); cab.scale.set(1,0.7,1.4); cab.position.set(0,0.34,-1.15); this.g.add(cab);
+    const mkspr=(col,sc)=>{ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(col),opacity:0})); s.scale.setScalar(sc); this.g.add(s); return s; };
+    this.engL=mkspr(0x8fd0ff,1.7); this.engL.position.set(-0.55,0,2.35);   // motori gemelli
+    this.engR=mkspr(0x8fd0ff,1.7); this.engR.position.set(0.55,0,2.35);
+    this.navL=mkspr(0xff6a6a,0.55); this.navL.position.set(-2.25,0,0.9);   // luci di via (rosso/verde: convenzione aeronautica reale)
+    this.navR=mkspr(0x6aff8f,0.55); this.navR.position.set(2.25,0,0.9);
+    this.active=false; this.t=0; this.dur=0; this.vel=new THREE.Vector3(); this._look=new THREE.Vector3(); this._counted=false;
+  }
+  spawn(){ this.active=true; this.t=0; this._counted=false; this.dur=30+Math.random()*14;
+    const side=Math.random()<0.5?-1:1; this.g.scale.setScalar(2.2+Math.random()*1.3);
+    this.g.position.set(side*(90+Math.random()*70),(Math.random()*2-1)*45,-380-Math.random()*160);
+    this.vel.set(-side*(9+Math.random()*5),(Math.random()*2-1)*1.6, 26+Math.random()*12);
+    this.g.visible=true;
+    $t.log.textContent='— a ship. Someone else chose the long way too.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.g.position.addScaledVector(this.vel,dt); this.g.position.z+=speed*dt*0.25;
+    this._look.copy(this.g.position).add(this.vel); this.g.lookAt(this._look); this.g.rotateZ(Math.sin(this.t*0.3)*0.22);   // virata dolce (bank)
+    const op=Math.max(0,Math.min(this.t/3,(this.dur-this.t)/3,1));
+    this.hullMat.opacity=op; this.cabMat.opacity=op;
+    const fl=0.55+0.18*Math.sin(this.t*13.0)+0.08*Math.sin(this.t*5.7);            // fiamma dei motori che vibra
+    this.engL.material.opacity=op*fl; this.engR.material.opacity=op*fl;
+    const bl=Math.max(0,Math.sin(this.t*3.2))>0.72?1:0.12;                          // luci di via: blink alternato
+    this.navL.material.opacity=op*bl; this.navR.material.opacity=op*(bl>0.5?0.12:1);
+    if(!this._counted && this.g.position.z>-60){ this._counted=true; TEL.companions++; }
+    if(this.t>=this.dur || this.g.position.z>70){ this.active=false; this.g.visible=false; } }
+}
+/* ---------------- RAZZO: salita diagonale con fiamma viva (omaggio retrò) ---------------- */
+class RocketShip{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
+    this.bodyMat=new THREE.MeshStandardMaterial({color:0xd8dde6,roughness:0.45,metalness:0.35,envMapIntensity:0.9,transparent:true,opacity:0});
+    this.noseMat=new THREE.MeshStandardMaterial({color:0xc25438,roughness:0.5,metalness:0.3,transparent:true,opacity:0});
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.38,2.4,14),this.bodyMat); this.g.add(body);      // asse +Y
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(0.32,0.85,14),this.noseMat); nose.position.y=1.62; this.g.add(nose);
+    for(let k=0;k<3;k++){ const fin=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.7,0.5),this.noseMat);
+      const a=k/3*Math.PI*2; fin.position.set(Math.cos(a)*0.36,-1.0,Math.sin(a)*0.36); fin.rotation.y=-a; this.g.add(fin); }
+    this.flame=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xffb36b),opacity:0}));
+    this.flame.position.y=-1.75; this.g.add(this.flame);
+    this.glow=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xffd9a8),opacity:0}));
+    this.glow.position.y=-1.75; this.glow.scale.setScalar(3.4); this.g.add(this.glow);
+    this.active=false; this.t=0; this.dur=0; this.vel=new THREE.Vector3(); this._vn=new THREE.Vector3(); this._up=new THREE.Vector3(0,1,0); this._counted=false;
+  }
+  spawn(){ this.active=true; this.t=0; this._counted=false; this.dur=22+Math.random()*10;
+    const side=Math.random()<0.5?-1:1; this.g.scale.setScalar(2.6+Math.random()*1.6);
+    this.g.position.set(side*(55+Math.random()*40), -60-Math.random()*15, -320-Math.random()*140);
+    this.vel.set(-side*(6+Math.random()*4), 14+Math.random()*6, 18+Math.random()*10);
+    this.g.visible=true;
+    $t.log.textContent='— a rocket, climbing. Somebody is leaving home tonight.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.vel.y+=dt*0.8;                                                              // accelera in salita
+    this.g.position.addScaledVector(this.vel,dt); this.g.position.z+=speed*dt*0.25;
+    this._vn.copy(this.vel).normalize(); this.g.quaternion.setFromUnitVectors(this._up,this._vn);   // punta lungo la rotta
+    const op=Math.max(0,Math.min(this.t/2.5,(this.dur-this.t)/3,1));
+    this.bodyMat.opacity=op; this.noseMat.opacity=op;
+    const fl=1.15+0.45*Math.sin(this.t*23.0)+0.2*Math.sin(this.t*7.3);               // fiamma che sfarfalla
+    this.flame.scale.set(0.9*fl,1.6*fl,1); this.flame.material.opacity=op*0.95; this.glow.material.opacity=op*0.3*fl;
+    if(!this._counted && this.t>this.dur*0.4){ this._counted=true; TEL.companions++; }
+    if(this.t>=this.dur){ this.active=false; this.g.visible=false; } }
+}
+/* ---------------- UFO: disco metallico con cupola, luci a inseguimento, guizzi imprevedibili e fuga ---------------- */
+class UFO{
+  constructor(){
+    this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
+    this.hullMat=new THREE.MeshStandardMaterial({color:0x6a7484,roughness:0.32,metalness:0.92,envMapIntensity:1.4,transparent:true,opacity:0});
+    const disc=new THREE.Mesh(new THREE.SphereGeometry(1,28,18),this.hullMat); disc.scale.set(1,0.26,1); this.g.add(disc);
+    this.domeMat=new THREE.MeshStandardMaterial({color:0x1c2a33,roughness:0.18,metalness:0.6,emissive:new THREE.Color(0x66e6d8),emissiveIntensity:0.45,transparent:true,opacity:0});
+    const dome=new THREE.Mesh(new THREE.SphereGeometry(0.42,20,14),this.domeMat); dome.scale.set(1,0.8,1); dome.position.y=0.16; this.g.add(dome);
+    this.lights=[]; for(let k=0;k<8;k++){ const a=k/8*Math.PI*2;
+      const s=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xbfffe8),opacity:0}));
+      s.scale.setScalar(0.30); s.position.set(Math.cos(a)*0.86,-0.04,Math.sin(a)*0.86); this.g.add(s); this.lights.push(s); }
+    this.active=false; this.t=0; this.dur=0; this.anchor=new THREE.Vector3(); this.tgt=new THREE.Vector3(); this.drift=new THREE.Vector3();
+    this.retgt=0; this.exit=false; this._counted=false;
+  }
+  spawn(){ this.active=true; this.t=0; this.exit=false; this._counted=false; this.dur=16+Math.random()*10;
+    const side=Math.random()<0.5?-1:1; this.g.scale.setScalar(2.4+Math.random()*1.6);
+    this.anchor.set(side*(45+Math.random()*45),(Math.random()*2-1)*30,-240-Math.random()*120);
+    this.g.position.copy(this.anchor); this.tgt.copy(this.anchor);
+    this.drift.set(-side*(1.2+Math.random()),(Math.random()*2-1)*0.6, 8+Math.random()*5);
+    this.retgt=0;
+    this.g.visible=true;
+    $t.log.textContent='— an unidentified light. It moves like nothing we build.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); }
+  update(dt,speed){ if(!this.active) return; this.t+=dt;
+    this.anchor.addScaledVector(this.drift,dt); this.anchor.z+=speed*dt*0.3;
+    this.retgt-=dt;
+    if(!this.exit && this.retgt<=0){ this.retgt=1.8+Math.random()*1.6;               // GUIZZO: nuova meta improvvisa attorno all'ancora
+      this.tgt.set(this.anchor.x+(Math.random()*2-1)*14, this.anchor.y+(Math.random()*2-1)*7, this.anchor.z+(Math.random()*2-1)*6); }
+    if(!this.exit && this.t>this.dur-1.2){ this.exit=true; this.tgt.set(this.anchor.x+(Math.random()<0.5?-1:1)*260, this.anchor.y+60, this.anchor.z-80); }   // FUGA: zip via
+    const k=this.exit?3.4:2.6;
+    this.g.position.lerp(this.tgt,Math.min(1,dt*k));                                 // dart con easing veloce (mai teletrasporto)
+    this.g.rotation.y+=dt*2.2; this.g.rotation.z=Math.sin(this.t*4.0)*0.10;          // rotazione + wobble da trottola
+    const op=Math.max(0,Math.min(this.t/1.5,(this.dur-this.t)/1.1,1));
+    this.hullMat.opacity=op; this.domeMat.opacity=op;
+    for(let k2=0;k2<8;k2++){ const w=Math.max(0,Math.sin(this.t*5.0-k2*0.785));      // luci a inseguimento (chase)
+      this.lights[k2].material.opacity=op*(0.12+0.88*Math.pow(w,6)); }
+    if(!this._counted && this.t>this.dur*0.4){ this._counted=true; TEL.companions++; }
+    if(this.t>=this.dur){ this.active=false; this.g.visible=false; } }
+}
+
 /* ---------------- PIANETI PERMANENTI (acquisto: nome + logo) ---------------- */
 class OwnedPlanet{
   constructor(){
@@ -2562,7 +2716,7 @@ function animate(){
   // pianeti
   planetTimer-=dt;
   if(!planets.some(p=>p.active&&!p._distant)){ const fp=planets.find(p=>!p.active); if(fp){ fp.spawn(false,null,false); planetTimer=3.5+Math.random()*4; } }   // GARANZIA: sempre almeno 1 pianeta HERO (passaggio ravvicinato) — i mondi di sfondo non bastano
-  else if(planetTimer<=0){ planetTimer=3.5+Math.random()*4; const fp=planets.find(p=>!p.active); if(fp&&Math.random()<director.cur.planet*1.4+0.14){ grazeNext=(Math.random()<0.16); let _nd=0; for(const p of planets) if(p.active&&p._distant) _nd++; fp.spawn(false,null, _nd<5 && Math.random()<0.62); grazeNext=false; } }   // spawn probabilistico + flyby; cap 5 mondi di sfondo → restano slot per i passaggi hero
+  else if(planetTimer<=0){ planetTimer=3.5+Math.random()*4; const fp=planets.find(p=>!p.active); if(fp&&Math.random()<director.cur.planet*1.4+0.14){ grazeNext=(Math.random()<0.22); let _nd=0; for(const p of planets) if(p.active&&p._distant) _nd++; fp.spawn(false,null, _nd<5 && Math.random()<0.62); grazeNext=false; } }   // spawn probabilistico + flyby più frequenti (0.22); cap 5 mondi di sfondo → restano slot per i passaggi hero
   let nearestPlanet=null,nearScore=0,nearSun=null,nearSunK=0;
   for(const p of planets){ p.update(dt,speed); if(!p.active) continue; const z=p.mesh.position.z;
     if(p.isSun){ if(z>-1400&&z<90){ const k=p.mesh.scale.x/Math.max(70,-z+160); if(k>nearSunK){nearSunK=k;nearSun=p;} } }
@@ -2671,6 +2825,12 @@ function animate(){
   bolideTimer-=dt; if(bolideTimer<=0 && !bolide.active){ bolideTimer=130+Math.random()*200; bolide.spawn(); } bolide.update(dt,speed);
   gwTimer-=dt; if(gwTimer<=0 && !gwRipple.active){ gwTimer=360+Math.random()*420; gwRipple.spawn(); } gwRipple.update(dt);
   whalePodTimer-=dt; if(whalePodTimer<=0 && !whalePod.active){ whalePodTimer=240+Math.random()*260; whalePod.spawn(); } whalePod.update(dt,speed);
+  // VISITATORI: stelle cadenti (frequenti nelle piogge), navicella, razzo, UFO
+  shootTimer-=dt*(shower?7:1); if(shootTimer<=0){ shootTimer=40+Math.random()*70; const fs=shootingStars.find(s=>!s.active); if(fs) fs.spawn(); }
+  for(const s of shootingStars) s.update(dt,speed);
+  starshipTimer-=dt; if(starshipTimer<=0 && !starship.active){ starshipTimer=280+Math.random()*300; starship.spawn(); } starship.update(dt,speed);
+  rocketTimer-=dt; if(rocketTimer<=0 && !rocketShip.active){ rocketTimer=380+Math.random()*320; rocketShip.spawn(); } rocketShip.update(dt,speed);
+  ufoTimer-=dt; if(ufoTimer<=0 && !ufo.active){ ufoTimer=320+Math.random()*360; ufo.spawn(); } ufo.update(dt,speed);
   solarEclipseTimer-=dt; if(solarEclipseTimer<=0 && !solarEclipse.active){ solarEclipseTimer=520+Math.random()*360; solarEclipse.spawn(); } solarEclipse.update(dt,speed);
   lunarEclipseTimer-=dt; if(lunarEclipseTimer<=0 && !lunarEclipse.active){ lunarEclipseTimer=620+Math.random()*360; lunarEclipse.spawn(); } lunarEclipse.update(dt,speed);
   // PIANETI PERMANENTI: ne mostra uno alla volta, ruotando sul catalogo acquistato
@@ -2688,17 +2848,22 @@ function animate(){
   manGrade.value.copy(director.grade); manKey.value.copy(director.key).lerp(_white,0.35);
   manEnvDir.value.set(0,0,1);                                   // in view-space la camera guarda -z → +z punta verso di lei
   // TWINKLE-STELLA: ogni ~15-35s l'astronauta "si accende" per ~2s (scintille, alone e visore insieme) → luccica come una stella
-  manTwT-=dt; if(manTwT<=0){ manTwT=15+Math.random()*20; manTwA=1; }
+  manTwT-=dt; if(manTwT<=0){ manTwT=12+Math.random()*16; manTwA=1; }
   if(manTwA>0){ manTwE=Math.min(1,manTwE+dt*2.4); if(manTwE>=1) manTwA=0; }   // ATTACCO in rampa (~0.4s): niente pop-on, si "accende" davvero
   else manTwE=Math.max(0,manTwE-dt*0.55);
   const _twk=manTwE*manTwE*(3-2*manTwE);                        // easing morbido (niente scatto on/off)
   uStarTw.value=_twk;
   if(manHalo){ manHalo.material.color.copy(director.key).lerp(_white,0.6);
-    manHalo.material.opacity=0.11+0.045*Math.sin(mt*0.45)+0.24*_twk; }   // alone che respira; sul twinkle fiorisce
+    manHalo.material.opacity=0.13+0.05*Math.sin(mt*0.45)+0.28*_twk; }   // alone che respira; sul twinkle fiorisce
   if(manSpike){ manSpike.material.color.copy(director.key).lerp(_white,0.75);
     manSpike.material.opacity=0.34*_twk*_twk;                           // quadratico → appare solo sul picco, fade dolce a due lati
     manSpike.scale.setScalar(3.0+0.9*_twk);                             // le punte si allungano mentre brilla (respiro da stella)
     manSpike.visible=manSpike.material.opacity>0.004; }                 // igiene: zero draw a riposo
+  // CICLO INGRASSA/DIMAGRISCE: raro (~ogni 2.5-5.5 min), gonfia in ~15s, plateau ~20s, sgonfia in ~30s (tutto graduale, anti-pop)
+  if(fatClock<0){ fatT-=dt; if(fatT<=0){ fatClock=0; fatAmp=0.55+Math.random()*0.45;
+    if($t.log){ $t.log.textContent='— zero-g bloat. The suit swells; it will pass.'; $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),9000); } } }
+  else { fatClock+=dt; uFat.value=smooth(0,15,fatClock)*(1-smooth(35,65,fatClock))*fatAmp;
+    if(fatClock>68){ fatClock=-1; fatT=150+Math.random()*180; uFat.value=0; } }
   if(astHitCD>0) astHitCD-=dt;
   hitFlash =Math.max(0,hitFlash -dt*2.2);   // ~0.45s di flash
   hitTremor=Math.max(0,hitTremor-dt*1.4);   // ~0.7s di tremore
@@ -3329,8 +3494,11 @@ const CMD_EVENTS={
   eclipselunar:()=> (lunarEclipse && !lunarEclipse.active) ? (lunarEclipse.spawn(),true) : false,
   supernova:   ()=> (supernova && !supernova.active) ? (supernova.flash(),true) : false,
   meteors:     ()=> { window._forceShower='Cosmic Rain'; shower='Cosmic Rain'; setTimeout(()=>{ if(window._forceShower==='Cosmic Rain') window._forceShower=null; },90000); return true; },
+  ship:   ()=> (starship && !starship.active) ? (starship.spawn(),true) : false,
+  rocket: ()=> (rocketShip && !rocketShip.active) ? (rocketShip.spawn(),true) : false,
+  ufo:    ()=> (ufo && !ufo.active) ? (ufo.spawn(),true) : false,
 };
-const CMD_CUE={star:'star',message:'star',light:'star',comet:'comet',wish:'comet',whales:'deep',aurora:'deep',world:'deep',nebula:'deep',blackhole:'dark',eclipse:'dark',supernova:'dark',meteors:'comet'};
+const CMD_CUE={star:'star',message:'star',light:'star',comet:'comet',wish:'comet',whales:'deep',aurora:'deep',world:'deep',nebula:'deep',blackhole:'dark',eclipse:'dark',supernova:'dark',meteors:'comet',ship:'deep',rocket:'comet',ufo:'dark'};
 window.cadutaCommand=(cmd,arg,user)=>{
   cmd=String(cmd||'').toLowerCase();
   if(cmd==='musicnext') return window.cadutaMusicNext();
@@ -3340,7 +3508,7 @@ window.cadutaCommand=(cmd,arg,user)=>{
   if(cmd==='star'||cmd==='message'){ const label=String(arg||user||'').slice(0,40).trim(); if(label) window.cadutaAddStar(label); return true; }
   if(cmd==='light'){ const who=String(arg||user||'qualcuno').slice(0,38).trim(); window.cadutaAddStar('🕯 '+who); return true; }
   if(cmd==='eclipse'){ const a=String(arg||'').toLowerCase(); const k=/lun/.test(a)?'eclipselunar':'eclipsesolar'; if(cmdQueue.length<CMD_QMAX) cmdQueue.push(k); return true; }   // !eclipse solar / !eclipse lunar
-  if(cmd==='help'){ if($t&&$t.log){ $t.log.textContent='command: !star !light !message !comet !wish !whales !aurora !eclipse solar !eclipse lunar !supernova !meteors !world !nebula !blackhole'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } return true; }
+  if(cmd==='help'){ if($t&&$t.log){ $t.log.textContent='command: !star !light !message !comet !wish !whales !aurora !eclipse solar/lunar !supernova !meteors !world !nebula !blackhole !ship !rocket !ufo'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); } return true; }
   if(CMD_EVENTS[cmd]){ if(cmdQueue.length<CMD_QMAX) cmdQueue.push(cmd); return true; }   // evento → in coda
   return false;
 };
