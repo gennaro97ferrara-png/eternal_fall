@@ -3787,8 +3787,13 @@ window.cadutaCinema=(event,opts={})=>{ if(!_recOK()) return 'aggiungi &rec=1 all
 // registra UNA clip del CANVAS (solo scena, niente overlay) — video puro, la musica si aggiunge dopo
 function _efRecClip(sec,name){ return new Promise(res=>{ try{
     const stream=renderer.domElement.captureStream(60);
-    const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
-    const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:55000000}), chunks=[];
+    // AUDIO nel file: tap dal limiter (mix completo: musica + voce Brian + cue) → traccia audio nel webm
+    try{ if(typeof audio!=='undefined' && audio.ctx && audio.limiter){
+      if(!window._recADest){ window._recADest=audio.ctx.createMediaStreamDestination(); audio.limiter.connect(window._recADest); }
+      const at=window._recADest.stream.getAudioTracks()[0]; if(at) stream.addTrack(at); } }catch(_){}
+    // h264 preferito: encode HARDWARE (VideoToolbox) → 4K60 senza frame persi; vp9 software è il fallback
+    const mime=['video/webm;codecs=h264,opus','video/webm;codecs=h264','video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
+    const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:55000000,audioBitsPerSecond:192000}), chunks=[];
     rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
     rec.onstop=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(chunks,{type:mime})); a.download=name+'.webm'; document.body.appendChild(a); a.click(); a.remove(); console.log('[clip] scaricata',name); res(); };
     rec.start(); console.log('[clip] REC',name,sec+'s @',renderer.domElement.width+'x'+renderer.domElement.height); setTimeout(()=>{try{rec.stop();}catch(_){res();}}, sec*1000);
@@ -3821,6 +3826,43 @@ window.cadutaBatch=async(opts={})=>{
   _rec4k=false; PIX=oldPix; renderer.setPixelRatio(PIX); if(composer) composer.setPixelRatio(PIX); director.hold=20; director.t=director.dur; onResize(); for(const L of starLayers) L.mat.uniforms.uPix.value=PIX;
   console.log('[batch] FATTO ·', scenes.length, 'clip 4K nei Download');
   return 'batch 4K avviato ('+scenes.length+' clip @ '+_recW+'x'+_recH+')';
+};
+// FILM: 5 mini-episodi 4K per YouTube — UNO PER PERSONAGGIO, ognuno con scenario/sfondo/musica/eventi/capsula diversi.
+// SOLO con ?rec=1. USO: apri ?rec=1&film=1 (parte da solo dopo Enter) oppure console cadutaFilm().
+window.cadutaFilm=async(opts={})=>{
+  if(!_recOK()) return 'apri l\'URL con ?rec=1&film=1 per registrare — bloccato sul live';
+  const F=opts.films||[
+    {name:'astronaut_cuore',  character:'astronaut', region:'cuore',   sky:7,  track:0,  speak:'supernova',  seconds:82,
+     events:[{t:6,ev:'shooting'},{t:14,ev:'supernova'},{t:28,ev:'rings'},{t:66,ev:'comet'}]},
+    {name:'astrodog_aurora',  character:'astrodog',  region:'aurora',  sky:13, track:3,  speak:'aurora',     seconds:82,
+     events:[{t:5,ev:'aurora'},{t:18,ev:'comet'},{t:38,ev:'shooting'},{t:46,ev:'ship'},{t:68,ev:'shooting'}]},
+    {name:'cat_rosa',         character:'cat',       region:'rosa',    sky:21, track:5,  speak:'nebula',     seconds:82,
+     events:[{t:5,ev:'jellies'},{t:24,ev:'lanterns'},{t:52,ev:'whales'},{t:70,ev:'shooting'}]},
+    {name:'giraffe_zaffiro',  character:'giraffe',   region:'zaffiro', sky:31, track:8,  speak:'blackhole',  seconds:82,
+     events:[{t:6,ev:'wormhole'},{t:36,ev:'blackhole'},{t:68,ev:'shooting'}]},
+    {name:'elephant_oro',     character:'elephant',  region:'oro',     sky:41, track:11, speak:'cosmos',     seconds:82,
+     events:[{t:5,ev:'mothership'},{t:20,ev:'sputnik'},{t:44,ev:'ufo'},{t:70,ev:'shooting'}]},
+  ];
+  const gap=opts.gap||9, oldPix=PIX; _recW=3840; _recH=2160;
+  _rec4k=true; PIX=1; _ef4kForce();
+  console.log('[film] '+F.length+' episodi 4K · ~'+Math.ceil(F.length*(gap+(F[0].seconds||82)+2)/60)+' min totali · NON cambiare scheda né coprire la finestra');
+  await new Promise(r=>setTimeout(r,700));
+  for(let i=0;i<F.length;i++){ const f=F[i];
+    try{ if(f.character&&window.cadutaCharacter) window.cadutaCharacter(f.character); }catch(_){}
+    try{ if(f.region&&window.cadutaRegion) window.cadutaRegion(f.region); }catch(_){}
+    try{ if(f.sky!==undefined&&window.cadutaSky) window.cadutaSky(f.sky); }catch(_){}
+    try{ if(f.track!==undefined&&window.cadutaPlayTrack) window.cadutaPlayTrack(f.track); }catch(_){}
+    try{ if(f.speak&&typeof audio!=='undefined'&&audio.enqueueVoice){ audio.enqueueVoice(f.speak); audio.voiceT=audio.voiceEvery; } }catch(_){}
+    await new Promise(r=>setTimeout(r,gap*1000));                        // settle: swap personaggio + crossfade sfondo + attacco musica
+    const tmr=(f.events||[]).map(e=>setTimeout(()=>{ try{ window.cadutaDebugEvent(e.ev); }catch(_){} }, e.t*1000));   // eventi A TEMPO durante la clip
+    console.log('[film] '+(i+1)+'/'+F.length+' REC '+f.name+' ('+(f.seconds||82)+'s)');
+    await _efRecClip(f.seconds||82, 'effilm_'+String(i+1).padStart(2,'0')+'_'+f.name);
+    tmr.forEach(clearTimeout);
+    await new Promise(r=>setTimeout(r,2000));
+  }
+  _rec4k=false; PIX=oldPix; renderer.setPixelRatio(PIX); if(composer) composer.setPixelRatio(PIX); director.hold=20; director.t=director.dur; onResize(); for(const L of starLayers) L.mat.uniforms.uPix.value=PIX;
+  console.log('[film] FATTO · '+F.length+' episodi nei Download (effilm_*.webm)');
+  return 'film avviato ('+F.length+' episodi)';
 };
 
 /* ---------------- catalogo del pubblico (Fase B: /api/stars) ---------------- */
@@ -3917,7 +3959,11 @@ function begin(){ if(started||!built) return; started=true; audio.start();
       const [nm,fn,wait]=seq[k++]; try{ fn(); }catch(e){ console.warn('[demo]',nm,e); }
       console.log('[demo] '+k+'/'+seq.length+' → '+nm);
       setTimeout(step, wait*1000); };
-    setTimeout(step, 6000); console.log('[demo] tour delle novità tra 6s (~7 min totali)'); } }
+    setTimeout(step, 6000); console.log('[demo] tour delle novità tra 6s (~7 min totali)'); }
+  // FILM (?rec=1&film=1): registra automaticamente i 5 episodi YouTube dopo l'Enter (aspetta che i personaggi siano nel roster)
+  if(/[?&]film=1/.test(location.search) && /[?&]rec=1/.test(location.search)){
+    const goFilm=()=>{ if(charRoster.length>=5){ try{ window.cadutaFilm(); }catch(e){ console.warn('[film]',e); } } else { console.log('[film] aspetto il roster ('+charRoster.length+'/5)…'); setTimeout(goFilm,2000); } };
+    setTimeout(goFilm, 7000); } }
 enterBtn.addEventListener('click', begin);
 window.addEventListener('keydown', e=>{ if(e.key==='f'||e.key==='F'){ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); } });
 
