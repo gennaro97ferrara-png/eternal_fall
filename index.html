@@ -2189,7 +2189,9 @@ const CineShader={
 
 function applyDirector(){
   const c=director.cur;
-  if(sky){ sky.material.color.copy(director.grade).lerp(_white,0.90).multiplyScalar(Math.max(IS_LIVE?0.98:0.92,c.skyBright)*(IS_LIVE?1.06:1.0)*zoomSkyDim);   // sfondo tinto SOLO 10% dal mood → i cieli ESO restano reali e LUMINOSI (come gen_25), non attenuati — in place, niente alloc; ×zoomSkyDim (1 a riposo): il deep zoom oscura la sfera nelle fasi profonde
+  if(sky){ sky.material.color.copy(director.grade).lerp(_white,0.90).multiplyScalar(Math.max(IS_LIVE?0.98:0.92,c.skyBright)*(IS_LIVE?1.06:1.0));   // sfondo tinto SOLO 10% dal mood → i cieli ESO restano reali e LUMINOSI (come gen_25), non attenuati — in place, niente alloc
+    _zSkyTint.copy(sky.material.color);                                        // tinta SENZA dim: la usano i quad del deep zoom (a cielo spento questa resta viva)
+    sky.material.color.multiplyScalar(zoomSkyDim);                             // ×zoomSkyDim (1 a riposo): il deep zoom spegne la sfera nelle fasi profonde/loop
     if(sky2 && sky2.visible) sky2.material.color.copy(sky.material.color); }   // durante il crossfade tingi anche lo sfondo entrante (eredita anche il dim)
   if(keyLight){ keyLight.color.copy(_white).lerp(director.key,0.5); keyLight.intensity=c.kInt; }   // tinta regione attenuata
   if(cinePass){ cinePass.uniforms.uGrade.value.copy(director.grade);
@@ -3570,7 +3572,9 @@ class AmbientEngine{
     this._organVoices=[]; const atk=initial?2.0:0.7;
     const notes = this.theme ? this._curN : this.chordV.map(s=>this.root+s);   // accordo reale del tema, oppure voicing planato
     for(const midi of notes){ const h=this.kit.note('organ',midi,this.organBus,t,0.18,{loop:true,loopStart:0.6,loopEnd:2.4,attack:atk}); if(h) this._organVoices.push(h); } }
-  _f(m){ return 440*Math.pow(2,(m-69)/12); }
+  _f(m){ let f=440*Math.pow(2,(m-69)/12);   // GUARDIA 24/7: una nota non-finita (dato corrotto/indice NaN) qui diventerebbe un errore per-frame in animate → conteggio frame-error → safeReload della live. Mai oltre questo punto.
+    if(!isFinite(f)){ if(!this._fWarn){ this._fWarn=true; console.warn('[ambient] nota non-finita (m='+m+') → fallback 220Hz'); } f=220; }
+    return Math.min(Math.max(f,8),12000); }
   _imp(dur,decay){ const ctx=this.ctx,rate=ctx.sampleRate,len=(rate*dur)|0,buf=ctx.createBuffer(2,len,rate);
     for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay); } return buf; }
   _setTheme(i){ const c=this.theme[i],tr=this._themeTrans||0; this._curBass=c.b+tr; this._curN=[c.b+tr].concat(c.n.map(m=>m+tr)); this._curA=c.a.map(m=>m+tr); this.root=this._curBass; }   // accordo corrente del tema (con eventuale trasposizione casuale del giro)
@@ -3581,7 +3585,7 @@ class AmbientEngine{
       if(this.barLen>0){ this._arpP=0; this.arpT=this.arpEvery; }
       this.sub.frequency.setTargetAtTime(this._f(this._curBass-12),t,3.5);
       if(this.useSamples){ this._voiceOrgan(false); this._voiceStrings(false); } return; }
-    const pr=this.movs[this.movIdx].prog; this._progI=(this._progI+1)%pr.length; this.root=this.rootBase+pr[this._progI];   // (altri movimenti) progressione planata ad anello
+    const pr=this.movs[this.movIdx].prog||[0]; this._progI=pr.length?(this._progI+1)%pr.length:0; this.root=this.rootBase+(pr[this._progI]||0);   // (altri movimenti) progressione planata ad anello — mai indici NaN su prog vuota
     if(this.barLen>0){ this._arpP=0; this.arpT=this.arpEvery; }
     for(const v of this.voices) v.o.frequency.setTargetAtTime(this._f(this.root+v.semi),t,4.5); this.sub.frequency.setTargetAtTime(this._f(this.root-12),t,4.5);
     if(this.useSamples){ this._voiceOrgan(false); this._voiceStrings(false); } }
@@ -3805,6 +3809,7 @@ const ZOOM_ENV_FLOOR=0.35;   // polvere/nebbie mai del tutto a zero durante il d
 const ZP_N=2500, ZP_RMIN=14, ZP_RMAX=4800, ZP_Z=-4200;   // finale procedurale: disco di stelle in flusso radiale
 const _zDir=new THREE.Vector3(), _zUp=new THREE.Vector3(), _zFwd=new THREE.Vector3(), _zM=new THREE.Matrix4(), _zZero=new THREE.Vector3(0,0,0);   // scratch riusati (zero alloc per-frame)
 const _zNeutral=new THREE.Color(1,1,1).multiplyScalar(IS_LIVE?1.06:1.0);   // "bianco" dei livelli profondi: stesso boost live del tint sky
+const _zSkyTint=new THREE.Color(1,1,1);   // tinta sky SENZA il dim (scritta da applyDirector): i quad la usano al posto di sky.material.color, che a cielo spento è nera
 
 // manifest lazy: levels.json ({levels:[{file,angle_deg:[w,h],credit,px}]}) + sky-gc.json ({skies:{file:{u,v,flip}}})
 function zoomLoadCfg(){ if(zoomCfgP) return zoomCfgP;
@@ -3987,9 +3992,10 @@ function deepZoomUpdate(dt){
       zoomAimed=true; zoomFovKick=2;                                                  // micro-kick FOV +2° all'inizio VERO del tuffo (il cielo riemerge col dim sotto)
       console.log('[zoom] blink-puntamento GC in '+zoomAimT.toFixed(1)+'s (residuo '+(_zDir.angleTo(_zFwd)*180/Math.PI).toFixed(2)+'°) → tuffo'); }
   }
-  // oscuramento sfera: 0 durante puntamento e fasi procedurali (dietro il flusso NON si deve vedere
-  // il cielo a scala normale), torna 1 col nuovo ciclo/uscita; rampa ~0.7s
-  const dimTgt=(zoomState==='dive')?Math.min(zoomAimed?1:0,1-zoomProcOp):1;
+  // oscuramento sfera: nel LOOP resta spenta per TUTTA la durata (la sfera statica dietro i quad
+  // che zoomano si leggeva come "sfondo dietro" — mai più visibile); in 'once' torna col ciclo;
+  // in uscita torna sempre. Rampa ~0.7s
+  const dimTgt=(zoomState==='dive')?((zoomMode==='loop')?0:Math.min(zoomAimed?1:0,1-zoomProcOp)):1;
   zoomSkyDim+=(dimTgt-zoomSkyDim)*Math.min(1,dt*1.4);
   const rf=(zoomState==='exit')?(1-smooth(0,1,zoomExitT/zoomExitDur)):1;          // fade-out globale del rig in uscita
   if(dive&&zoomAimed&&!zoomHandoff){
@@ -4014,7 +4020,7 @@ function deepZoomUpdate(dt){
     if(zoomProcOp>=0.995 && s.lv===zoomCurI && zoomNxtI<0) tgt=0;         // il procedurale ha preso il testimone → l'ultima foto "si risolve in stelle"
     s.op+=THREE.MathUtils.clamp(tgt-s.op,-dt/1.2,dt/1.2);                 // rate-limit → mai pop (anche con load in ritardo)
     s.mesh.material.opacity=s.op*rf;
-    s.mesh.material.color.copy(sky.material.color).lerp(_zNeutral,Math.min(1,s.lv*0.5));   // L1 = tinta sky corrente (applyDirector, boost live incluso) → neutro da L3
+    s.mesh.material.color.copy(_zSkyTint).lerp(_zNeutral,Math.min(1,s.lv*0.5));   // L1 = tinta sky corrente SENZA dim (a cielo spento resta viva) → neutro da L3
   }
   // promozione: l'entrante è pieno E copre anche in verticale (finestre strette/portrait!) →
   // il precedente sparisce e libera la sua texture (VRAM)
@@ -4038,16 +4044,13 @@ function deepZoomUpdate(dt){
       if(x*x+y*y>R2){ const a=Math.random()*6.28318, r=ZP_RMIN*(0.3+Math.random()*0.7); x=Math.cos(a)*r; y=Math.sin(a)*r; }   // respawn DENTRO il nucleo invisibile (r≤RMIN, dove vA=0) → mai pop
       P[i*3]=x; P[i*3+1]=y; }
     zoomStars.geometry.attributes.position.needsUpdate=true; }
-  // LOOP INFINITO: dopo l'handoff, respiro nel procedurale → nuovo cielo dietro il flusso → si ri-tuffa
+  // LOOP INFINITO: dopo l'handoff, respiro nel procedurale → si ri-tuffa (il cielo resta SPENTO per
+  // tutto il loop: niente cambio sfondo qui — sarebbe invisibile; il nuovo cielo arriva all'uscita)
   if(zoomState==='dive' && zoomMode==='loop' && zoomHandoff){
     zoomHoldT+=dt;
-    if(zoomRebirth===0 && zoomHoldT>=zoomHold){ zoomRebirth=1;
-      skyT=0; skyEvery=180+Math.random()*150;                            // orologio sfondi: il nuovo cielo vive un intervallo pieno
-      if(!skyFading&&!skyLoading) cycleSky(); }                          // nuovo sfondo casuale, crossfade dietro le stelle procedurali
-    if(zoomRebirth===1 && !skyFading && !skyLoading){                    // crossfade finito → il nuovo cielo è quello attivo
-      zoomRebirth=0; zoomHoldT=0;
-      const keepProc=zoomProcOp;                                         // niente salti: il procedurale sfuma da solo (a Θ0 il suo target è 0)
-      zoomStartDive();                                                   // ri-init completo: GC del nuovo cielo, ri-puntamento, catena da capo
+    if(zoomHoldT>=zoomHold){ zoomHoldT=0;
+      const keepProc=zoomProcOp;                                         // niente salti: il procedurale sfuma da solo (a Θ0 il suo target è 0) mentre L1 rifiorisce dal nero
+      zoomStartDive();                                                   // ri-init ciclo: stesso ancoraggio (cielo congelato), catena da capo
       if(zoomState==='dive'){ zoomProcOp=keepProc; zoomStars.visible=keepProc>0.001; zoomStarsMat.uniforms.uOp.value=keepProc*0.9; console.log('[zoom] loop: rinascita → nuovo ciclo'); }
       else zoomFinishExit();                                             // ciclo non riavviabile (GC mancante) → chiusura pulita
     }

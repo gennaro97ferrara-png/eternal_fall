@@ -6,7 +6,7 @@
         72.0,
         40.5
       ],
-      "credit": "NASA/Goddard SVS \u2014 Deep Star Maps 2020 (Gaia DR2 / Hipparcos-2 / Tycho-2)",
+      "credit": "NASA/Goddard SVS — Deep Star Maps 2020 (Gaia DR2 / Hipparcos-2 / Tycho-2)",
       "px": [
         6554,
         3686
@@ -18,7 +18,7 @@
         18.0,
         10.125
       ],
-      "credit": "ESO/VVV Survey/D. Minniti \u2014 Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
+      "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
       "px": [
         5965,
         3355
@@ -30,7 +30,7 @@
         6.18,
         3.476
       ],
-      "credit": "ESO/VVV Survey/D. Minniti \u2014 Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
+      "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
       "px": [
         8192,
         4608
@@ -42,35 +42,40 @@
         1.545,
         0.869
       ],
-      "credit": "ESO/VVV Survey/D. Minniti \u2014 Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
-      "px": [
-        8192,
-        4608
-      ]
-    },
-    {
-      "file": "assets/zoom/L5.jpg",
-      "angle_deg": [
-        0.395,
-        0.2222
-      ],
-      "credit": "ESO/Nogueras-Lara et al. \u2014 HAWK-I GALACTICNUCLEUS (CC BY 4.0)",
-      "px": [
-        6695,
-        3766
-      ]
-    },
-    {
-      "file": "assets/zoom/L6.jpg",
-      "angle_deg": [
-        0.1208,
-        0.068
-      ],
-      "credit": "ESO/Nogueras-Lara et al. \u2014 HAWK-I GALACTICNUCLEUS (CC BY 4.0)",
+      "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
       "px": [
         8192,
         4608
       ]
     }
-  ]
+  ],
+  "_disattivati": {
+    "nota": "HAWK-I L5/L6 esclusi dalla catena (falso colore IR = coriandoli/luci di Natale, scelta utente 2026-07-02). JPEG ancora in assets/zoom/: per riattivarli rimetterli in levels.json.",
+    "levels": [
+      {
+        "file": "assets/zoom/L5.jpg",
+        "angle_deg": [
+          0.395,
+          0.2222
+        ],
+        "credit": "ESO/Nogueras-Lara et al. — HAWK-I GALACTICNUCLEUS (CC BY 4.0)",
+        "px": [
+          6695,
+          3766
+        ]
+      },
+      {
+        "file": "assets/zoom/L6.jpg",
+        "angle_deg": [
+          0.1208,
+          0.068
+        ],
+        "credit": "ESO/Nogueras-Lara et al. — HAWK-I GALACTICNUCLEUS (CC BY 4.0)",
+        "px": [
+          8192,
+          4608
+        ]
+      }
+    ]
+  }
 }
