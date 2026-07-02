@@ -17,8 +17,8 @@ echo "[$(date +%H:%M:%S)] streamloop avviato, key=${KEY:0:4}..." >>/tmp/streamlo
 while true; do
   ffmpeg -hide_banner -loglevel warning -nostats \
     -init_hw_device cuda=cu:0 -filter_hw_device cu \
-    -thread_queue_size 200 -f x11grab -framerate 60 -video_size 3840x2160 -i :0.0 \
-    -thread_queue_size 128 -f pulse -i stream.monitor \
+    -thread_queue_size 1024 -f x11grab -framerate 60 -video_size 3840x2160 -i :0.0 \
+    -thread_queue_size 1024 -f pulse -i stream.monitor \
     -vf hwupload_cuda -c:v h264_nvenc -preset p4 -b:v 25M -maxrate 25M -bufsize 50M -g 120 -keyint_min 120 \
     -c:a aac -b:a 160k -ar 44100 -ac 2 \
     -f flv "rtmp://a.rtmp.youtube.com/live2/$KEY" >>/tmp/ffmpeg.log 2>&1

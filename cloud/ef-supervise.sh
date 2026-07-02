@@ -42,7 +42,7 @@ while true; do
   FMPID=$(pgrep -x ffmpeg | head -1)
   if [ -n "$FMPID" ]; then
     RSSKB=$(ps -o rss= -p "$FMPID" 2>/dev/null | tr -d ' ')
-    if [ -n "$RSSKB" ] && [ "$RSSKB" -gt 4000000 ]; then say "ffmpeg RSS ${RSSKB}KB > 4GB -> kill (anti-OOM)"; kill -9 "$FMPID" 2>/dev/null; fi
+    if [ -n "$RSSKB" ] && [ "$RSSKB" -gt 10000000 ]; then say "ffmpeg RSS ${RSSKB}KB > 10GB -> kill (anti-OOM)"; kill -9 "$FMPID" 2>/dev/null; fi
   fi
 
   # 1) PulseAudio (non disruptivo: se manca il sink, ricrealo)
