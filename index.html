@@ -560,7 +560,7 @@ function updateGalaxies(dt,speed){ if(!galaxies) return;
 let sky,sky2,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
 // SFONDI multipli (varietà): Via Lattea + 8 nebulose equirettangolari (assets/skies/), crossfade lazy-load (1-2 texture in VRAM alla volta)
 const SKY_FILES=['milkyway_8k.jpg'].concat(Array.from({length:50},(_,i)=>'skies/gen_'+String(i+1).padStart(2,'0')+'.jpg'));   // Via Lattea grezza (iniziale) + 50 varianti reali ESO (come gen_25)
-const SKY_QV='?v=9';        // cache-buster degli sfondi: BUMPA questo numero ogni volta che rigeneri i gen_ (il browser cache-a per URL)
+const SKY_QV='?v=10';       // cache-buster degli sfondi: BUMPA questo numero ogni volta che rigeneri i gen_ (v10 = rigenerati a 6000px, risoluzione nativa ESO)
 const SKY_ROT_MIN=1;        // la rotazione pesca SOLO dai gen_ belli (indici 1..50), mai la Via Lattea grezza scura (0)
 let skyIdx=0, skyT=0, skyEvery=2, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;   // primo gen bello ~2s dopo l'avvio, poi rotazione 3-5.5 min
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
@@ -609,7 +609,7 @@ const CHARACTERS=[
   {name:'astronaut', file:'assets/astronaut.glb?v=2', credit:'Astronaut © Poly/Google'},
   {name:'astrodog',  file:'assets/characters/astrodog.glb',  credit:'AstroDoggo © merrychuu (CC BY)'},   // già in tuta col suo casco
   {name:'cat',       file:'assets/characters/cat.glb',       credit:'Cat © Empire (CC BY)',        float:0.85, yaw:0, helmet:{x:0.5,y:0.815,z:0.87,r:0.235}},   // tarato col char-viewer (testa a +z)
-  {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © SkyeSladeUT (CC BY)',float:0.8, helmet:{x:0.5,y:0.92,z:0.35,r:0.14}},
+  {name:'giraffe',   file:'assets/characters/giraffe.glb',   credit:'Giraffe © BlueMesh (CC BY)',  float:0.8, helmet:{x:0.5,y:1.39,z:0.135,r:0.17}, hide:['circle']},   // hy>1: la posa scheletrica è più alta del bbox; circle = disco di terra da nascondere
   {name:'elephant',  file:'assets/characters/elephant.glb',  credit:'Elephant © denys4624 (CC BY)', float:0.8, yaw:0, helmet:{x:0.5,y:0.72,z:0.68,r:0.30}},     // tarato col char-viewer (proboscide fuori bolla)
 ];
 let charRoster=[], charIdx=0, charT=600+Math.random()*600, charSwapAt=-1;   // rotazione ogni ~10-20 min, swap al picco del twinkle-flash
@@ -737,8 +737,9 @@ function build(){
   // (scala a 1.95, materiale-stella con glitter/rim/wrap/ciclo-grasso, scintille-Points, casco a bolla per gli animali).
   function setupCharacter(root,def,anims){
   const box=new THREE.Box3().setFromObject(root), sz=new THREE.Vector3(), ct=new THREE.Vector3();
-  box.getSize(sz); box.getCenter(ct); const s=1.95/sz.y;
+  box.getSize(sz); box.getCenter(ct); const s=(def.scale||1)*2.15/sz.y;   // personaggio un filo più GRANDE in quadro (era 1.95)
   root.scale.setScalar(s); root.position.set(-ct.x*s,-ct.y*s,-ct.z*s); root.rotation.y=(def.yaw!==undefined?def.yaw:Math.PI);
+  if(def.hide) root.traverse(o=>{ if(o.isMesh && def.hide.some(h=>(o.name||'').toLowerCase().includes(h))) o.visible=false; });   // mesh di servizio (dischi di terra, anatomia) nascoste
   let _sparkMesh=null,_sparkVn=0;   // mesh più grande → ospiterà le scintille-Points (scelto nel traverse)
   root.traverse(o=>{ if(o.isMesh&&o.material){ o.material.color=new THREE.Color(0xffffff); o.material.metalness=0.16; o.material.roughness=0.78; o.material.envMapIntensity=1.10;   // tuta più luminosa (raccoglie più cielo)
     if(!o.isSkinnedMesh && o.geometry.attributes.position.count>_sparkVn){ _sparkMesh=o; _sparkVn=o.geometry.attributes.position.count; }
@@ -862,7 +863,7 @@ function build(){
   // ALONE STELLARE: alone morbido additivo attorno alla silhouette (depthTest ON → il corpo lo occlude
   // e resta solo il bordo di luce). Respira piano; nei "twinkle" si accende come una stella.
   manHalo=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xffffff),opacity:0}));
-  manHalo.scale.setScalar(5.4); manHalo.frustumCulled=false; manRig.add(manHalo);
+  manHalo.scale.setScalar(5.8); manHalo.frustumCulled=false; manRig.add(manHalo);   // proporzionato al personaggio ingrandito (2.15)
   // CROCE DI DIFFRAZIONE (Hubble/JWST): 4 punte sottili, rotazione FISSA (una diffrazione vera non gira).
   // depthTest ON → il corpo occlude il centro, restano le punte che sbordano dalla silhouette. A riposo invisibile (0 draw).
   { const cv=document.createElement('canvas'); cv.width=cv.height=256; const x=cv.getContext('2d'); x.translate(128,128);
@@ -3149,7 +3150,7 @@ function animate(){
     manHalo.material.opacity=0.13+0.05*Math.sin(mt*0.45)+0.28*_twk; }   // alone che respira; sul twinkle fiorisce
   if(manSpike){ manSpike.material.color.copy(director.key).lerp(_white,0.75);
     manSpike.material.opacity=0.34*_twk*_twk;                           // quadratico → appare solo sul picco, fade dolce a due lati
-    manSpike.scale.setScalar(3.0+0.9*_twk);                             // le punte si allungano mentre brilla (respiro da stella)
+    manSpike.scale.setScalar(3.2+1.0*_twk);                             // le punte si allungano mentre brilla (respiro da stella)
     manSpike.visible=manSpike.material.opacity>0.004; }                 // igiene: zero draw a riposo
   // ROTAZIONE PERSONAGGI: ogni ~10-20 min, con lo swap nascosto nel PICCO del twinkle-flash (l'astronauta "brilla" e diventa qualcun altro)
   if(charRoster.length>1){ charT-=dt;
