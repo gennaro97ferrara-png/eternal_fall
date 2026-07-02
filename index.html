@@ -2948,7 +2948,7 @@ const clock=new THREE.Clock();
 let shaderTime=0; const SWRAP=100000;
 let camPhase=0,camDist=10,started=false,camOrbit=0,manSpin=0;
 let camMoveAz=0,camMoveEl=0,camMoveDs=0,camMoveAzT=0,camMoveElT=0,camMoveDsT=0,camMoveNext=20,camMoveScale=1;   // RIFRAME lenti: la camera plana verso nuove inquadrature e vi indugia (richiesta utente: "più cambi di inquadratura")
-let camOrbitP=1,camOrbitDir=1,camOrbitNext=25+Math.random()*35;   // ORBITA IMPROVVISA: ogni ~25-60s un giro completo attorno all'astronauta (~26s); P=progresso 0..1 (1=ferma)
+let camOrbitP=1,camOrbitDir=1,camOrbitNext=6,camOrbitType=0,camOrbitDur=22,camOrbitLive=0;   // COREOGRAFIA CONTINUA: giri completi + curve a S concatenati (pause 2-5s); P=progresso 0..1
 let camLookX=0, camLookY=0.15;   // bersaglio lookAt smussato → niente stacchi d'inquadratura quando cambia il pianeta a fuoco
 let planetTimer=6,wispTimer=4,starTimer=2,mysteryTimer=80,parallelTimer=120,bhTimer=200;
 let cometTimer=40,clusterTimer=120,derelictTimer=150;
@@ -3065,7 +3065,7 @@ function animate(){
   // pianeti
   planetTimer-=dt;
   if(!planets.some(p=>p.active&&!p._distant)){ const fp=planets.find(p=>!p.active); if(fp){ fp.spawn(false,null,false); planetTimer=3.5+Math.random()*4; } }   // GARANZIA: sempre almeno 1 pianeta HERO (passaggio ravvicinato) — i mondi di sfondo non bastano
-  else if(planetTimer<=0){ planetTimer=3.5+Math.random()*4; const fp=planets.find(p=>!p.active); if(fp&&Math.random()<director.cur.planet*1.4+0.14){ grazeNext=(Math.random()<0.22); let _nd=0; for(const p of planets) if(p.active&&p._distant) _nd++; fp.spawn(false,null, _nd<5 && Math.random()<0.62); grazeNext=false; } }   // spawn probabilistico + flyby più frequenti (0.22); cap 5 mondi di sfondo → restano slot per i passaggi hero
+  else if(planetTimer<=0){ planetTimer=3.5+Math.random()*4; const fp=planets.find(p=>!p.active); if(fp&&Math.random()<(director.cur.planet*1.4+0.14)*(camOrbitLive?2.4:1)+(camOrbitLive?0.10:0)){ grazeNext=(Math.random()<0.22); let _nd=0; for(const p of planets) if(p.active&&p._distant) _nd++; fp.spawn(false,null, _nd<5 && Math.random()<0.62); grazeNext=false; } }   // spawn probabilistico + flyby più frequenti (0.22); cap 5 mondi di sfondo → restano slot per i passaggi hero
   let nearestPlanet=null,nearScore=0,nearSun=null,nearSunK=0;
   for(const p of planets){ p.update(dt,speed); if(!p.active) continue; const z=p.mesh.position.z;
     if(p.isSun){ if(z>-1400&&z<90){ const k=p.mesh.scale.x/Math.max(70,-z+160); if(k>nearSunK){nearSunK=k;nearSun=p;} } }
@@ -3203,14 +3203,24 @@ function animate(){
     camMoveElT=(Math.random()*2-1)*0.65; camMoveDsT=(Math.random()*2-1)*1.9; }
   camMoveScale+=(((typeof zoomState==='undefined'||zoomState==='idle')?1:0.14)-camMoveScale)*Math.min(1,dt*0.5);   // nel deep zoom i riframe si riducono (il centro dello zoom deve restare in quadro)
   camMoveAz+=(camMoveAzT-camMoveAz)*Math.min(1,dt*0.11); camMoveEl+=(camMoveElT-camMoveEl)*Math.min(1,dt*0.11); camMoveDs+=(camMoveDsT-camMoveDs)*Math.min(1,dt*0.11);
-  // ORBITA IMPROVVISA: parte solo a scena classica (mai nel dive: il centro dello zoom deve restare
-  // in asse); se un dive inizia a metà giro, il giro si CONGELA e riprende all'uscita. A fine giro
-  // l'angolo vale 2π ≡ 0 → nessuno scatto.
+  // COREOGRAFIA CONTINUA ("scivolo"): la camera è SEMPRE in movimento — giri completi e curve a S
+  // concatenati, pausa massima 2-5s. Solo a scena classica (nel dive si congela: il centro dello
+  // zoom deve restare in asse; riprende all'uscita). Ogni figura finisce a offset 0 → mai scatti.
   const _zIdle=(typeof zoomState==='undefined'||zoomState==='idle');
-  if(camOrbitP>=1){ if(_zIdle){ camOrbitNext-=dt; if(camOrbitNext<=0){ camOrbitNext=25+Math.random()*35; camOrbitP=0; camOrbitDir=Math.random()<0.5?1:-1; } } }
-  else if(_zIdle) camOrbitP=Math.min(1,camOrbitP+dt/26);
-  const _orb=camOrbitDir*6.283185307*(camOrbitP*camOrbitP*(3-2*camOrbitP));   // smoothstep 0→2π: parte piano, fila, atterra dolce
-  const _az=Math.sin(camPhase*0.05)*0.05 + camMoveAz*camMoveScale + _orb;     // micro-sway (~3°) + riframe corrente + orbita
+  if(camOrbitP>=1){ if(_zIdle){ camOrbitNext-=dt; if(camOrbitNext<=0){
+    camOrbitP=0; camOrbitDir=Math.random()<0.5?1:-1;
+    camOrbitType=Math.random()<0.45?0:1;                                       // 45% giro completo, 55% scivolo a S
+    camOrbitDur=camOrbitType===0?(16+Math.random()*10):(10+Math.random()*7);   // giro ~16-26s · S ~10-17s
+    camOrbitNext=2+Math.random()*3;                                            // pausa tra figure: SOLO 2-5s
+    if(Math.random()<0.35){ try{ window.cadutaDebugEvent(['comet','cluster','aurora','pulsar'][(Math.random()*4)|0]); }catch(_){} }   // il giro rivela qualcosa: evento leggero nel 35% delle figure
+  } } }
+  else if(_zIdle) camOrbitP=Math.min(1,camOrbitP+dt/camOrbitDur);
+  const _cp=camOrbitP*camOrbitP*(3-2*camOrbitP);                               // smoothstep: parte piano, fila, atterra dolce
+  const _orb=camOrbitType===0 ? camOrbitDir*6.283185307*_cp                    // giro completo (2π ≡ 0 alla fine)
+                              : camOrbitDir*0.85*Math.sin(_cp*6.283185307);    // S: va (+49°), torna, va (−49°), rientra a 0
+  const _orbEl=(camOrbitP<1)?(camOrbitType===0?Math.sin(_cp*3.14159)*0.4:Math.sin(_cp*12.566)*0.28):0;   // quota: il giro si alza a metà, la S ondeggia (scivolo)
+  camOrbitLive=camOrbitP<1?1:0;                                                // flag per la regia: camera in figura → più pianeti/eventi
+  const _az=Math.sin(camPhase*0.05)*0.05 + camMoveAz*camMoveScale + _orb;      // micro-sway (~3°) + riframe corrente + figura
 
   // --- UOMO: ruota su se stesso + tumble ampio di caduta libera (visore scuro = nessun volto) ---
   const mt=shaderTime; manFloatTime.value=mt; if(manMixer) manMixer.update(dt*timeScale);
@@ -3285,7 +3295,7 @@ function animate(){
   // --- CAMERA: fissa dietro l'uomo, respiro lievissimo di quota/distanza ---
   const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*2.0 + camMoveDs*camMoveScale;   // + riframe di distanza
   camDist += (baseDist-camDist)*Math.min(1,dt*0.1);
-  const _el=1.0 + Math.sin(camPhase*0.045)*0.22 + camMoveEl*camMoveScale;   // quota che respira + riframe di quota
+  const _el=1.0 + Math.sin(camPhase*0.045)*0.22 + camMoveEl*camMoveScale + _orbEl;   // quota che respira + riframe + onda della figura (scivolo)
   camera.position.set(Math.sin(_az)*camDist, _el, Math.cos(_az)*camDist);
   let lx=manRig.position.x*0.4, ly2=manRig.position.y*0.5+0.15;
   // NIENTE panoramica verso i pianeti: la camera resta SEMPRE sull'astronauta → nessun cambio d'inquadratura (richiesta utente)
@@ -4114,8 +4124,8 @@ window.cadutaZoom=(opts)=>{ opts=opts||{};
   if(!built||!sky||!sky2) return 'scena non pronta (premi ENTER prima)';
   if(zoomState!=='idle') return 'dive già in corso ('+zoomState+') — cadutaZoomStop() per uscire';
   zoomMode=(opts.mode==='loop')?'loop':'once'; zoomKOpt=(+opts.k>0)?+opts.k:null;
-  zoomDur=Math.max(20,+opts.dur||(zoomMode==='loop'?40:90));               // loop VELOCE di default (ciclo ~40s: la caduta si sente)
-  zoomHold=Math.max(3,+opts.hold||10); zoomWorldBoost=Math.max(1,+opts.world||5);
+  zoomDur=Math.max(15,+opts.dur||(zoomMode==='loop'?28:90));               // loop RIPIDO di default (ciclo ~28s: molto zoom in poco tempo)
+  zoomHold=Math.max(3,+opts.hold||6); zoomWorldBoost=Math.max(1,+opts.world||6.5);
   zoomAutoStarted=!!opts._auto;                                            // i dive lanciati a mano NON vengono chiusi dalla regia automatica
   zoomState='arm'; zoomArmT=0;                                            // il dive parte quando manifest pronti E nessun crossfade sky in corso (watchdog 30s)
   zoomLoadCfg().then(ok=>{ if(!ok&&zoomState==='arm') zoomState='idle'; });
