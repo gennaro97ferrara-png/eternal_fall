@@ -93,6 +93,8 @@ def load_base(path, outw, outh):
     return np.clip(arr, 0, 1)
 
 
+POLE_DIM = 0.85   # copia 1:1 da vary-skies.py (fondo ai poli = base non compressa attenuata, non più nero)
+
 def process(base, p, outw, outh):
     img = np.roll(base, p["roll"], axis=1)
     if p["flip"]:
@@ -105,10 +107,16 @@ def process(base, p, outw, outh):
     img = np.clip(img, 0, 1)
     sh = int(outh * p["vscale"])
     small = Image.fromarray((img * 255 + 0.5).astype(np.uint8)).resize((outw, sh), Image.LANCZOS)
-    canvas = Image.new("RGB", (outw, outh), (0, 0, 0))
+    canvas = (img * (POLE_DIM * 255) + 0.5).astype(np.uint8)
     y0 = max(0, min(outh - sh, (outh - sh) // 2 + p["voff"]))
-    canvas.paste(small, (0, y0))
-    return np.asarray(canvas)
+    sm = np.asarray(small, np.float32)
+    F = max(8, int(outh * 0.03))
+    alpha = np.ones((sh, 1, 1), np.float32)
+    ramp = (np.arange(F, dtype=np.float32) + 1) / F
+    alpha[:F, 0, 0] = ramp
+    alpha[-F:, 0, 0] = ramp[::-1]
+    canvas[y0:y0 + sh] = (sm * alpha + canvas[y0:y0 + sh].astype(np.float32) * (1 - alpha) + 0.5).astype(np.uint8)
+    return canvas
 
 
 def verify_pixels(indices, params, base_path, skies_dir, outw, outh):

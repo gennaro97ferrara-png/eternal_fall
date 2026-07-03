@@ -4,318 +4,324 @@
     "generatore": "tools/zoom/sky-manifest.py (replica rng di tools/vary-skies.py, commit 532a0bb)",
     "args_generazione": {
       "seed": 7,
-      "w": 6144,
-      "h": 3072,
+      "w": 16384,
+      "h": 8192,
       "vscale": 0.78,
       "n": 50
     }
   },
   "skies": {
-    "assets/milkyway_8k.jpg": {
+    "assets/milkyway_16k.jpg": {
       "u": 0.5,
       "v": 0.5,
       "flip": false,
       "roll_px": 0
     },
     "assets/skies/gen_01.jpg": {
-      "u": 0.555176,
-      "v": 0.514323,
+      "u": 0.555115,
+      "v": 0.514587,
       "flip": true,
-      "roll_px": 5805
+      "roll_px": 15481
     },
     "assets/skies/gen_02.jpg": {
-      "u": 0.397135,
-      "v": 0.529622,
+      "u": 0.397156,
+      "v": 0.529724,
       "flip": false,
-      "roll_px": 5512
+      "roll_px": 14699
     },
     "assets/skies/gen_03.jpg": {
-      "u": 0.618978,
-      "v": 0.525065,
+      "u": 0.61908,
+      "v": 0.525085,
       "flip": false,
-      "roll_px": 731
+      "roll_px": 1951
     },
     "assets/skies/gen_04.jpg": {
-      "u": 0.802897,
-      "v": 0.500326,
+      "u": 0.802979,
+      "v": 0.500183,
       "flip": false,
-      "roll_px": 1861
+      "roll_px": 4964
     },
     "assets/skies/gen_05.jpg": {
-      "u": 0.799805,
-      "v": 0.487305,
+      "u": 0.799744,
+      "v": 0.487244,
       "flip": true,
-      "roll_px": 4302
+      "roll_px": 11473
     },
     "assets/skies/gen_06.jpg": {
-      "u": 0.488932,
-      "v": 0.463542,
+      "u": 0.488953,
+      "v": 0.46344,
       "flip": false,
-      "roll_px": 6076
+      "roll_px": 16203
     },
     "assets/skies/gen_07.jpg": {
-      "u": 0.691569,
-      "v": 0.525391,
+      "u": 0.691589,
+      "v": 0.525696,
       "flip": true,
-      "roll_px": 4967
+      "roll_px": 13245
     },
     "assets/skies/gen_08.jpg": {
-      "u": 0.870931,
-      "v": 0.460938,
+      "u": 0.870789,
+      "v": 0.460876,
       "flip": true,
-      "roll_px": 3865
+      "roll_px": 10309
     },
     "assets/skies/gen_09.jpg": {
-      "u": 0.220866,
-      "v": 0.499023,
+      "u": 0.220947,
+      "v": 0.498962,
       "flip": false,
-      "roll_px": 4429
+      "roll_px": 11812
     },
     "assets/skies/gen_10.jpg": {
-      "u": 0.496419,
-      "v": 0.529948,
+      "u": 0.496277,
+      "v": 0.530212,
       "flip": true,
-      "roll_px": 22
+      "roll_px": 61
     },
     "assets/skies/gen_11.jpg": {
-      "u": 0.458008,
-      "v": 0.497721,
+      "u": 0.457947,
+      "v": 0.497742,
       "flip": true,
-      "roll_px": 258
+      "roll_px": 689
     },
     "assets/skies/gen_12.jpg": {
-      "u": 0.408529,
-      "v": 0.488932,
+      "u": 0.408508,
+      "v": 0.488831,
       "flip": true,
-      "roll_px": 562
+      "roll_px": 1499
     },
     "assets/skies/gen_13.jpg": {
-      "u": 0.098307,
-      "v": 0.47819,
+      "u": 0.098328,
+      "v": 0.477966,
       "flip": false,
-      "roll_px": 3676
+      "roll_px": 9803
     },
     "assets/skies/gen_14.jpg": {
-      "u": 0.650065,
-      "v": 0.506836,
+      "u": 0.650146,
+      "v": 0.507019,
       "flip": false,
-      "roll_px": 922
+      "roll_px": 2460
     },
     "assets/skies/gen_15.jpg": {
-      "u": 0.456706,
-      "v": 0.504883,
+      "u": 0.456726,
+      "v": 0.504822,
       "flip": false,
-      "roll_px": 5878
+      "roll_px": 15675
     },
     "assets/skies/gen_16.jpg": {
-      "u": 0.940267,
-      "v": 0.537109,
+      "u": 0.940308,
+      "v": 0.53717,
       "flip": false,
-      "roll_px": 2705
+      "roll_px": 7214
     },
     "assets/skies/gen_17.jpg": {
-      "u": 0.003092,
-      "v": 0.467448,
+      "u": 0.002991,
+      "v": 0.467346,
       "flip": true,
-      "roll_px": 3053
+      "roll_px": 8143
     },
     "assets/skies/gen_18.jpg": {
-      "u": 0.837891,
-      "v": 0.531901,
+      "u": 0.83783,
+      "v": 0.532166,
       "flip": true,
-      "roll_px": 4068
+      "roll_px": 10849
     },
     "assets/skies/gen_19.jpg": {
-      "u": 0.749837,
-      "v": 0.479492,
+      "u": 0.749817,
+      "v": 0.479553,
       "flip": true,
-      "roll_px": 4609
+      "roll_px": 12291
     },
     "assets/skies/gen_20.jpg": {
-      "u": 0.947754,
-      "v": 0.505534,
+      "u": 0.947693,
+      "v": 0.505432,
       "flip": true,
-      "roll_px": 3393
+      "roll_px": 9049
     },
     "assets/skies/gen_21.jpg": {
-      "u": 0.213216,
-      "v": 0.537109,
+      "u": 0.213318,
+      "v": 0.537415,
       "flip": false,
-      "roll_px": 4382
+      "roll_px": 11687
     },
     "assets/skies/gen_22.jpg": {
-      "u": 0.376139,
-      "v": 0.519857,
+      "u": 0.37616,
+      "v": 0.519958,
       "flip": false,
-      "roll_px": 5383
+      "roll_px": 14355
     },
     "assets/skies/gen_23.jpg": {
-      "u": 0.407064,
-      "v": 0.493164,
+      "u": 0.407166,
+      "v": 0.493103,
       "flip": false,
-      "roll_px": 5573
+      "roll_px": 14863
     },
     "assets/skies/gen_24.jpg": {
-      "u": 0.467122,
-      "v": 0.529297,
+      "u": 0.467102,
+      "v": 0.529602,
       "flip": false,
-      "roll_px": 5942
+      "roll_px": 15845
     },
     "assets/skies/gen_25.jpg": {
       "u": 0.36377,
-      "v": 0.531901,
+      "v": 0.532043,
       "flip": false,
-      "roll_px": 5307
+      "roll_px": 14152
     },
     "assets/skies/gen_26.jpg": {
       "u": 0.019043,
-      "v": 0.53418,
+      "v": 0.534485,
       "flip": false,
-      "roll_px": 3189
+      "roll_px": 8504
     },
     "assets/skies/gen_27.jpg": {
-      "u": 0.143717,
-      "v": 0.527344,
+      "u": 0.143799,
+      "v": 0.527649,
       "flip": false,
-      "roll_px": 3955
+      "roll_px": 10548
     },
     "assets/skies/gen_28.jpg": {
-      "u": 0.918783,
-      "v": 0.523112,
+      "u": 0.918884,
+      "v": 0.523254,
       "flip": false,
-      "roll_px": 2573
+      "roll_px": 6863
     },
     "assets/skies/gen_29.jpg": {
       "u": 0.692871,
-      "v": 0.532552,
+      "v": 0.532654,
       "flip": false,
-      "roll_px": 1185
+      "roll_px": 3160
     },
     "assets/skies/gen_30.jpg": {
-      "u": 0.136882,
-      "v": 0.505534,
+      "u": 0.136902,
+      "v": 0.505676,
       "flip": true,
-      "roll_px": 2231
+      "roll_px": 5949
     },
     "assets/skies/gen_31.jpg": {
-      "u": 0.718913,
-      "v": 0.476237,
+      "u": 0.718933,
+      "v": 0.476135,
       "flip": false,
-      "roll_px": 1345
+      "roll_px": 3587
     },
     "assets/skies/gen_32.jpg": {
-      "u": 0.519694,
-      "v": 0.519206,
+      "u": 0.519653,
+      "v": 0.519226,
       "flip": true,
-      "roll_px": 6023
+      "roll_px": 16062
     },
     "assets/skies/gen_33.jpg": {
-      "u": 0.874349,
-      "v": 0.516927,
+      "u": 0.87439,
+      "v": 0.517029,
       "flip": false,
-      "roll_px": 2300
+      "roll_px": 6134
     },
     "assets/skies/gen_34.jpg": {
-      "u": 0.577311,
-      "v": 0.535807,
+      "u": 0.577271,
+      "v": 0.535828,
       "flip": true,
-      "roll_px": 5669
+      "roll_px": 15118
     },
     "assets/skies/gen_35.jpg": {
-      "u": 0.190104,
-      "v": 0.470703,
+      "u": 0.190002,
+      "v": 0.470764,
       "flip": true,
-      "roll_px": 1904
+      "roll_px": 5079
     },
     "assets/skies/gen_36.jpg": {
-      "u": 0.870443,
-      "v": 0.476237,
+      "u": 0.870422,
+      "v": 0.476135,
       "flip": true,
-      "roll_px": 3868
+      "roll_px": 10315
     },
     "assets/skies/gen_37.jpg": {
-      "u": 0.685872,
-      "v": 0.507161,
+      "u": 0.68573,
+      "v": 0.507263,
       "flip": true,
-      "roll_px": 5002
+      "roll_px": 13341
     },
     "assets/skies/gen_38.jpg": {
-      "u": 0.612305,
-      "v": 0.51237,
+      "u": 0.612366,
+      "v": 0.512634,
       "flip": false,
-      "roll_px": 690
+      "roll_px": 1841
     },
     "assets/skies/gen_39.jpg": {
       "u": 0.265625,
-      "v": 0.492839,
+      "v": 0.492859,
       "flip": true,
-      "roll_px": 1440
+      "roll_px": 3840
     },
     "assets/skies/gen_40.jpg": {
-      "u": 0.135091,
-      "v": 0.520833,
+      "u": 0.135193,
+      "v": 0.520935,
       "flip": false,
-      "roll_px": 3902
+      "roll_px": 10407
     },
     "assets/skies/gen_41.jpg": {
-      "u": 0.581706,
-      "v": 0.515299,
+      "u": 0.581604,
+      "v": 0.51532,
       "flip": true,
-      "roll_px": 5642
+      "roll_px": 15047
     },
     "assets/skies/gen_42.jpg": {
-      "u": 0.301921,
-      "v": 0.463867,
+      "u": 0.302002,
+      "v": 0.463684,
       "flip": false,
-      "roll_px": 4927
+      "roll_px": 13140
     },
     "assets/skies/gen_43.jpg": {
-      "u": 0.206706,
-      "v": 0.535482,
+      "u": 0.206665,
+      "v": 0.535828,
       "flip": false,
-      "roll_px": 4342
+      "roll_px": 11578
     },
     "assets/skies/gen_44.jpg": {
       "u": 0.6875,
-      "v": 0.473307,
+      "v": 0.473206,
       "flip": false,
-      "roll_px": 1152
+      "roll_px": 3072
     },
     "assets/skies/gen_45.jpg": {
-      "u": 0.930013,
-      "v": 0.52832,
+      "u": 0.929932,
+      "v": 0.528381,
       "flip": true,
-      "roll_px": 3502
+      "roll_px": 9340
     },
     "assets/skies/gen_46.jpg": {
-      "u": 0.038249,
-      "v": 0.47526,
+      "u": 0.038391,
+      "v": 0.475281,
       "flip": false,
-      "roll_px": 3307
+      "roll_px": 8821
     },
     "assets/skies/gen_47.jpg": {
-      "u": 0.031901,
-      "v": 0.531576,
+      "u": 0.03186,
+      "v": 0.531799,
       "flip": true,
-      "roll_px": 2876
+      "roll_px": 7670
     },
     "assets/skies/gen_48.jpg": {
       "u": 0.354004,
-      "v": 0.469076,
+      "v": 0.468933,
       "flip": false,
-      "roll_px": 5247
+      "roll_px": 13992
     },
     "assets/skies/gen_49.jpg": {
-      "u": 0.837402,
-      "v": 0.494792,
+      "u": 0.83728,
+      "v": 0.49469,
       "flip": true,
-      "roll_px": 4071
+      "roll_px": 10858
     },
     "assets/skies/gen_50.jpg": {
-      "u": 0.297038,
-      "v": 0.475911,
+      "u": 0.297119,
+      "v": 0.475769,
       "flip": false,
-      "roll_px": 4897
+      "roll_px": 13060
+    },
+    "assets/milkyway_8k.jpg": {
+      "u": 0.5,
+      "v": 0.5,
+      "flip": false,
+      "roll_px": 0
     }
   }
 }

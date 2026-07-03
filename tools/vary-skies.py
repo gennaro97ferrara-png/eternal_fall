@@ -23,9 +23,15 @@ while i < len(args):
     elif a == "--base": BASES = [args[i+1]]; i += 2
     elif a == "--vscale": VSCALE = float(args[i+1]); i += 2
     elif a == "--sample": SAMPLE = True; i += 1
+    elif a == "--from": FROM_K = int(args[i+1]); i += 2
+    elif a == "--to": TO_K = int(args[i+1]); i += 2
     elif a.isdigit(): N = int(a); i += 1
     else: i += 1
 OUTH = OUTW // 2
+try: FROM_K
+except NameError: FROM_K = 1
+try: TO_K
+except NameError: TO_K = N
 
 # tinte d'insieme (varietà di COLORE) — vicine al bianco per restare realistiche
 TINTS = [
@@ -49,6 +55,8 @@ def load_base(path):
     arr = arr * (0.82 / max(p, 0.12))
     return np.clip(arr, 0, 1)
 
+POLE_DIM = 0.85   # attenuazione del cielo NON compresso usato come fondo ai poli (banda = protagonista)
+
 def process(base, roll, flip, vscale, voff, tint, gain, gamma, sat):
     img = np.roll(base, roll, axis=1)
     if flip: img = img[:, ::-1, :].copy()
@@ -61,14 +69,24 @@ def process(base, roll, flip, vscale, voff, tint, gain, gamma, sat):
     # tinta d'insieme
     img = img * np.array(tint, np.float32)
     img = np.clip(img, 0, 1)
-    # comprimi verticalmente e centra su NERO → la Via Lattea "intera" (banda più sottile,
-    # più cielo nero su e giù, come la milkyway originale)
+    # comprimi verticalmente e centra: banda "intera" e sottile. Il fondo NON è più nero
+    # ("buchi neri" alle estremità quando la camera orbita in verticale a 360°): sotto la
+    # banda c'è la STESSA immagine non compressa attenuata (stesso roll/flip/tinta → poli
+    # con stelle vere e coerenti; la sua Via Lattea centrale resta interamente COPERTA
+    # dalla banda incollata, che è più alta: vscale ≥ ~0.5 con voff ±4%)
     sh = int(OUTH * vscale)
     small = Image.fromarray((img * 255 + 0.5).astype(np.uint8)).resize((OUTW, sh), Image.LANCZOS)
-    canvas = Image.new("RGB", (OUTW, OUTH), (0, 0, 0))
+    canvas = (img * (POLE_DIM * 255) + 0.5).astype(np.uint8)
     y0 = max(0, min(OUTH - sh, (OUTH - sh) // 2 + voff))
-    canvas.paste(small, (0, y0))
-    return np.asarray(canvas)
+    # feather verticale (~3% di OUTH) ai bordi della banda: nessuna riga di cucitura
+    sm = np.asarray(small, np.float32)
+    F = max(8, int(OUTH * 0.03))
+    alpha = np.ones((sh, 1, 1), np.float32)
+    ramp = (np.arange(F, dtype=np.float32) + 1) / F
+    alpha[:F, 0, 0] = ramp
+    alpha[-F:, 0, 0] = ramp[::-1]
+    canvas[y0:y0 + sh] = (sm * alpha + canvas[y0:y0 + sh].astype(np.float32) * (1 - alpha) + 0.5).astype(np.uint8)
+    return canvas
 
 def main():
     bases = [load_base(p) for p in BASES if os.path.exists(p)]
@@ -87,6 +105,8 @@ def main():
         gain = float(rng.uniform(1.0, 1.25))
         gamma = float(rng.uniform(0.72, 0.84))     # <1 = schiarisce le ombre (rivela più stelle)
         sat = float(rng.uniform(1.05, 1.35))
+        if not SAMPLE and not (FROM_K <= k + 1 <= TO_K):
+            continue   # fascia --from/--to: le estrazioni rng sopra girano COMUNQUE (fase del seed identica) → due processi possono spartirsi i 50 gen
         arr = process(base, roll, flip, vscale, voff, tint, gain, gamma, sat)
         fn = f"{OUTDIR}/sample_{k+1}_{name}.jpg" if SAMPLE else f"{OUTDIR}/gen_{k+1:02d}.jpg"
         Image.fromarray(arr, "RGB").save(fn, quality=95, subsampling=0)   # stelle = punti colorati 1px: niente chroma 4:2:0 (sbiadisce i colori stellari)

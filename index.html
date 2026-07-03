@@ -444,9 +444,19 @@ const PMETA=[
   {f:'4k_jupiter',hue:0.10,bump:1.4}, {f:'4k_saturn',hue:0.12,ring:true,bump:1.4}, {f:'4k_mars',hue:0.05,bump:7.5},
   {f:'2k_neptune',hue:0.60,bump:1.2}, {f:'4k_venus_surface',hue:0.09,bump:3.0}, {f:'4k_earth_daymap',hue:0.58,earth:true,bump:1.5},
   {f:'4k_mercury',hue:0.07,bump:9.0}, {f:'2k_uranus',hue:0.50,bump:0.8}, {f:'4k_moon',hue:0.0,gray:true,bump:10.0},
+  // --- varianti ri-tinte (stesse texture su disco, hue/bump/ring diversi → mondi visivamente distinti; append dopo la luna così MOON_IDX resta 8) ---
+  {f:'2k_neptune',hue:0.66,bump:1.0},            // nettuniano blu-viola profondo (ice giant)
+  {f:'2k_uranus',hue:0.45,ring:true,bump:0.7},   // gigante ghiacciato verde-acqua CON anelli
+  {f:'4k_jupiter',hue:0.02,bump:1.3},            // gioviano bandeggiato rosso-ruggine
+  {f:'4k_jupiter',hue:0.13,ring:true,bump:1.4},  // gioviano ambra CON anelli
+  {f:'4k_venus_surface',hue:0.30,bump:3.2},      // mondo tossico verde-acido
+  {f:'4k_venus_surface',hue:0.55,bump:2.6},      // mondo oceano/nube ciano
+  {f:'4k_mars',hue:0.55,bump:7.0},               // deserto ghiacciato blu-freddo (rocky)
+  {f:'2k_mercury',hue:0.10,gray:true,bump:9.5},  // luna/planetoide brullo craterizzato (gray dopo idx 8 → safe)
+  {f:'4k_mars',hue:0.85,bump:7.8},               // mondo magma/rosa-magenta arido
   {f:'4k_sun',hue:0.08,sun:true,bump:0},
 ];
-ASSETS.pt=PMETA.map(m=>{ const t=tex('assets/'+m.f+'.jpg'); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO; return t; });
+{ const _texByFile={}; ASSETS.pt=PMETA.map(m=>{ if(_texByFile[m.f]) return _texByFile[m.f]; const t=tex('assets/'+m.f+'.jpg'); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO; return _texByFile[m.f]=t; }); }   // DE-DUP: una sola THREE.Texture per file (le voci PMETA ri-tinte condividono la texture, hue/bump via uniform) → niente 2ª texture per URL già in cache (causava shader 'uvundefined' → crash)
 const SUN_IDX=PMETA.findIndex(m=>m.sun), MOON_IDX=PMETA.findIndex(m=>m.gray);
 ASSETS.clouds=tex('assets/4k_earth_clouds.jpg'); ASSETS.clouds.colorSpace=THREE.SRGBColorSpace; ASSETS.clouds.anisotropy=MAXANISO;
 ASSETS.ring=tex('assets/2k_saturn_ring_alpha.png'); ASSETS.ring.colorSpace=THREE.SRGBColorSpace;
@@ -566,7 +576,8 @@ function updateGalaxies(dt,speed){ if(!galaxies) return;
 let sky,sky2,manRig,man,keyLight,rimLight,composer,bloomPass,cinePass;
 // SFONDI multipli (varietà): Via Lattea + 8 nebulose equirettangolari (assets/skies/), crossfade lazy-load (1-2 texture in VRAM alla volta)
 const SKY_FILES=['milkyway_8k.jpg'].concat(Array.from({length:50},(_,i)=>'skies/gen_'+String(i+1).padStart(2,'0')+'.jpg'));   // Via Lattea grezza (iniziale) + 50 varianti reali ESO (come gen_25)
-const SKY_QV='?v=13';       // cache-buster degli sfondi: BUMPA a ogni rigenerazione (v13 = 8192 con banda STRETTA vscale 0.78: stelle fitte e sottili)
+const SKY_QV='?v=15';       // cache-buster degli sfondi: BUMPA a ogni rigenerazione (v15 = 16384 da base IBRIDA milkyway_16k + POLI LUMINOSI: fondo = stessa immagine non compressa a 0.85, mai più "2 cerchi neri" nei giri verticali)
+const SKY_PXW=16384;        // larghezza NATIVA dei gen su disco (il loader non chiede mai resize oltre: niente upscale in decodifica) — bumpare INSIEME a SKY_QV a ogni rigenerazione
 const SKY_ROT_MIN=1;        // la rotazione pesca SOLO dai gen_ belli (indici 1..50), mai la Via Lattea grezza scura (0)
 let skyIdx=0, skyT=0, skyEvery=2, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;   // primo gen bello ~2s dopo l'avvio, poi rotazione 3-5.5 min
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
@@ -583,16 +594,16 @@ let shower=null, showerT=0, shownShowerLog='';
 let nebBoost=0, galaxies, godray, starburst=null, sbOp=0, _sbSun=null;   // starburst: croce di diffrazione sui soli hero (accento, il flare resta protagonista)
 // NUOVI CORPI (varietà): istanze + timer individuali
 let lavaWorld, shattered, whitedwarf, variablestar, ringarc, station, lightEcho, bolide, gwRipple, whalePod;
-let lavaTimer=240, shatteredTimer=300, whitedwarfTimer=120, variablestarTimer=110, ringarcTimer=260, stationTimer=200, lightEchoTimer=300, bolideTimer=150, gwTimer=360, whalePodTimer=220;
+let lavaTimer=55, shatteredTimer=72, whitedwarfTimer=30, variablestarTimer=27, ringarcTimer=60, stationTimer=48, lightEchoTimer=72, bolideTimer=12, gwTimer=95, whalePodTimer=54;
 // VISITATORI (nuovi elementi casuali): stelle cadenti, navicella, razzo, UFO
-let shootingStars=[], shootTimer=25;
-let starship=null, starshipTimer=200+Math.random()*200, rocketShip=null, rocketTimer=320+Math.random()*240, ufo=null, ufoTimer=260+Math.random()*280;
+let shootingStars=[], shootTimer=7;
+let starship=null, starshipTimer=52+Math.random()*90, rocketShip=null, rocketTimer=95+Math.random()*115, ufo=null, ufoTimer=75+Math.random()*108;
 // MERAVIGLIE (round 3): wormhole, meduse, sputnik, attraversamento anelli, lanterne, stazione madre
 let wormhole=null, jellyPod=null, sputnik=null, ringCross=null, lanterns=null, motherStation=null;
-let wormholeTimer=1100+Math.random()*900, jellyTimer=380+Math.random()*380, sputnikTimer=520+Math.random()*480,
-    ringCrossTimer=900+Math.random()*700, lanternTimer=420+Math.random()*420, motherTimer=18000+Math.random()*20000;   // stazione madre: ~2-4 volte al giorno
+let wormholeTimer=520+Math.random()*520, jellyTimer=95+Math.random()*160, sputnikTimer=160+Math.random()*225,
+    ringCrossTimer=360+Math.random()*370, lanternTimer=110+Math.random()*195, motherTimer=9000+Math.random()*13000;   // stazione madre: ~5-9 volte al giorno
 let solarEclipse, lunarEclipse;
-let solarEclipseTimer=520+Math.random()*300, lunarEclipseTimer=620+Math.random()*300;   // eventi rari (anche da comando)
+let solarEclipseTimer=140+Math.random()*195, lunarEclipseTimer=190+Math.random()*195;   // eventi rari (anche da comando)
 let _echoPending=0;   // eco di luce ~14s dopo una supernova (catena causa→effetto)
 let eclipseDim=0;     // oscuramento scena alla totalità dell'eclissi (0..0.35, decade nel loop → anti-pop)
 const _white=new THREE.Color(0xffffff), _nebCol=new THREE.Color(), _warm=new THREE.Color(0xfff0d8);
@@ -625,8 +636,8 @@ let charRoster=[], charIdx=0, charT=240+Math.random()*180, charSwapAt=-1;   // r
 let flipCur=0, flipTarget=0;   // celebrazione: capriola verticale a braccia aperte quando arriva qualcuno
 // VARIETÀ DI MOVIMENTO a livello di corpo (rotazioni/derive: NON deformano la mesh)
 let barrelTarget=0, barrelCur=0, barrelAxis=0, barrelHold=40;  // capriola lenta su asse alternato (0=Z roll, 1=X tumble); barrelHold=cooldown
-let spinRateCur=0.03, spinRateTarget=0.03, spinRetargetT=22;   // velocità di rotazione Y variabile e dolce (DIMEZZATA: capriola più lenta)
-let manTumble=0, tumbleRateCur=0.04, tumbleRateTarget=0.04, tumbleRetargetT=16;   // CAPOVOLTA continua asse X (DIMEZZATA: ruzzola più lento, caduta libera calma)
+let spinRateCur=0.03, spinRateTarget=0.03, spinRetargetT=22, manSpinT=0;   // manSpinT = piccolo angolo bersaglio di imbardata (l'astronauta NON gira più su se stesso: dondola e basta)
+let manTumble=0, tumbleRateCur=0.04, tumbleRateTarget=0.04, tumbleRetargetT=16, manTumbleT=0;   // manTumbleT = piccolo angolo bersaglio di beccheggio (capovolta continua RIMOSSA: caduta stabile in una direzione)
 let sling=0, bhClose=false;    // fionda gravitazionale: spinta dopo un buco nero
 let fallMul=1, fallTarget=1, fallPhaseT=90, fallAuto=false, fallFast=false;   // CADUTA LENTA di default (niente fasi warp): drift calmo da documentario. cadutaFall('auto') riattiva i cicli veloci, cadutaFall(x) override manuale
 // --- REAZIONE SOBRIA al colpo/sfioramento (solo passaggi NATURALI ravvicinati) ---
@@ -641,9 +652,12 @@ let manMixer=null;
 let built=false, exposureCur=1.0;
 
 // strato di campo stellare volumetrico: punti che scorrono +z e riciclano (parallasse → 3D)
-function makeStarLayer(count,zN,zF,half,sizeScale,scrollMul,tint,K,fade,twAmt){
+function makeStarLayer(count,zN,zF,half,sizeScale,scrollMul,tint,K,fade,twAmt,sphere){
   const pos=new Float32Array(count*3),aph=new Float32Array(count),asz=new Float32Array(count),ac=new Float32Array(count*3),ats=new Float32Array(count),ata=new Float32Array(count),_cc=new THREE.Color();
-  for(let i=0;i<count;i++){ pos[i*3]=(Math.random()*2-1)*half; pos[i*3+1]=(Math.random()*2-1)*half; pos[i*3+2]=zN+Math.random()*(zF-zN);
+  for(let i=0;i<count;i++){
+    if(sphere){ const u=Math.random()*2-1, ph=Math.random()*6.28318, s=Math.sqrt(Math.max(0,1-u*u)), rr=half*(0.88+Math.random()*0.12);   // GUSCIO SFERICO: stelle su TUTTA la sfera attorno all'astronauta → da OGNI angolo di camera il cielo è pieno (mai il vuoto)
+      pos[i*3]=s*Math.cos(ph)*rr; pos[i*3+1]=u*rr; pos[i*3+2]=s*Math.sin(ph)*rr; }
+    else { pos[i*3]=(Math.random()*2-1)*half; pos[i*3+1]=(Math.random()*2-1)*half; pos[i*3+2]=zN+Math.random()*(zF-zN); }   // lastra frontale (parallasse di caduta)
     aph[i]=Math.random()*6.28318; const _r=Math.random(); asz[i]=(_r<0.12 ? 2.4+Math.random()*3.8 : 0.32+Math.random()*Math.random()*2.4)*sizeScale;   // VARIETÀ: ~12% GRANDI (2.4-6.2), il resto minuscole
     ats[i]=0.8+Math.random()*1.8;                                       // cadenza blink PER-STELLA: 0.8..2.6 → ritmi diversi (desincronizzate, periodo ~1-4s)
     ata[i]=0.55+0.45*Math.random();                                     // TUTTE luccicano bene (0.55..1.0), con varietà → tante microstelle vive
@@ -685,7 +699,7 @@ function makeStarLayer(count,zN,zF,half,sizeScale,scrollMul,tint,K,fade,twAmt){
       col+=peak*vTw*0.9;                                                 // sul picco la punta vira al bianco → pinpoint più brillante e nitido
       gl_FragColor=vec4(col, a*vTw*vF*vAComp*uGDim); }`});   // uGDim: le star-layer si spengono durante il deep zoom (il loro scroll lineare sopra lo zoom = "seconda immagine")
   const pts=new THREE.Points(g,mat); pts.frustumCulled=false; pts.renderOrder=-9; scene.add(pts);
-  return {pts,mat,pos,count,half,zN,zF,mul:scrollMul};
+  return {pts,mat,pos,count,half,zN,zF,mul:scrollMul,sphere:!!sphere};
 }
 function build(){
   if(built) return; built=true;
@@ -705,12 +719,14 @@ function build(){
   starLayers=[
     makeStarLayer(1000,-900, -120, 360, 0.8, 1.0, 0.0, 430, 260, 1.0),    // vicine: poche, veloci (parallasse forte)
     makeStarLayer(3800,-2600,-700, 1400,0.8, 0.5, 0.35,360, 520, 1.0),    // medie
-    makeStarLayer(8500,-6500,-2400,4000,0.5, 0.18,0.7, 300, 1200,1.0),    // lontane (SFONDO): TANTISSIME microstelle fitte → sfondo definito e luminoso, tutte luccicano
-    makeStarLayer(7000,-11000,-6200,7000,0.42,0.09,0.85,260,2200,0.95),   // abissali: fondale fittissimo di micro-stelle luminose
+    makeStarLayer(12000,-6500,-2400,4000,0.5, 0.18,0.7, 300, 1200,1.0),   // lontane (SFONDO): TANTISSIME microstelle fitte → sfondo definito e luminoso (8500→12000)
+    makeStarLayer(11000,-11000,-6200,7000,0.42,0.09,0.85,260,2200,0.95),  // abissali: fondale fittissimo di micro-stelle luminose (7000→11000)
+    makeStarLayer(38000,-5900,5900,5400,0.9,0,0.40,2800,300,0.95,true),   // CIELO SFERICO vicino: stelle GROSSE e LUMINOSE su tutta la sfera → riempie ogni angolo (34k→38k)
+    makeStarLayer(34000,-8400,8400,7800,0.7,0,0.60,3200,300,0.9,true),    // CIELO SFERICO profondo: microstelle fitte dietro → fondale denso da OGNI direzione (30k→34k)
   ];
   // lastre di nebulosa a profondità sfalsate: strati di foschia che scorrono → volume attraversato
   nebSheets=[];
-  const NEB_SHEETS=5;   // tornato a 5 lastre (il 4° strato di stelle dà già più profondità; 7 lastre fbm = troppo fill-rate)
+  const NEB_SHEETS=IS_MOBILE?9:11;   // GUSCIO SFERICO di nebulose: più lastre = cielo più denso (9→11; limato da 13 per fill-rate, sono billboard additivi enormi)
   for(let i=0;i<NEB_SHEETS;i++){
     const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
       uniforms:{uTime:{value:Math.random()*100},uColor:{value:new THREE.Color(0x4a5a8c)},uSeed:{value:Math.random()*10},uOp:{value:0}},
@@ -720,9 +736,10 @@ function build(){
           float n=fbm(vec3(vUv*3.0+uSeed,uTime*0.02));
           float a=smoothstep(0.5,0.02,r)*(0.25+0.6*n); gl_FragColor=vec4(uColor*(0.3+0.5*n), a*uOp); }`});
     const m=new THREE.Mesh(new THREE.PlaneGeometry(1,1),mat); m.frustumCulled=false; m.renderOrder=-11;
-    const sz=700+Math.random()*700; m.scale.set(sz,sz,1);
-    m.position.set((Math.random()*2-1)*900,(Math.random()*2-1)*500, -6000+i*960+Math.random()*400);
-    scene.add(m); nebSheets.push({m,mat});
+    const sz=1500+Math.random()*1500; m.scale.set(sz,sz,1);   // più grandi: riempiono il cielo di foschia
+    const u=(Math.random()*2-1)*0.72, ph=(i/NEB_SHEETS)*6.28318+Math.random()*0.6, s2=Math.sqrt(Math.max(0,1-u*u)), rr=2300+Math.random()*1100;
+    m.position.set(s2*Math.cos(ph)*rr,u*rr,s2*Math.sin(ph)*rr);   // distribuite su tutta la sfera (ph sfalsato per copertura uniforme), billboard nell'update
+    scene.add(m); nebSheets.push({m,mat,seed:mat.uniforms.uSeed.value,hue:(Math.random()*2-1)*0.10});   // hue: sfasamento per-lastra → cielo multi-tonale, non monocromo
   }
   // polvere ravvicinata VELOCE: pochi grani grandi che sfrecciano davanti (parallasse forte)
   { const N=22, fp=new Float32Array(N*3), fs=new Float32Array(N);   // MENO grani (palline bianche fluttuanti ridotte: 90→22)
@@ -965,9 +982,12 @@ function build(){
       gl_FragColor=vec4(c,a*vF*tw*uAmt*0.42*vary);}`});
   dust=new THREE.Points(dustGeo,dustMat); dust.frustumCulled=false; dust.userData.re=dre; scene.add(dust);
 
-  for(let i=0;i<(IS_MOBILE?6:9);i++) planets.push(new Planet());
-  // pre-popola: alcuni pianeti già in volo a profondità diverse → l'universo non è vuoto all'avvio (i ≥2 sono mondi lontani di sfondo, sparsi sul guscio)
-  for(let i=0;i<Math.min(6,planets.length);i++){ const _d=i>=2; planets[i].spawn(false,null,_d); planets[i].mesh.position.z = _d ? (-2200-Math.random()*900) : (-300-Math.random()*1700); }
+  for(let i=0;i<(IS_MOBILE?16:30);i++) planets.push(new Planet());   // pool AMPIO: guscio ≥20 + hero multipli + permanenti → universo MOLTO pieno (17→30; la VARIETÀ viene dai tipi PMETA, non dal conteggio → 30 tiene i 60fps)
+  // pre-popola: 2 hero in corsia + il resto mondi lontani SPARSI sul guscio a raggi diversi (mai il vuoto all'avvio né orbitando)
+  const _n0=Math.min(IS_MOBILE?10:18,planets.length);
+  for(let i=0;i<_n0;i++){ const _d=i>=2; planets[i].spawn(false,null,_d);
+    if(_d){ const p=planets[i].mesh.position, r=Math.sqrt(p.x*p.x+p.y*p.y+p.z*p.z)||1, rr=DSH_IN+240+Math.random()*(DSH_OUT-DSH_IN-240); p.multiplyScalar(rr/r); }   // stagger: raggi sparsi lungo l'avvicinamento (non tutti al bordo esterno)
+    else planets[i].mesh.position.z = -300-Math.random()*1700; }
   for(let i=0;i<46;i++) nearStars.push(new NearStar());
   // debug: forza un pianeta/sole ravvicinato (utile per test; innocuo in produzione)
   window.cadutaDebugPlanet=(sun,idx)=>{ const fp=planets.find(p=>!p.active)||planets[0]; fp.spawn(!!sun,idx); fp.mesh.position.set(sun?70:38,6,-240); return 'ok'; };
@@ -1004,7 +1024,7 @@ function build(){
   window.cadutaFat=(x)=>{ if(typeof x==='number'){ fatClock=-1; fatT=300; uFat.value=Math.max(0,Math.min(1.2,x)); return 'uFat='+uFat.value.toFixed(2); }
     fatClock=0; fatAmp=0.9; return 'ciclo ingrassa/dimagrisce avviato (~65s)'; };   // cadutaFat() = ciclo intero; cadutaFat(0.8) = valore fisso di test
   window.cadutaDebugEvent=(w)=>{ if(w==='mystery') mystery.spawn(); else if(w==='parallel') parallel.spawn(); else if(w==='nova') supernova.flash();
-    else if(w==='blackhole'){ blackhole.spawn(); blackhole.group.position.set(40,4,-230); }
+    else if(w==='blackhole'){ blackhole.spawn(); blackhole._dir.set(0.1,0.05,-1).normalize(); blackhole._R0=260; blackhole._rad=260; blackhole.group.position.copy(blackhole._dir).multiplyScalar(260); }   // debug: davanti alla camera, coerente con la deriva radiale
     else if(w==='comet'){ comet.spawn(); comet.g.position.set(-70,15,-300); }
     else if(w==='cluster'){ cluster.spawn(); cluster.pts.position.set(30,10,-300); }
     else if(w==='wreck'){ derelict.spawn('wreck'); derelict.g.position.set(20,4,-120); }
@@ -1103,12 +1123,12 @@ function build(){
 
   // mistero lontano + viaggiatore parallelo + supernova + buco nero
   mystery=new Mystery(); parallel=new Parallel(); supernova=new Supernova(); blackhole=new BlackHole();
-  nebulaField=new NebulaField(11); comet=new Comet(); cluster=new GlobularCluster(); derelict=new Derelict();
+  nebulaField=new NebulaField(13); comet=new Comet(); cluster=new GlobularCluster(); derelict=new Derelict();
   pulsar=new Pulsar(); redgiant=new RedGiant(); binary=new Binary(); remnant=new Remnant();
   signal=new TheSignal(); spores=new SporeBloom(); magnetar=new Magnetar(); dyson=new DysonSwarm(); aurora=new AuroraCurtain(); duststorm=new DustStorm();
   lavaWorld=new LavaWorld(); shattered=new ShatteredWorld(ag,astMat); whitedwarf=new WhiteDwarf(); variablestar=new VariableStar(); ringarc=new RingArc(); station=new StationTumble(); lightEcho=new LightEcho(); bolide=new BolideSplit(); gwRipple=new GWRipple(); whalePod=new WhalePod();
   solarEclipse=new SolarEclipse(); lunarEclipse=new LunarEclipse();
-  for(let i=0;i<3;i++) shootingStars.push(new ShootingStar());   // pool: nelle piogge ne sfrecciano anche 2-3 insieme
+  for(let i=0;i<9;i++) shootingStars.push(new ShootingStar());   // pool: nelle piogge ne sfrecciano anche 5-9 insieme (3→5→9 per densità)
   starship=new Starship(); rocketShip=new RocketShip(); ufo=new UFO();
   wormhole=new Wormhole(); jellyPod=new JellyPod(); sputnik=new Sputnik(); ringCross=new RingCrossing(); lanterns=new Lanterns(); motherStation=new MotherStation();
   for(let i=0;i<2;i++) ownedPlanets.push(new OwnedPlanet());   // pianeti permanenti (acquisti): pool che ruota sul catalogo
@@ -1145,9 +1165,11 @@ function build(){
 /* ---------------- pianeti (avvicinamento lungo, niente pop-in) ---------------- */
 const SPAWN_Z=-2900;
 let WPASS_HERO=2.3, WPASS_DISTANT=0.85, WPASS_SUN=1.2;   // SORPASSO dei mondi: velocità extra (in multipli di `speed`) perché l'astronauta li superi SEMPRE — mai pianeti che "cadono con lui" (transito hero ~25-55s, lontani ~90s). Taratura live: cadutaPlanetPass(h,d,s)
-// --- MONDI LONTANI = guscio di sfondo (come le galassie): bersaglio-schermo ai bordi, deriva lenta, riciclo ---
-// riempiono TUTTO il quadro senza affollare il centro. half-extent visibili all'ancora del guscio (schermo→mondo).
-const DREC=-1200, DREC_DEPTH=9-DREC;                  // piano di riciclo/ancora dei mondi lontani (camera z=9)
+// --- MONDI LONTANI = GUSCIO SFERICO attorno all'astronauta (non più un muro piatto!): direzione su
+// una banda equatoriale larga (dove la camera orbita di più), deriva RADIALE verso il centro, riciclo
+// sul guscio esterno. Così ORBITANDO la camera a 360° si vedono SEMPRE mondi lontani, mai il vuoto. ---
+const DSH_OUT=3200, DSH_IN=980;                       // raggio del guscio: esterno (spawn) → interno (riciclo + fade a 0)
+const DREC=-1200, DREC_DEPTH=9-DREC;                  // (legacy, ancora usato dal resize) ancora dei mondi lontani
 let HV_REC=Math.tan(baseFov*Math.PI/360)*DREC_DEPTH;  // semi-altezza visibile all'ancora (ricalcolata nel resize)
 let HH_REC=HV_REC*(WIDTH/HEIGHT);                     // semi-larghezza (dipende dall'aspect)
 // inietta nel MeshStandardMaterial dei pianeti: rilievo procedurale (craterizzazione reale alla
@@ -1250,7 +1272,7 @@ class Planet{
           float lit=0.78+0.22*clamp(dot(vec3(d,0.0),L)*0.5+0.5,0.0,1.0); // lato Sole appena più luminoso
           gl_FragColor=vec4(c.rgb*lit*(1.0-0.62*occ), c.a*uOp);}`});
     this.ring=new THREE.Mesh(new THREE.RingGeometry(1.3,2.3,128,1),this.ringMat); this.ring.visible=false; this.mesh.add(this.ring);
-    this.moons=[]; for(let i=0;i<2;i++){ const mm=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),new THREE.MeshStandardMaterial({map:ASSETS.pt[MOON_IDX],roughness:1,metalness:0,envMapIntensity:0.2,transparent:true,opacity:1})); mm.visible=false; this.mesh.add(mm); this.moons.push({mesh:mm,orb:0,rad:0,sp:0,ph:0}); }
+    this.moons=[]; for(let i=0;i<3;i++){ const mm=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),new THREE.MeshStandardMaterial({map:ASSETS.pt[MOON_IDX],roughness:1,metalness:0,envMapIntensity:0.2,transparent:true,opacity:1})); mm.visible=false; this.mesh.add(mm); this.moons.push({mesh:mm,orb:0,rad:0,sp:0,ph:0}); }   // pool lune 2→3 (sistemi satellitari più densi)
     this.active=false; this.spin=0; this.isSun=false; this.nMoons=0; this.counted=false; this._graze=false;
     this._driftK=1; this._passK=0; this._distant=false; this._sx=0; this._sy=0; this._ang=0;   // campi tier sfondo/hero (mai undefined su un corpo pooled non spawnato)
   }
@@ -1264,7 +1286,10 @@ class Planet{
     this._sx=bestSx; this._sy=bestSy;
   }
   // posa il mondo lontano sul guscio: bersaglio→mondo all'ancora (cresce verso l'angolo avvicinandosi), z profondo, deriva lenta
-  _scatterDistant(){ this._pickRimTarget(); this.mesh.position.set(this._sx*HH_REC, this._sy*HV_REC, -3300-Math.random()*200); this._driftK=0.15+Math.random()*0.06; this._passK=WPASS_DISTANT; }
+  // posa il mondo lontano sul GUSCIO SFERICO: direzione su banda equatoriale larga (±~33°, la fascia
+  // che la camera spazza orbitando), raggio esterno, deriva radiale verso il centro (gestita in update)
+  _scatterDistant(){ const u=(Math.random()*2-1)*0.72, ph=Math.random()*6.283185307, s=Math.sqrt(Math.max(0,1-u*u)), r=DSH_OUT-Math.random()*260;
+    this.mesh.position.set(s*Math.cos(ph)*r, u*r, s*Math.sin(ph)*r); this._driftK=0; this._passK=WPASS_DISTANT; }
   // angolo hero che massimizza il distacco dai fratelli hero attivi → niente pila centrale (giganti restano ai lati)
   _pickHeroAng(giant){
     let bestA=0,bestGap=-1;
@@ -1278,7 +1303,7 @@ class Planet{
     let idx; if(forceIdx!=null) idx=forceIdx; else if(forceSun) idx=SUN_IDX; else if(Math.random()<0.08) idx=SUN_IDX; else { do{ idx=(Math.random()*PMETA.length)|0; }while(idx===SUN_IDX); }
     const meta=PMETA[idx]; this.isSun=!!meta.sun;
     const _distant=!!distant && !this.isSun;                          // MONDO LONTANO: piccolo, defilato, spoglio (economico) → riempie il cielo senza affollare il centro
-    const _szR=Math.random(); const _giant=!this.isSun&&!_distant&&_szR<0.3; const _szMul=this.isSun?1.6:(_distant?1.0:(_giant?4.0+Math.random()*2.5:(_szR<0.5?0.5+Math.random()*0.55:1.4+Math.random()*1.6)));   // ~30% GIGANTI (4-6.5×, ai lati), ~20% piccoli, resto medi
+    const _szR=Math.random(); const _giant=!this.isSun&&!_distant&&_szR<0.3; const _szMul=this.isSun?1.6:(_distant?1.0:(_giant?4.0+Math.random()*3.0:(_szR<0.42?0.28+Math.random()*0.45:(_szR<0.62?0.75+Math.random()*0.5:1.4+Math.random()*1.9))));   // ~30% GIGANTI (4-7×), ~12% nani (0.28-0.73×), ~20% piccoli (0.75-1.25×), resto medi (1.4-3.3×) → 4 classi di taglia
     const r=(this.isSun?(64+Math.random()*36):(_distant?(16+Math.random()*38):(22+Math.random()*40)))*_szMul; this.mesh.scale.setScalar(r);   // mondi LONTANI più grandi (16-54) → leggibili come pianeti, non puntini
     // passaggio ravvicinato NATURALE e raro (armato da grazeNext): riempie il quadro ma sfiora SOLO l'alta atmosfera.
     // garanzia: superficie solida a (dist-r), tetto atmosfera a r*1.025; con dist=r*1.18+14+rand*8 → clearance 0.155*r+14 > 0 SEMPRE.
@@ -1307,31 +1332,32 @@ class Planet{
     const _im=ASSETS.pt[idx]&&ASSETS.pt[idx].image; if(_im&&_im.width&&_im.height) pu.uTexel.value.set(1/_im.width,1/_im.height); else pu.uTexel.value.set(1/2048,1/1024);  // passo del rilievo = texel reale della texture
     this.atmo.visible=!this.isSun && !_distant;
     // varietà cromatica: la saturazione/luce dello strato d'aria oscilla per spawn, il colore-2 segue la regione
-    const _atmS=0.42+Math.random()*0.32, _atmL=0.54+Math.random()*0.12;
-    this.atmoMat.uniforms.uColor.value.setHSL(meta.hue,_atmS,_atmL);
+    const _atmS=0.42+Math.random()*0.32, _atmL=0.54+Math.random()*0.12, _atmH=(meta.hue+(Math.random()*2-1)*0.045+1)%1;
+    this.atmoMat.uniforms.uColor.value.setHSL(_atmH,_atmS,_atmL);   // hue atmosfera jitterata ±0.045 → stesso tipo, aria leggermente diversa (più varietà)
     this.atmoMat.uniforms.uColor2.value.copy(director.grade).lerp(_white,0.45).lerp(this.atmoMat.uniforms.uColor.value,0.35); // cielo coerente con la regione
     this.clouds.visible=!!meta.earth && !_distant;
     const ring=!this.isSun&&!_distant&&(meta.ring||Math.random()<0.3); this.ring.visible=ring;
-    if(ring) this.ring.rotation.set(Math.PI/2+(Math.random()*0.5-0.25),0,Math.random()*0.3-0.15);
-    this.nMoons=(this.isSun||_distant)?0:((Math.random()*3)|0);
+    if(ring){ this.ring.rotation.set(Math.PI/2+(Math.random()*0.9-0.45),0,Math.random()*0.6-0.3);
+      const _ri=1.22+Math.random()*0.22, _ro=1.9+Math.random()*0.7; this.ringMat.uniforms.uInner.value=_ri; this.ringMat.uniforms.uOuter.value=_ro; this.ring.scale.setScalar(_ro/2.3); }   // anelli con larghezza/inclinazione variabili per spawn (sistemi sottili vs larghi)
+    this.nMoons=(this.isSun||_distant)?0:((Math.random()<0.5?(Math.random()*2):(2+Math.random()*2))|0);   // 0-3 lune (~50% 0-1 calmo, ~50% 2-3 affollato); richiede pool lune=3
     for(let i=0;i<this.moons.length;i++){ const mo=this.moons[i]; if(i<this.nMoons){ mo.mesh.visible=true; mo.rad=1.4+Math.random()*0.8; mo.sp=(0.3+Math.random()*0.5)*(Math.random()<0.5?1:-1); mo.ph=Math.random()*6.28; mo.mesh.scale.setScalar(0.12+Math.random()*0.12);} else mo.mesh.visible=false; }
     if(this.isSun && lensflare){ this.mesh.add(lensflare); lensflare.visible=true; }
     this.mesh.visible=true;
   }
   update(dt,speed){
     if(!this.active) return;
-    this.mesh.position.z+=speed*dt*(this._driftK+this._passK); this.mesh.rotation.y+=this.spin*dt;   // driftK = passo scena; passK = SORPASSO (l'astronauta li supera sempre, stessa pipeline di speed → coerente con surge/zoom/timeScale)
-    const z=this.mesh.position.z;
-    let op;
+    this.mesh.rotation.y+=this.spin*dt;   // traslazione per-tier sotto: RADIALE per i lontani (guscio), z per gli hero (corsia)
+    let op, z;
     if(this._distant){
-      if(z>DREC){ this._scatterDistant(); }   // riciclo sul guscio lontano (come galaxyRespawn): solo position.set, niente alloc
-      // dissolvenza a due lati ancorata al guscio: ~0 sia al bordo profondo (-3300) sia al piano di riciclo (-1200) → niente pop
-      const fadeIn=THREE.MathUtils.clamp((z+3300)/700,0,1), fadeOut=THREE.MathUtils.clamp((DREC-z)/700,0,1);
-      op=Math.min(fadeIn,fadeOut);
-      // durante il DEEP ZOOM i mondi-sfondo spariscono: crescono al 2-4%/s contro uno sfondo che
-      // esplode all'8%/s → l'occhio li "incolla" al flusso (cadrebbero insieme all'astronauta)
-      op*=zoomWorldDimN;
+      // GUSCIO SFERICO: deriva RADIALE verso l'astronauta (gli elementi si avvicinano da OGNI direzione →
+      // orbitando la camera si vedono SEMPRE mondi lontani, mai il vuoto). Riciclo sul guscio esterno.
+      const p=this.mesh.position, r=Math.sqrt(p.x*p.x+p.y*p.y+p.z*p.z)||1, nr=r-Math.max(speed*this._passK,20)*dt;   // deriva radiale con PAVIMENTO 20/s: i mondi lontani si avvicinano SEMPRE visibilmente (mai "fermi" nei momenti calmi)
+      if(nr<=DSH_IN){ this._scatterDistant(); op=0; z=this.mesh.position.z; }
+      else { p.multiplyScalar(nr/r); z=p.z;
+        const fadeIn=THREE.MathUtils.clamp((DSH_OUT-nr)/520,0,1), fadeOut=THREE.MathUtils.clamp((nr-DSH_IN)/520,0,1);
+        op=Math.min(fadeIn,fadeOut)*zoomWorldDimN; }   // fade a due lati (bordo esterno / interno) + ×zoomWorldDimN (nel deep zoom i mondi-sfondo spariscono)
     } else {
+      this.mesh.position.z+=Math.max(speed*(this._driftK+this._passK),24)*dt; z=this.mesh.position.z;   // hero: SORPASSO nella corsia (-z→+z) con PAVIMENTO 24/s (mai fermi nei momenti calmi)
       const outEnd=340+this.mesh.scale.x*2.0;
       const opIn=THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1);        // dissolvenza dal profondo
       const opOut=THREE.MathUtils.clamp((outEnd-z)/(this.mesh.scale.x*2.6+200),0,1); // dissolvenza in uscita (niente pop)
@@ -1409,7 +1435,7 @@ function astRe(i,z){ const ang=Math.random()*Math.PI*2,rad=12+Math.random()*70;
 function wispSpawn(w){ w.active=true; const sz=60+Math.random()*120; w.mesh.scale.set(sz,sz,1);
   const ang=Math.random()*Math.PI*2,rad=20+Math.random()*70; w.mesh.position.set(Math.cos(ang)*rad,(Math.random()*2-1)*40,-700-Math.random()*500);
   w.mesh.rotation.z=Math.random()*Math.PI; w.spin=(Math.random()*2-1)*0.05;
-  w.mat.uniforms.uColor.value.copy(director.grade).lerp(new THREE.Color(0xffffff),0.35); w.mat.uniforms.uSeed.value=Math.random()*10; w.mesh.visible=true; }
+  w.mat.uniforms.uColor.value.copy(director.grade).offsetHSL((Math.random()*2-1)*0.12,0,0).lerp(new THREE.Color(0xffffff),0.35); w.mat.uniforms.uSeed.value=Math.random()*10; w.mesh.visible=true; }   // hue variato per-spawn
 
 /* ---------------- mistero / viaggiatore parallelo / supernova ---------------- */
 class Mystery{
@@ -1492,27 +1518,30 @@ class BlackHole{
           gl_FragColor=vec4(c*bright*2.1, bright*edge*uOp); }`});
     this.disk=new THREE.Mesh(new THREE.RingGeometry(1.5,3.6,160,2),this.diskMat); this.disk.rotation.x=Math.PI*0.5-0.32; this.group.add(this.disk);
     this.active=false; this.counted=false; this.spin=0;
+    this._dir=new THREE.Vector3(); this._R0=2600; this._rad=2600; this._op=0;   // GUSCIO: direzione/raggio per la deriva radiale (buco nero visibile da OGNI angolo)
   }
   spawn(){
     this.active=true; this.counted=false;
     const r=34+Math.random()*26; this.group.scale.setScalar(r);
-    const ang=Math.random()*Math.PI*2, dist=r*1.4+50+Math.random()*60;
-    this.group.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*28,SPAWN_Z-Math.random()*300);
+    const u=Math.random()*2-1, ph=Math.random()*6.283185307, s2=Math.sqrt(Math.max(0,1-u*u));   // direzione uniforme sulla sfera → il buco nasce lontano in QUALSIASI direzione
+    this._dir.set(s2*Math.cos(ph),u,s2*Math.sin(ph)); this._R0=2500+Math.random()*400; this._rad=this._R0;
+    this.group.position.copy(this._dir).multiplyScalar(this._rad);
     this.disk.rotation.set(Math.PI*0.5-0.3-Math.random()*0.3,0,Math.random()*0.6);
     this.diskMat.uniforms.uDopp.value=Math.random()*6.28; this.diskMat.uniforms.uTime.value=0; this.spin=(Math.random()*2-1)*0.1; this.group.visible=true;   // uTime a 0 allo spawn: la fase orbitale del disco riparte pulita (mai il salto del wrap)
     $t.log.textContent='— a hole in everything. Light goes in; nothing returns.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),13000);
   }
   update(dt,speed){
     if(!this.active) return;
-    this.group.position.z+=speed*dt; this.diskMat.uniforms.uTime.value=(this.diskMat.uniforms.uTime.value+dt)%100000; this.disk.rotation.z+=this.spin*dt*0.2;
+    this._rad-=speed*dt; this.group.position.copy(this._dir).multiplyScalar(this._rad);   // deriva RADIALE verso l'astronauta: il buco "cade addosso" da qualsiasi lato, lo oltrepassa (rad<0) e si dissolve
+    this.diskMat.uniforms.uTime.value=(this.diskMat.uniforms.uTime.value+dt)%100000; this.disk.rotation.z+=this.spin*dt*0.2;
     this.photon.lookAt(camera.position);
-    const z=this.group.position.z, outEnd=150+this.group.scale.x*1.5;
-    const opIn=THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1);
-    const opOut=THREE.MathUtils.clamp((outEnd-z)/(this.group.scale.x*1.8+140),0,1); // dissolvenza in uscita (niente pop)
-    const op=Math.min(opIn,opOut);
+    const rad=this._rad, appear=this._R0-700, outEnd=-(150+this.group.scale.x*1.5);
+    const opIn=THREE.MathUtils.clamp((appear-rad)/700,0,1);
+    const opOut=THREE.MathUtils.clamp((rad-outEnd)/(this.group.scale.x*1.8+140),0,1); // dissolvenza in uscita (niente pop)
+    const op=Math.min(opIn,opOut); this._op=op;
     this.diskMat.uniforms.uOp.value=op; this.photon.material.opacity=Math.min(op*1.3,1); this.horizon.material.opacity=op;   // photon ring +30% → l'anello di luce si legge anche in piccolo
-    if(!this.counted && z>-30){ this.counted=true; TEL.blackholes++; }
-    if(z>outEnd){ this.active=false; this.group.visible=false; }
+    if(!this.counted && rad<30){ this.counted=true; TEL.blackholes++; }
+    if(rad<outEnd){ this.active=false; this.group.visible=false; }
   }
 }
 const BHLensShader={
@@ -1532,7 +1561,7 @@ function updateLens(){
   // la passata di lensing serve DUE sorgenti (mai insieme): buco nero (con ombra) o wormhole (distorsione più tenue)
   let srcPos=null,srcR=0,srcSt=0;
   if(blackhole && blackhole.active){
-    const op=THREE.MathUtils.clamp((blackhole.group.position.z-SPAWN_Z)/700,0,1);
+    const op=blackhole._op||0;   // opacità coerente con la deriva RADIALE (il lensing sfuma da ogni direzione)
     const s=0.14+0.10*THREE.MathUtils.clamp((blackhole.group.scale.x-34)/26,0,1);   // lensing più leggibile, scalato col raggio del buco
     srcPos=blackhole.group.position; srcR=blackhole.group.scale.x*2.6; srcSt=s*op;
   } else if(wormhole && wormhole.active){
@@ -1565,20 +1594,20 @@ class NebulaField{
             float a=smoothstep(0.5,0.05,r)*(0.25+0.6*n);
             gl_FragColor=vec4(uColor*(0.28+0.5*n),a*uOp);}`});
       const m=new THREE.Mesh(new THREE.PlaneGeometry(1,1),mat); m.visible=false; m.frustumCulled=false; scene.add(m);
-      this.clouds.push({m,mat,active:false});
+      this.clouds.push({m,mat,active:false,hue:0});
     }
   }
   update(dt,speed,density,color){
     for(const c of this.clouds){
       if(!c.active){
-        if(density>0.35 && Math.random()<density*dt*0.9){
+        if(density>0.18 && Math.random()<density*dt*1.8){   // gate più basso + coeff ×2 → attraversamenti molto più frequenti
           c.active=true; const ang=Math.random()*Math.PI*2, rad=6+Math.random()*42;
           c.m.position.set(Math.cos(ang)*rad,(Math.random()*2-1)*28,-200-Math.random()*220);
-          c.m.scale.setScalar(110+Math.random()*150); c.mat.uniforms.uSeed.value=Math.random()*10; c.m.visible=true;
+          c.m.scale.setScalar(110+Math.random()*150); c.mat.uniforms.uSeed.value=Math.random()*10; c.hue=(Math.random()*2-1)*0.14; c.m.visible=true;
         }
         continue;
       }
-      c.m.position.z+=speed*dt*1.05; c.m.lookAt(camera.position); c.mat.uniforms.uTime.value=(c.mat.uniforms.uTime.value+dt)%100000; c.mat.uniforms.uColor.value.copy(color);
+      c.m.position.z+=speed*dt*1.05; c.m.lookAt(camera.position); c.mat.uniforms.uTime.value=(c.mat.uniforms.uTime.value+dt)%100000; c.mat.uniforms.uColor.value.copy(color).offsetHSL(c.hue,0,0);
       const z=c.m.position.z, fade=Math.min(THREE.MathUtils.clamp((z+420)/220,0,1), THREE.MathUtils.clamp((45-z)/45,0,1));
       c.mat.uniforms.uOp.value=fade*density*0.34;
       if(z>45){ c.active=false; c.m.visible=false; }
@@ -1607,9 +1636,12 @@ class Comet{
     this._v1=new THREE.Vector3(); this._v2=new THREE.Vector3();   // scratch per le proiezioni (niente clone per-frame)
   }
   spawn(){
-    this.active=true; this.t=0; this.dur=16+Math.random()*12; const side=Math.random()<0.5?-1:1;
-    this.g.position.set(side*(70+Math.random()*60),(Math.random()*2-1)*55,-700-Math.random()*300);
-    this.vel.set(-side*(7+Math.random()*7),(Math.random()*2-1)*3, 64+Math.random()*36);
+    this.active=true; this.t=0; this.dur=16+Math.random()*12;
+    const u=Math.random()*2-1, ph=Math.random()*6.283185307, s=Math.sqrt(Math.max(0,1-u*u));
+    const dx=s*Math.cos(ph), dy=u, dz=s*Math.sin(ph);                 // direzione uniforme sulla sfera → la cometa arriva da QUALSIASI lato
+    const R=760+Math.random()*260; this.g.position.set(dx*R,dy*R,dz*R);
+    const vr=68+Math.random()*34;                                     // velocità RADIALE verso il centro (l'astronauta) + jitter tangenziale per la traiettoria
+    this.vel.set(-dx*vr+(Math.random()*2-1)*6,-dy*vr+(Math.random()*2-1)*6,-dz*vr+(Math.random()*2-1)*6);
     this.tail.scale.set(55+Math.random()*45,11,1); this.tail.material.color.setHSL(0.54+Math.random()*0.12,0.55,0.72);
     this.tail2.scale.set(this.tail.scale.x*0.8,18.7,1);                         // coda polvere: più corta e larga
     this._curve=(Math.random()<0.5?-1:1)*(0.12+Math.random()*0.08);             // divergenza polvere/ioni
@@ -1624,7 +1656,7 @@ class Comet{
     this.core.material.opacity=Math.max(0,fade)*(0.85+0.15*Math.sin(this.t*7.0));  // nucleo che respira (outgassing)
     this.tail.material.opacity=Math.max(0,fade)*0.85;
     this.tail2.material.opacity=Math.max(0,fade)*0.45;
-    if(this.t>=this.dur||this.g.position.z>50){ this.active=false; this.g.visible=false; }
+    if(this.t>=this.dur){ this.active=false; this.g.visible=false; }   // despawn a tempo (la traiettoria è radiale in una direzione qualsiasi, non più solo +z)
   }
 }
 
@@ -2076,13 +2108,13 @@ class AuroraCurtain{
     this.mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1,32,24),this.mat); this.mesh.frustumCulled=false; this.g.add(this.mesh);
     this.active=false; this._counted=false;
   }
-  spawn(){ this.active=true; this._counted=false; const ang=Math.random()*Math.PI*2,dist=160+Math.random()*120;
-    this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*30,SPAWN_Z-Math.random()*300); this.mesh.scale.set(260,380,1); this.mat.uniforms.uSeed.value=Math.random()*10; this.mat.uniforms.uTime.value=0; this.g.visible=true;
+  spawn(){ this.active=true; this._counted=false; const ang=Math.random()*Math.PI*2,dist=140+Math.random()*130;
+    const sc=0.82+Math.random()*0.7; this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*30,SPAWN_Z-Math.random()*300); this.mesh.scale.set(260*sc,380*(0.9+Math.random()*0.5),1); this.mat.uniforms.uSeed.value=Math.random()*10; this.mat.uniforms.uTime.value=0; this.g.visible=true;   // varietà di larghezza/altezza per spawn (~0.82-1.5× larga)
     $t.log.textContent='— a veil of cold fire, lit by a sun that is not there.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); }
   update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt; this.mat.uniforms.uTime.value+=dt*0.5; this.mat.uniforms.uGrade.value.copy(director.grade);
     this.g.lookAt(camera.position); this.g.rotation.z=0;
     const z=this.g.position.z, op=Math.min(THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1),THREE.MathUtils.clamp((140-z)/120,0,1));
-    this.mat.uniforms.uOp.value=op*0.85;
+    this.mat.uniforms.uOp.value=op*0.95;   // picco più forte (0.85→0.95) → tenda più leggibile
     if(!this._counted && z>-30){ this._counted=true; TEL.stars++; }
     if(z>140){ this.active=false; this.g.visible=false; } }
 }
@@ -2209,11 +2241,32 @@ function applyDirector(){
     cinePass.uniforms.uHalation.value=_warmth*0.7; }                                         // halation piena nei mood caldi, micro-presenza nei freddi
 }
 // SFONDI: crossfade verso una nebulosa diversa ogni ~5-9 min (lazy-load + dispose → 1-2 texture in VRAM)
+// loader sfondi ADATTIVO: decode+resize in createImageBitmap (off-thread, come i livelli zoom).
+// Gli sfondi v14 sono 16384px su disco; l'upload però è CAPPATO a 12800 anche in 4K (M≈0.87,
+// 2.1× meglio dei vecchi 8192 a M 0.49): il texImage2D+mipmap sincrono del 16k pieno (~680MB)
+// stallava multi-frame IN ONDA a ogni cambio cielo (review adversariale). Le finestre piccole
+// ricevono un bitmap ridotto (~4.3×canvas texel: il cielo copre 360°, a hFOV ~82° serve quel margine).
+let skyLoadGen=0;   // guard di generazione: un cadutaSky durante un load in volo scarta il resolve stantio (niente texture orfane né skyIdx sbagliato)
+function skyLoadTex(url, ok, err){
+  const _cw=(renderer&&renderer.domElement)?renderer.domElement.width:1920;
+  const _tw=Math.max(4096, Math.min(SKY_PXW, Math.min(12800, Math.ceil(_cw*4.3/256)*256)));
+  const gen=++skyLoadGen;
+  fetch(url,{signal:AbortSignal.timeout(30000)}).then(r=>{ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })   // timeout: una connessione appesa NON lascia skyLoading=true per sempre
+    .then(b=>{ const o={imageOrientation:'flipY',premultiplyAlpha:'none',colorSpaceConversion:'none'};   // flipY nel decoder: per gli ImageBitmap il flipY WebGL è ignorato (stessa convenzione di zLoadLevel)
+      if(_tw<SKY_PXW){ o.resizeWidth=_tw; o.resizeHeight=_tw>>1; o.resizeQuality='high'; }
+      return createImageBitmap(b,o); })
+    .then(bmp=>{ if(gen!==skyLoadGen){ try{bmp.close();}catch(_){} err&&err(new Error('stale')); return; }   // load superato da uno più recente → si scarta senza toccare sky2
+      const t=new THREE.Texture(bmp); t.flipY=false; t.colorSpace=THREE.SRGBColorSpace; t.mapping=THREE.EquirectangularReflectionMapping; t.anisotropy=MAXANISO;
+      t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.magFilter=THREE.LinearFilter;
+      t.onUpdate=function(){ try{ if(t.image&&t.image.close) t.image.close(); }catch(_){} t.onUpdate=null; };   // bitmap liberata DOPO l'upload GPU
+      t.needsUpdate=true; ok(t); })
+    .catch(e=>{ err&&err(e); });
+}
 function cycleSky(target){ if(skyFading||skyLoading||!sky2) return; let n=(typeof target==='number')?((target%SKY_FILES.length)+SKY_FILES.length)%SKY_FILES.length:skyIdx;
   if(typeof target!=='number' && SKY_FILES.length>SKY_ROT_MIN+1){ do{ n=SKY_ROT_MIN+((Math.random()*(SKY_FILES.length-SKY_ROT_MIN))|0); }while(n===skyIdx); } if(n===skyIdx) return; skyPendIdx=n; skyLoading=true;   // auto: ruota SOLO tra i gen_ belli (come gen_25), mai la Via Lattea grezza scura
-  texL.load('assets/'+SKY_FILES[n]+SKY_QV, t=>{ t.colorSpace=THREE.SRGBColorSpace; t.mapping=THREE.EquirectangularReflectionMapping; t.anisotropy=MAXANISO;   // +SKY_QV = cache-buster (carica sempre il gen fresco)
+  skyLoadTex('assets/'+SKY_FILES[n]+SKY_QV, t=>{   // +SKY_QV = cache-buster (carica sempre il gen fresco)
     sky2.material.map=t; sky2.material.needsUpdate=true; sky2.material.opacity=0; sky2.visible=true; skyFade=0; skyFading=true; skyLoading=false;
-  }, undefined, ()=>{ skyLoading=false; });   // errore di rete → annulla, riprova al prossimo giro (niente crash)
+  }, ()=>{ skyLoading=false; });   // errore di rete → annulla, riprova al prossimo giro (niente crash)
 }
 function updateSky(dt){ if(!sky2) return;
   skyT+=dt; if(skyT>=skyEvery && zoomState==='idle'){ skyT=0; skyEvery=180+Math.random()*150; cycleSky(); }   // cambia sfondo ogni ~3-5.5 min (varietà); MAI durante un DEEP ZOOM
@@ -2425,7 +2478,7 @@ class LightEcho{
     if(this.t>this.life || z>140){ this.active=false; this.mesh.visible=false; } }
 }
 class BolideSplit{
-  constructor(){ this.N=7; this.pos=new Float32Array(this.N*3); this.vel=new Float32Array(this.N*3);
+  constructor(){ this.N=14; this.pos=new Float32Array(this.N*3); this.vel=new Float32Array(this.N*3);   // 7→14 frammenti: airburst più spettacolare (Points, costo trascurabile)
     this.geo=new THREE.BufferGeometry(); this.geo.setAttribute('position',new THREE.BufferAttribute(this.pos,3));
     this.mat=new THREE.PointsMaterial({map:starGlow,size:9,sizeAttenuation:true,transparent:true,opacity:0,
       depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xcfe6ff)});
@@ -2442,7 +2495,7 @@ class BolideSplit{
     this.pos[0]+=this.hvx*dt; this.pos[1]+=this.hvy*dt;
     if(!this.split && this.t>this.life*0.4){ this.split=true;
       for(let i=1;i<this.N;i++){ this.pos[i*3]=this.pos[0]; this.pos[i*3+1]=this.pos[1]; this.pos[i*3+2]=this.pos[2];
-        const a=Math.random()*Math.PI*2, sp=6+Math.random()*8;
+        const a=Math.random()*Math.PI*2, sp=6+Math.random()*14;
         this.vel[i*3]=Math.cos(a)*sp+this.hvx*0.6; this.vel[i*3+1]=Math.sin(a)*sp+this.hvy*0.6; } }
     if(this.split){ for(let i=1;i<this.N;i++){ this.vel[i*3+1]-=4*dt;
       this.pos[i*3]+=this.vel[i*3]*dt; this.pos[i*3+1]+=this.vel[i*3+1]*dt; } }
@@ -2548,12 +2601,24 @@ class ShootingStar{
     this.trail.center.set(0.0,0.5); this.g.add(this.trail);
     this.active=false; this.t=0; this.dur=0; this.vel=new THREE.Vector3(); this._v1=new THREE.Vector3(); this._v2=new THREE.Vector3();
   }
-  spawn(){ this.active=true; this.t=0; this.dur=1.1+Math.random()*0.7;
+  spawn(){ this.active=true; this.t=0;
+    this._fire=Math.random()<0.18;                                     // ~18% fireball LENTO e persistente
+    this.dur=this._fire?(2.6+Math.random()*1.6):(1.1+Math.random()*0.7);
     const side=Math.random()<0.5?-1:1;
     this.g.position.set(side*(30+Math.random()*70), 18+Math.random()*45, -160-Math.random()*240);
     this.vel.set(-side*(90+Math.random()*70), -(30+Math.random()*40), 30+Math.random()*30);   // sfreccia in diagonale
-    const L=30+Math.random()*26; this.trail.scale.set(L,2.2,1);
-    this.trail.material.color.setHSL(0.55+Math.random()*0.08,0.5,0.75);
+    // CLASSE SPETTRALE del meteorite: molti bianco-blu, alcuni verdi (Mg/O), arancioni (Na fireball), rari viola (Ca)
+    const _mr=Math.random(); let _h,_sat,_lig,_len=30+Math.random()*26,_sp=1;
+    if(_mr<0.55){ _h=0.55+Math.random()*0.08; _sat=0.5;  _lig=0.75; }                       // classico bianco-blu
+    else if(_mr<0.75){ _h=0.32+Math.random()*0.05; _sat=0.85; _lig=0.62; }                  // VERDE (Mg/O)
+    else if(_mr<0.9){ _h=0.07+Math.random()*0.04; _sat=0.9; _lig=0.6; _len*=1.15; _sp=0.7; } // ARANCIO: fireball lento
+    else { _h=0.75+Math.random()*0.05; _sat=0.7; _lig=0.7; }                                 // raro VIOLA (Ca)
+    if(this._fire){ _len*=1.4; _sp*=0.72; }                                                  // fireball: scia più lunga, più lento
+    this.vel.multiplyScalar(_sp);
+    this.trail.scale.set(_len,2.2,1);
+    this.trail.material.color.setHSL(_h,_sat,_lig);
+    this.head.material.color.setHSL(_h,Math.min(1,_sat*0.5),Math.min(1,_lig+0.2));           // testa intonata al colore
+    this.head.scale.setScalar(this._fire?2.8:1.6);                                           // fireball: testa più grossa
     this.g.visible=true; }
   update(dt,speed){ if(!this.active) return; this.t+=dt;
     this.g.position.addScaledVector(this.vel,dt); this.g.position.z+=speed*dt*0.4;
@@ -2920,7 +2985,7 @@ class OwnedPlanet{
     else this.logo.visible=false;
     this.g.visible=true;
   }
-  update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt; this.mesh.rotation.y+=this.spin*dt;
+  update(dt,speed){ if(!this.active) return; this.g.position.z+=Math.max(speed,16)*dt; this.mesh.rotation.y+=this.spin*dt;   // pavimento 16/s: il mondo permanente si avvicina sempre (mai fermo)
     const z=this.g.position.z, r=this.r, outEnd=340+r*2.0;
     const op=Math.min(THREE.MathUtils.clamp((z-this.z0)/700,0,1),THREE.MathUtils.clamp((outEnd-z)/(r*2.6+200),0,1));
     this.mat.opacity=op;
@@ -2948,14 +3013,23 @@ const clock=new THREE.Clock();
 let shaderTime=0; const SWRAP=100000;
 let camPhase=0,camDist=10,started=false,camOrbit=0,manSpin=0;
 let camMoveAz=0,camMoveEl=0,camMoveDs=0,camMoveAzT=0,camMoveElT=0,camMoveDsT=0,camMoveNext=20,camMoveScale=1;   // RIFRAME lenti: la camera plana verso nuove inquadrature e vi indugia (richiesta utente: "più cambi di inquadratura")
-let camOrbitP=1,camOrbitDir=1,camOrbitNext=6,camOrbitType=0,camOrbitDur=22,camOrbitLive=0;   // COREOGRAFIA CONTINUA: giri completi + curve a S concatenati (pause 2-5s); P=progresso 0..1
+let camOrbitP=1,camOrbitDir=1,camOrbitNext=6,camOrbitType=0,camOrbitDur=22,camOrbitLive=0;   // FIGURE: giro 360° completo attorno all'astronauta (dominante) + arco verticale; P=progresso 0..1
+let camOrbitOn=false;   // GIRI DI CAMERA disattivati (richiesta utente): la camera resta ferma a inquadrare la scena frontale ricca. Riattivabili da console con cadutaCamOrbit(true)
+let camDriftAng=0,camDriftRate=0.05,camDriftRateT=0.05,camDriftRetarget=20,camDriftEase=1;    // DOLLY CIRCOLARE PERPETUO (azimut): rivoluzione lenta SEMPRE attiva attorno all'astronauta (rad/s, ~2-3.5 min/giro) — la camera non è mai ferma; nel dive rientra a 0 in rampa (lo zoom deve restare in asse)
+let camDriftVAng=0,camDriftVRateT=0,camDriftVRetarget=26;                                     // QUOTA VERTICALE: ondulazione LIMITATA (±~20°, camDriftVRateT = angolo bersaglio) — la camera resta principalmente sulla BANDA centrale (richiesta utente: i poli si attraversano SOLO nei giri verticali completi, mai parcheggiati)
+let camRegimeT=30,camRegH=1,camRegV=0.15;                                                     // REGIME DI ROTAZIONE: la danza CAMBIA CARATTERE ogni ~45-100s — solo orizzontale a cerchio, solo verticale, o combinata (mai lo stesso moto fisso)
+let camRollAng=0,camRollRate=0,camRollRateT=0,camRollRetarget=40;                             // ROLL LIMITATO di camera (giri ON)
+let camSceneRoll=0,camSceneRollSpd=0.19;                                                      // ROLL CONTINUO della scena (giri OFF): la camera ruota su se stessa → la scena gira attorno all'astronauta centrato ("rotola verso la meta"); rad/s (~33s a giro, mai ferma)
+let camEvHold=0;                                                                              // REGIA EVENTI: eclissi in totalità o buco nero VICINO → le camere si fermano (quasi) per riprendere la scena
 let camLookX=0, camLookY=0.15;   // bersaglio lookAt smussato → niente stacchi d'inquadratura quando cambia il pianeta a fuoco
-let planetTimer=6,wispTimer=4,starTimer=2,mysteryTimer=80,parallelTimer=120,bhTimer=200;
-let cometTimer=40,clusterTimer=120,derelictTimer=150;
-let pulsarTimer=110,redgiantTimer=170,binaryTimer=200,remnantTimer=240;
-let signalTimer=120,sporeTimer=150,magnetarTimer=140,dysonTimer=200,auroraTimer=190,duststormTimer=240;
+let planetTimer=6,wispTimer=4,starTimer=2,mysteryTimer=28,parallelTimer=42,bhTimer=90;
+let cometTimer=3,clusterTimer=32,derelictTimer=45;
+let pulsarTimer=26,redgiantTimer=45,binaryTimer=55,remnantTimer=70;
+let signalTimer=32,sporeTimer=45,magnetarTimer=36,dysonTimer=55,auroraTimer=14,duststormTimer=90;
 let lastDay=Math.floor((Date.now()-TEL.launch)/86400000), persistT=0, dilLogged=false;
 const tmpLook=new THREE.Vector3(), planetFocus=new THREE.Vector3(), _bhProj=new THREE.Vector3();
+let _pvT=1.5; const _pv=new THREE.Vector3();   // garanzia "universo mai vuoto": timer + scratch di proiezione (zero alloc per-frame)
+const SHELL_MIN=IS_MOBILE?11:20, SHELL_CAP=IS_MOBILE?13:25;   // guscio garantito (min) e CAP mondi lontani: dimensionati sul pool (mobile 16 / desktop 30) → restano SEMPRE ~5 slot liberi per hero multipli/graze/soli/flyby. BUGFIX: senza cap i mondi lontani (immortali: riciclano, mai active=false) saturavano il pool e spegnevano il ramo probabilistico riga sotto (unica fonte di graze/soli); su mobile il target>pool lo rendeva pure irraggiungibile.
 
 // auto-scaler
 let fpsAcc=0,fpsN=0,fpsTimer=0,tier=0,tierCooldown=0;
@@ -3014,7 +3088,7 @@ function animate(){
     if(fallPhaseT<=0){ fallFast=!fallFast; fallTarget=fallFast?(20+Math.random()*12):1; fallPhaseT=45+Math.random()*60;   // veloce ancora più spinto (20-32×); fasi più corte (~45-105s)
       if($t.log){ $t.log.textContent=fallFast?'— acceleration. the fall quickens.':'— drifting. the fall slows.'; $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),9000); } } }
   fallMul += (fallTarget-fallMul)*Math.min(1,dt*0.08);                  // rampa graduale (~25-30s) verso il target — fasi più corte ma transizioni morbide
-  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul*zoomWorldMul;   // zoomWorldMul: pianeti/asteroidi al passo del deep zoom (1 a riposo)
+  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul*zoomWorldMul*1.45;   // ×1.45: CADUTA più VELOCE — tutti gli elementi (stelle, polvere, pianeti) scorrono più in fretta verso l'astronauta (senso di caduta infinita più decisa)
   const rocketE=THREE.MathUtils.clamp((fallMul-1)/9,0,1);               // 0..1: i cue "RAZZO" crescono (gradualmente) con la velocità di caduta
   if(audio.music && audio.music.setSpeedMul) audio.music.setSpeedMul(1+rocketE*0.6);   // la musica accelera nelle fasi veloci
 
@@ -3024,7 +3098,7 @@ function animate(){
   // anniversari + supernova rara
   const day=Math.floor((Date.now()-TEL.launch)/86400000);
   if(day!==lastDay){ if([1,7,30,100,200,365,500,730,1000].includes(day) && !supernova.active) supernova.flash('— DAY '+day+'. The sky marks it.'); lastDay=day; }   // guardia !active come gli altri call site: mai resettare l'anello a metà espansione
-  if(!supernova.active && Math.random()<dt/240) supernova.flash();
+  if(!supernova.active && Math.random()<dt/125) supernova.flash();   // supernova casuale più frequente (240→165→125s medi)
 
   // luce 3/4 laterale: i pianeti mostrano la superficie (lato illuminato + terminatore);
   // l'uomo resta in controluce su un lato. L'angolo ruota lentissimo → varietà nel tempo.
@@ -3037,20 +3111,30 @@ function animate(){
   const breathe=1.0+Math.sin(shaderTime*0.131)*0.014+Math.sin(shaderTime*0.048+1.3)*0.011;
   renderer.toneMappingExposure=Math.max(IS_LIVE?1.03:0.90,exposureCur*(IS_LIVE?1.08:0.95)*breathe);   // breathe DENTRO il max: il PAVIMENTO resta garantito (mai troppo scura; su LIVE pavimento più alto, lo stream YouTube scurisce)
 
-  sky.rotation.y+=dt*0.0016*zoomSkyRotMul; sky.rotation.x=Math.sin(shaderTime*0.004)*0.05*zoomSkyRotMul+zoomSkyPitch;   // ×zoomSkyRotMul: DEEP ZOOM congela la rotazione con rampa; +zoomSkyPitch: beccheggio di puntamento GC (0 a riposo = identico a prima)
+  // SEMPRE IL BULGE INQUADRATO: orienta il cielo perché il centro galattico (la parte più bella/luminosa
+  // di ogni sfondo) resti dietro l'astronauta. Usa la posizione GC già mappata in sky-gc.json.
+  if(!zoomGC && !zoomCfgP) zoomLoadCfg();   // carica sky-gc presto (idempotente, solo fetch JSON)
+  const _skKey=(typeof SKY_FILES!=='undefined')?('assets/'+SKY_FILES[skyIdx]):null, _skG=(zoomGC&&_skKey)?zoomGC[_skKey]:null;
+  if(zoomState==='idle' && _skG){
+    const _phi=(+_skG.u||0)*6.283185307; const _tgt=Math.PI-Math.atan2(-Math.cos(_phi),Math.sin(_phi));   // la u in sky-gc.json include GIÀ il flip → nessuna correzione extra di chiralità
+    let _d=(_tgt-sky.rotation.y)%6.283185307; if(_d>Math.PI)_d-=6.283185307; if(_d<-Math.PI)_d+=6.283185307;
+    sky.rotation.y+=_d*Math.min(1,dt*0.3) + dt*0.0004*zoomSkyRotMul;   // planata dolce verso il bulge centrato + deriva lentissima
+  } else sky.rotation.y+=dt*0.0016*zoomSkyRotMul;
+  sky.rotation.x=Math.sin(shaderTime*0.004)*0.05*zoomSkyRotMul+zoomSkyPitch;   // ×zoomSkyRotMul: DEEP ZOOM congela la rotazione con rampa; +zoomSkyPitch: beccheggio di puntamento GC (0 a riposo)
   // campo stellare volumetrico: ogni strato scorre a velocità diversa (parallasse) e ricicla senza pop
-  for(const L of starLayers){ L.mat.uniforms.uTime.value=shaderTime; const dzL=speed*dt*L.mul, p=L.pos;   // le stelle che luccicano restano SEMPRE (anche nel deep zoom — scelta utente; uGDim resta a 1, disponibile per il futuro)
+  for(const L of starLayers){ L.mat.uniforms.uTime.value=shaderTime;   // le stelle che luccicano restano SEMPRE (anche nel deep zoom — scelta utente; uGDim resta a 1, disponibile per il futuro)
+    if(L.sphere) continue;   // il CIELO SFERICO avvolge tutto e non scorre (twinkle basta): niente re-upload di 22k posizioni per frame
+    const dzL=speed*dt*L.mul, p=L.pos;
     for(let i=0;i<L.count;i++){ p[i*3+2]+=dzL; if(p[i*3+2]>L.zF){ p[i*3]=(Math.random()*2-1)*L.half; p[i*3+1]=(Math.random()*2-1)*L.half; p[i*3+2]=L.zN; } }
     L.pts.geometry.attributes.position.needsUpdate=true; }
   // lastre di nebulosa profonde che scorrono e riciclano
-  for(const s of nebSheets){ s.m.position.z+=speed*dt*0.30; s.mat.uniforms.uTime.value=shaderTime; s.m.lookAt(camera.position);
-    s.mat.uniforms.uColor.value.copy(director.grade).lerp(_white,0.18);
-    const zs=s.m.position.z, ops=Math.min(THREE.MathUtils.clamp((zs+6000)/1500,0,1),THREE.MathUtils.clamp((-300-zs)/1500,0,1))*(0.08+director.cur.neb*0.12);
-    s.mat.uniforms.uOp.value=ops*zoomEnvMul;   // ×zoomEnvMul: DEEP ZOOM pulisce le nebulose (1 a riposo)
-    if(zs>-300){ s.m.position.set((Math.random()*2-1)*900,(Math.random()*2-1)*500,-6000); s.mat.uniforms.uSeed.value=Math.random()*10; } }
+  for(const s of nebSheets){ s.mat.uniforms.uTime.value=shaderTime; s.m.lookAt(camera.position);   // GUSCIO: billboard verso la camera, posizione FISSA sulla sfera → foschia colorata da ogni angolo (il moto lo dà l'orbita della camera + il churn fbm interno)
+    s.mat.uniforms.uColor.value.copy(director.grade).offsetHSL(s.hue,0,0).lerp(_white,0.18);   // offsetHSL: ogni lastra una tonalità vicina → banda di colori, non monocromo
+    s.mat.uniforms.uOp.value=(0.22+director.cur.neb*0.25)*zoomEnvMul;   // opacità col mood, alzata da 0.20+0.22 ma limata da 0.24+0.28 per fill-rate; ×zoomEnvMul: DEEP ZOOM pulisce (1 a riposo) }
+  }
 
   // polvere (+ stiramento in raffica)
-  dustMat.uniforms.uTime.value=shaderTime; dustMat.uniforms.uAmt.value=director.cur.dust*0.5*zoomEnvMul;   // opacità polvere dimezzata (×zoomEnvMul: DEEP ZOOM la pulisce, 1 a riposo)
+  dustMat.uniforms.uTime.value=shaderTime; dustMat.uniforms.uAmt.value=director.cur.dust*0.5*zoomEnvMul*zoomWorldDimN;   // ×zoomWorldDimN: nel DEEP ZOOM la polvere si spegne DEL TUTTO (lo stretch "warp" faceva strisce orizzontali sopra la bella immagine)
   dustMat.uniforms.uStretch.value=1+THREE.MathUtils.clamp(speed/40,0,1)*0.45+director.surge*1.6+slingE*3.2+rocketE*2.5;   // + scie lunghe "warp" quando si precipita come un razzo
   dustMat.uniforms.uColor.value.copy(director.grade).lerp(_white,0.6);
   const dz=speed*dt*1.6;
@@ -3058,14 +3142,23 @@ function animate(){
   dustGeo.attributes.position.needsUpdate=true;
   // polvere ravvicinata veloce (parallasse forte davanti all'uomo)
   { const u=fastDust.userData; fastDust.material.uniforms.uColor.value.copy(director.grade).lerp(_white,0.6);
-    fastDust.material.uniforms.uAmt.value=(0.4+director.cur.dust*0.6)*zoomEnvMul; const dzf=speed*dt*2.4;   // ×zoomEnvMul: DEEP ZOOM (1 a riposo)
+    fastDust.material.uniforms.uAmt.value=(0.4+director.cur.dust*0.6)*zoomEnvMul*zoomWorldDimN; const dzf=speed*dt*2.4;   // ×zoomWorldDimN: DEEP ZOOM spegne la polvere veloce (niente scie/strisce sopra l'immagine zoom)
     for(let i=0;i<u.N;i++){ u.pos[i*3+2]+=dzf; if(u.pos[i*3+2]>60) u.re(i,-60); }
     fastDust.geometry.attributes.position.needsUpdate=true; }
 
   // pianeti
   planetTimer-=dt;
-  if(!planets.some(p=>p.active&&!p._distant)){ const fp=planets.find(p=>!p.active); if(fp){ fp.spawn(false,null,false); planetTimer=3.5+Math.random()*4; } }   // GARANZIA: sempre almeno 1 pianeta HERO (passaggio ravvicinato) — i mondi di sfondo non bastano
-  else if(planetTimer<=0){ planetTimer=3.5+Math.random()*4; const fp=planets.find(p=>!p.active); if(fp&&Math.random()<(director.cur.planet*1.4+0.14)*(camOrbitLive?2.4:1)+(camOrbitLive?0.10:0)){ grazeNext=(Math.random()<0.22); let _nd=0; for(const p of planets) if(p.active&&p._distant) _nd++; fp.spawn(false,null, _nd<5 && Math.random()<0.62); grazeNext=false; } }   // spawn probabilistico + flyby più frequenti (0.22); cap 5 mondi di sfondo → restano slot per i passaggi hero
+  let _nd=0; for(const p of planets) if(p.active&&p._distant) _nd++;   // mondi lontani attivi (popolamento del guscio)
+  if(!planets.some(p=>p.active&&!p._distant)){ const fp=planets.find(p=>!p.active); if(fp){ fp.spawn(false,null,false); planetTimer=3.5+Math.random()*4; } }   // GARANZIA HERO: sempre ≥1 passaggio ravvicinato
+  else if(_nd<SHELL_MIN){ const fp=planets.find(p=>!p.active); if(fp){ fp.spawn(false,null,true); } }   // GARANZIA GUSCIO: tieni ≥SHELL_MIN mondi lontani → universo PIÙ PIENO da ogni angolo (mai il vuoto)
+  else if(planetTimer<=0){ planetTimer=1.4+Math.random()*1.8; const fp=planets.find(p=>!p.active); if(fp&&Math.random()<(director.cur.planet*2.1+0.34)*(camOrbitLive?2.4:1)+(camOrbitLive?0.10:0)){ grazeNext=(Math.random()<0.34); const _dd=_nd<SHELL_CAP && Math.random()<0.66; fp.spawn(false,null,_dd); if(_dd)_nd++; grazeNext=false; } }   // se spawno un distante aggiorno _nd → il topup _pvT sotto NON risfora il cap (no off-by-one: mai <slot liberi voluti)   // spawn PIÙ FREQUENTE + flyby (0.34); questo ramo (grazie al cap del guscio) trova SEMPRE uno slot libero → graze/soli/flyby garantiti
+  // GARANZIA "UNIVERSO MAI VUOTO": il guscio di sfondo è piazzato in coordinate del QUADRO CLASSICO —
+  // coi giri di camera può restare tutto fuori vista. Ogni ~1.5s: se meno di 3 mondi lontani proiettano
+  // nel quadro CORRENTE, uno rispawna subito RUOTATO sulla vista attuale (pianeti vicini e lontani sempre in scena)
+  _pvT-=dt; if(_pvT<=0 && (typeof zoomState==='undefined'||zoomState==='idle')){ _pvT=1.5; let _inv=0;
+    for(const p of planets){ if(!p.active||!p._distant) continue; _pv.copy(p.mesh.position).project(camera); if(Math.abs(_pv.x)<1.15&&Math.abs(_pv.y)<1.15&&_pv.z<1) _inv++; }
+    if(_inv<3 && _nd<SHELL_CAP){ const fp=planets.find(p=>!p.active); if(fp){ fp.spawn(false,null,true);   // CAP _nd<SHELL_CAP: il topup di copertura NON gonfia il pool oltre il guscio (i distanti sono immortali). Il guscio è simmetrico in azimut → ogni direzione ne vede ~3 comunque
+      _pv.copy(fp.mesh.position).applyQuaternion(camera.quaternion); fp.mesh.position.copy(_pv); } } }   // lo scatter classico (asse -z) viene orientato col quaternione camera → atterra nel quadro che stai guardando
   let nearestPlanet=null,nearScore=0,nearSun=null,nearSunK=0;
   for(const p of planets){ p.update(dt,speed); if(!p.active) continue; const z=p.mesh.position.z;
     if(p.isSun){ if(z>-1400&&z<90){ const k=p.mesh.scale.x/Math.max(70,-z+160); if(k>nearSunK){nearSunK=k;nearSun=p;} } }
@@ -3132,65 +3225,65 @@ function animate(){
   }
 
   // nebbie
-  wispTimer-=dt; if(wispTimer<=0){ wispTimer=5+Math.random()*7; const fw=wisps.find(w=>!w.active); if(fw&&Math.random()<director.cur.neb*0.42) wispSpawn(fw); }
+  wispTimer-=dt; if(wispTimer<=0){ wispTimer=3+Math.random()*5; const fw=wisps.find(w=>!w.active); if(fw&&Math.random()<director.cur.neb*0.6) wispSpawn(fw); }   // wisp più frequenti (foschia vicina)
   for(const w of wisps){ if(!w.active) continue; w.mesh.position.z+=speed*dt*1.1; w.mesh.rotation.z+=w.spin*dt; w.mat.uniforms.uTime.value=shaderTime;
     w.mesh.position.x+=Math.sin(shaderTime*0.05+w.spin*7.0)*dt*1.2;   // deriva laterale lentissima → parallasse, non sembra incollata al piano
     const z=w.mesh.position.z, fade=Math.min(smooth(-700,-500,z),smooth(60,10,z)); w.mat.uniforms.uOpacity.value=fade*0.32*director.cur.neb;
     if(z>70){ w.active=false; w.mesh.visible=false; } }
 
   // mistero + viaggiatore parallelo
-  mysteryTimer-=dt; if(mysteryTimer<=0 && !mystery.active){ mysteryTimer=140+Math.random()*220; mystery.spawn(); } mystery.update(dt);
-  parallelTimer-=dt; if(parallelTimer<=0 && !parallel.active){ parallelTimer=110+Math.random()*180; parallel.spawn(); } parallel.update(dt,speed);
+  mysteryTimer-=dt; if(mysteryTimer<=0 && !mystery.active){ mysteryTimer=62+Math.random()*98; mystery.spawn(); } mystery.update(dt);
+  parallelTimer-=dt; if(parallelTimer<=0 && !parallel.active){ parallelTimer=50+Math.random()*80; parallel.spawn(); } parallel.update(dt,speed);
   supernova.update(dt);
-  bhTimer-=dt; if(bhTimer<=0 && !blackhole.active){ bhTimer=280+Math.random()*420; blackhole.spawn(); } blackhole.update(dt,speed); updateLens();
+  bhTimer-=dt; if(bhTimer<=0 && !blackhole.active){ bhTimer=175+Math.random()*250; blackhole.spawn(); } blackhole.update(dt,speed); updateLens();
   // nebulosa volumetrica (attraversamento) + nuovi corpi + strutture
   if(nebBoost>0) nebBoost=Math.max(0,nebBoost-dt*0.12);
   _nebCol.copy(director.grade).lerp(_white,0.14);
-  nebulaField.update(dt,speed,Math.max(director.cur.neb*0.6,nebBoost),_nebCol);
+  nebulaField.update(dt,speed,Math.max(director.cur.neb*0.85,nebBoost),_nebCol);   // density feed 0.6→0.85 → più attraversamenti e più densi
   updateGalaxies(dt,speed);
-  cometTimer-=dt; if(cometTimer<=0 && !comet.active){ cometTimer=55+Math.random()*90; comet.spawn(); } comet.update(dt);
-  clusterTimer-=dt; if(clusterTimer<=0 && !cluster.active){ clusterTimer=160+Math.random()*200; cluster.spawn(); } cluster.update(dt,speed);
-  derelictTimer-=dt; if(derelictTimer<=0 && !derelict.active){ derelictTimer=170+Math.random()*260; derelict.spawn(); } derelict.update(dt,speed);
-  pulsarTimer-=dt; if(pulsarTimer<=0 && !pulsar.active){ pulsarTimer=120+Math.random()*180; pulsar.spawn(); } pulsar.update(dt,speed);
-  redgiantTimer-=dt; if(redgiantTimer<=0 && !redgiant.active){ redgiantTimer=200+Math.random()*260; redgiant.spawn(); } redgiant.update(dt,speed);
-  binaryTimer-=dt; if(binaryTimer<=0 && !binary.active){ binaryTimer=220+Math.random()*280; binary.spawn(); } binary.update(dt,speed);
-  remnantTimer-=dt; if(remnantTimer<=0 && !remnant.active){ remnantTimer=260+Math.random()*320; remnant.spawn(); } remnant.update(dt,speed);
+  cometTimer-=dt; if(cometTimer<=0 && !comet.active){ cometTimer=6+Math.random()*12; comet.spawn(); } comet.update(dt);   // cometa quasi sempre in scena (vita 16-28s, gap 6-18s)
+  clusterTimer-=dt; if(clusterTimer<=0 && !cluster.active){ clusterTimer=66+Math.random()*88; cluster.spawn(); } cluster.update(dt,speed);
+  derelictTimer-=dt; if(derelictTimer<=0 && !derelict.active){ derelictTimer=74+Math.random()*110; derelict.spawn(); } derelict.update(dt,speed);
+  pulsarTimer-=dt; if(pulsarTimer<=0 && !pulsar.active){ pulsarTimer=52+Math.random()*80; pulsar.spawn(); } pulsar.update(dt,speed);
+  redgiantTimer-=dt; if(redgiantTimer<=0 && !redgiant.active){ redgiantTimer=88+Math.random()*115; redgiant.spawn(); } redgiant.update(dt,speed);
+  binaryTimer-=dt; if(binaryTimer<=0 && !binary.active){ binaryTimer=98+Math.random()*125; binary.spawn(); } binary.update(dt,speed);
+  remnantTimer-=dt; if(remnantTimer<=0 && !remnant.active){ remnantTimer=115+Math.random()*142; remnant.spawn(); } remnant.update(dt,speed);
   // nuovi corpi
-  signalTimer-=dt; if(signalTimer<=0 && !signal.active){ signalTimer=180+Math.random()*180; signal.spawn(); } signal.update(dt,speed);
-  sporeTimer-=dt; if(sporeTimer<=0 && !spores.active){ sporeTimer=220+Math.random()*240; spores.spawn(); } spores.update(dt,speed);
-  magnetarTimer-=dt; if(magnetarTimer<=0 && !magnetar.active){ magnetarTimer=150+Math.random()*200; magnetar.spawn(); } magnetar.update(dt,speed);
-  dysonTimer-=dt; if(dysonTimer<=0 && !dyson.active){ dysonTimer=210+Math.random()*210; dyson.spawn(); } dyson.update(dt,speed);
-  auroraTimer-=dt; if(auroraTimer<=0 && !aurora.active){ auroraTimer=240+Math.random()*260; aurora.spawn(); } aurora.update(dt,speed);
+  signalTimer-=dt; if(signalTimer<=0 && !signal.active){ signalTimer=78+Math.random()*82; signal.spawn(); } signal.update(dt,speed);
+  sporeTimer-=dt; if(sporeTimer<=0 && !spores.active){ sporeTimer=98+Math.random()*108; spores.spawn(); } spores.update(dt,speed);
+  magnetarTimer-=dt; if(magnetarTimer<=0 && !magnetar.active){ magnetarTimer=66+Math.random()*88; magnetar.spawn(); } magnetar.update(dt,speed);
+  dysonTimer-=dt; if(dysonTimer<=0 && !dyson.active){ dysonTimer=95+Math.random()*95; dyson.spawn(); } dyson.update(dt,speed);
+  auroraTimer-=dt; if(auroraTimer<=0 && !aurora.active){ auroraTimer=35+Math.random()*35; aurora.spawn(); } aurora.update(dt,speed);   // aurora ~3× più frequente (gap 35-70s, era 105-220)
   // dust storm: rara e mai sovrapposta ad altri corpi a fbm pesante (remnant/nebulosa)
-  duststormTimer-=dt; if(duststormTimer<=0 && !duststorm.active && !remnant.active && nebBoost<0.3){ duststormTimer=300+Math.random()*360; duststorm.spawn(); } duststorm.update(dt,speed);
+  duststormTimer-=dt; if(duststormTimer<=0 && !duststorm.active && !remnant.active && nebBoost<0.3){ duststormTimer=165+Math.random()*195; duststorm.spawn(); } duststorm.update(dt,speed);
   // --- NUOVI CORPI (varietà): timer individuali + update ogni frame ---
-  lavaTimer-=dt; if(lavaTimer<=0 && !lavaWorld.active){ lavaTimer=240+Math.random()*220; lavaWorld.spawn(); } lavaWorld.update(dt,speed);
-  shatteredTimer-=dt; if(shatteredTimer<=0 && !shattered.active){ shatteredTimer=300+Math.random()*260; shattered.spawn(); } shattered.update(dt,speed);
-  whitedwarfTimer-=dt; if(whitedwarfTimer<=0 && !whitedwarf.active){ whitedwarfTimer=150+Math.random()*200; whitedwarf.spawn(); } whitedwarf.update(dt,speed);
-  variablestarTimer-=dt; if(variablestarTimer<=0 && !variablestar.active){ variablestarTimer=140+Math.random()*180; variablestar.spawn(); } variablestar.update(dt,speed);
-  ringarcTimer-=dt; if(ringarcTimer<=0 && !ringarc.active){ ringarcTimer=300+Math.random()*360; ringarc.spawn(); } ringarc.update(dt,speed);
-  stationTimer-=dt; if(stationTimer<=0 && !station.active){ stationTimer=200+Math.random()*240; station.spawn(); } station.update(dt,speed);
-  lightEchoTimer-=dt; if(lightEchoTimer<=0 && !lightEcho.active){ lightEchoTimer=300+Math.random()*400; lightEcho.spawn(); } lightEcho.update(dt,speed);
-  bolideTimer-=dt; if(bolideTimer<=0 && !bolide.active){ bolideTimer=130+Math.random()*200; bolide.spawn(); } bolide.update(dt,speed);
-  gwTimer-=dt; if(gwTimer<=0 && !gwRipple.active){ gwTimer=360+Math.random()*420; gwRipple.spawn(); } gwRipple.update(dt);
-  whalePodTimer-=dt; if(whalePodTimer<=0 && !whalePod.active){ whalePodTimer=240+Math.random()*260; whalePod.spawn(); } whalePod.update(dt,speed);
+  lavaTimer-=dt; if(lavaTimer<=0 && !lavaWorld.active){ lavaTimer=108+Math.random()*102; lavaWorld.spawn(); } lavaWorld.update(dt,speed);
+  shatteredTimer-=dt; if(shatteredTimer<=0 && !shattered.active){ shatteredTimer=138+Math.random()*120; shattered.spawn(); } shattered.update(dt,speed);
+  whitedwarfTimer-=dt; if(whitedwarfTimer<=0 && !whitedwarf.active){ whitedwarfTimer=66+Math.random()*88; whitedwarf.spawn(); } whitedwarf.update(dt,speed);
+  variablestarTimer-=dt; if(variablestarTimer<=0 && !variablestar.active){ variablestarTimer=62+Math.random()*82; variablestar.spawn(); } variablestar.update(dt,speed);
+  ringarcTimer-=dt; if(ringarcTimer<=0 && !ringarc.active){ ringarcTimer=138+Math.random()*165; ringarc.spawn(); } ringarc.update(dt,speed);
+  stationTimer-=dt; if(stationTimer<=0 && !station.active){ stationTimer=88+Math.random()*110; station.spawn(); } station.update(dt,speed);
+  lightEchoTimer-=dt; if(lightEchoTimer<=0 && !lightEcho.active){ lightEchoTimer=148+Math.random()*195; lightEcho.spawn(); } lightEcho.update(dt,speed);
+  bolideTimer-=dt; if(bolideTimer<=0 && !bolide.active){ bolideTimer=18+Math.random()*26; bolide.spawn(); } bolide.update(dt,speed);   // airburst frammentato ricorrente (gap ~30s medi)
+  gwTimer-=dt; if(gwTimer<=0 && !gwRipple.active){ gwTimer=200+Math.random()*230; gwRipple.spawn(); } gwRipple.update(dt);
+  whalePodTimer-=dt; if(whalePodTimer<=0 && !whalePod.active){ whalePodTimer=108+Math.random()*120; whalePod.spawn(); } whalePod.update(dt,speed);
   // VISITATORI: stelle cadenti (frequenti nelle piogge), navicella, razzo, UFO
-  shootTimer-=dt*(shower?7:1); if(shootTimer<=0){ shootTimer=40+Math.random()*70; const fs=shootingStars.find(s=>!s.active); if(fs) fs.spawn(); }
+  shootTimer-=dt*(shower?7:1); if(shootTimer<=0){ shootTimer=4+Math.random()*7; const fs=shootingStars.find(s=>!s.active); if(fs) fs.spawn(); }   // stelle cadenti QUASI CONTINUE (base ~4-11s, mean ~7.5s)
   for(const s of shootingStars) s.update(dt,speed);
-  starshipTimer-=dt; if(starshipTimer<=0 && !starship.active){ starshipTimer=280+Math.random()*300; starship.spawn(); } starship.update(dt,speed);
-  rocketTimer-=dt; if(rocketTimer<=0 && !rocketShip.active){ rocketTimer=380+Math.random()*320; rocketShip.spawn(); } rocketShip.update(dt,speed);
-  ufoTimer-=dt; if(ufoTimer<=0 && !ufo.active){ ufoTimer=320+Math.random()*360; ufo.spawn(); } ufo.update(dt,speed);
+  starshipTimer-=dt; if(starshipTimer<=0 && !starship.active){ starshipTimer=128+Math.random()*138; starship.spawn(); } starship.update(dt,speed);
+  rocketTimer-=dt; if(rocketTimer<=0 && !rocketShip.active){ rocketTimer=178+Math.random()*150; rocketShip.spawn(); } rocketShip.update(dt,speed);
+  ufoTimer-=dt; if(ufoTimer<=0 && !ufo.active){ ufoTimer=148+Math.random()*165; ufo.spawn(); } ufo.update(dt,speed);
   // meraviglie round 3 (wormhole mai insieme al buco nero: condividono la passata di lensing)
-  wormholeTimer-=dt; if(wormholeTimer<=0 && !wormhole.active && !blackhole.active){ wormholeTimer=1100+Math.random()*900; wormhole.spawn(); } wormhole.update(dt,speed);
-  jellyTimer-=dt; if(jellyTimer<=0 && !jellyPod.active){ jellyTimer=380+Math.random()*380; jellyPod.spawn(); } jellyPod.update(dt,speed);
-  sputnikTimer-=dt; if(sputnikTimer<=0 && !sputnik.active){ sputnikTimer=520+Math.random()*480; sputnik.spawn(); } sputnik.update(dt,speed);
-  ringCrossTimer-=dt; if(ringCrossTimer<=0 && !ringCross.active && !duststorm.active){ ringCrossTimer=900+Math.random()*700; ringCross.spawn(); } ringCross.update(dt,speed);
-  lanternTimer-=dt; if(lanternTimer<=0 && !lanterns.active){ lanternTimer=420+Math.random()*420; lanterns.spawn(); } lanterns.update(dt,speed);
-  motherTimer-=dt; if(motherTimer<=0 && !motherStation.active){ motherTimer=18000+Math.random()*20000; motherStation.spawn(); } motherStation.update(dt,speed);
-  solarEclipseTimer-=dt; if(solarEclipseTimer<=0 && !solarEclipse.active){ solarEclipseTimer=520+Math.random()*360; solarEclipse.spawn(); } solarEclipse.update(dt,speed);
-  lunarEclipseTimer-=dt; if(lunarEclipseTimer<=0 && !lunarEclipse.active){ lunarEclipseTimer=620+Math.random()*360; lunarEclipse.spawn(); } lunarEclipse.update(dt,speed);
+  wormholeTimer-=dt; if(wormholeTimer<=0 && !wormhole.active && !blackhole.active){ wormholeTimer=620+Math.random()*520; wormhole.spawn(); } wormhole.update(dt,speed);
+  jellyTimer-=dt; if(jellyTimer<=0 && !jellyPod.active){ jellyTimer=172+Math.random()*172; jellyPod.spawn(); } jellyPod.update(dt,speed);
+  sputnikTimer-=dt; if(sputnikTimer<=0 && !sputnik.active){ sputnikTimer=248+Math.random()*228; sputnik.spawn(); } sputnik.update(dt,speed);
+  ringCrossTimer-=dt; if(ringCrossTimer<=0 && !ringCross.active && !duststorm.active){ ringCrossTimer=470+Math.random()*370; ringCross.spawn(); } ringCross.update(dt,speed);
+  lanternTimer-=dt; if(lanternTimer<=0 && !lanterns.active){ lanternTimer=200+Math.random()*200; lanterns.spawn(); } lanterns.update(dt,speed);
+  motherTimer-=dt; if(motherTimer<=0 && !motherStation.active){ motherTimer=9000+Math.random()*13000; motherStation.spawn(); } motherStation.update(dt,speed);
+  solarEclipseTimer-=dt; if(solarEclipseTimer<=0 && !solarEclipse.active){ solarEclipseTimer=288+Math.random()*198; solarEclipse.spawn(); } solarEclipse.update(dt,speed);
+  lunarEclipseTimer-=dt; if(lunarEclipseTimer<=0 && !lunarEclipse.active){ lunarEclipseTimer=338+Math.random()*198; lunarEclipse.spawn(); } lunarEclipse.update(dt,speed);
   // PIANETI PERMANENTI: ne mostra uno alla volta, ruotando sul catalogo acquistato
-  ownedTimer-=dt; if(ownedTimer<=0){ ownedTimer=30+Math.random()*40; const free=ownedPlanets.find(p=>!p.active); if(free && permPlanets.length){ free.spawn(permPlanets[ownedIdx%permPlanets.length]); ownedIdx++; } }
+  ownedTimer-=dt; if(ownedTimer<=0){ ownedTimer=16+Math.random()*24; const free=ownedPlanets.find(p=>!p.active); if(free && permPlanets.length){ free.spawn(permPlanets[ownedIdx%permPlanets.length]); ownedIdx++; } }
   for(const p of ownedPlanets) p.update(dt,speed);
   if(_echoPending>0){ _echoPending-=dt; if(_echoPending<=0 && !lightEcho.active) lightEcho.spawn(); }   // eco di luce ~14s dopo una supernova
 
@@ -3203,28 +3296,59 @@ function animate(){
     camMoveElT=(Math.random()*2-1)*0.65; camMoveDsT=(Math.random()*2-1)*1.9; }
   camMoveScale+=(((typeof zoomState==='undefined'||zoomState==='idle')?1:0.14)-camMoveScale)*Math.min(1,dt*0.5);   // nel deep zoom i riframe si riducono (il centro dello zoom deve restare in quadro)
   camMoveAz+=(camMoveAzT-camMoveAz)*Math.min(1,dt*0.11); camMoveEl+=(camMoveElT-camMoveEl)*Math.min(1,dt*0.11); camMoveDs+=(camMoveDsT-camMoveDs)*Math.min(1,dt*0.11);
-  // COREOGRAFIA CONTINUA ("scivolo"): la camera è SEMPRE in movimento — giri completi e curve a S
-  // concatenati, pausa massima 2-5s. Solo a scena classica (nel dive si congela: il centro dello
-  // zoom deve restare in asse; riprende all'uscita). Ogni figura finisce a offset 0 → mai scatti.
+  // REGIA "PIANO SEQUENZA": la camera non si ferma MAI — un dolly circolare perpetuo gira attorno
+  // all'astronauta a 360° (velocità che respira, come una troupe in orbita continua), e sopra si
+  // innestano le figure: GIRO 360° completo (dominante) e ARCO VERTICALE. Solo a scena classica
+  // (nel dive il dolly rientra in rampa: il centro dello zoom deve restare in asse; riprende
+  // all'uscita). Ogni figura finisce a offset 0 → mai scatti.
   const _zIdle=(typeof zoomState==='undefined'||zoomState==='idle');
-  if(camOrbitP>=1){ if(_zIdle){ camOrbitNext-=dt; if(camOrbitNext<=0){
-    camOrbitP=0; camOrbitDir=Math.random()<0.5?1:-1;
-    const _ft=Math.random(); camOrbitType=_ft<0.30?0:(_ft<0.60?1:(_ft<0.80?2:3));   // 30% giro · 30% scivolo-spirale · 20% arco verticale · 20% vite 360°
-    camOrbitDur=[16+Math.random()*10, 18+Math.random()*10, 14+Math.random()*8, 12+Math.random()*6][camOrbitType];
-    camOrbitNext=2+Math.random()*3;                                            // pausa tra figure: SOLO 2-5s
+  // REGIA EVENTI: eclissi in totalità o buco nero vicino all'astronauta → le camere SI FERMANO
+  // (in ~2s) per riprendere la scena; alla fine dell'evento il moto riparte da solo
+  camEvHold+=(((eclipseDim>0.04||bhNear>0.18)?1:0)-camEvHold)*Math.min(1,dt*0.5);   // soglia buco nero anticipata (0.18): il freno arriva PRIMA del passaggio ravvicinato
+  const _evGo=1-0.92*camEvHold;                                                // 0.08 residuo: respiro minimo, mai fermo-immagine assoluto
+  if(camOrbitP>=1){ if(_zIdle && camOrbitOn){ camOrbitNext-=dt; if(camOrbitNext<=0 && camEvHold<0.4){
+    camOrbitP=0;
+    camOrbitType=0;                                                            // SOLO ORIZZONTALE (richiesta utente): la camera gira attorno all'astronauta solo in orizzontale, niente più giro verticale a 360°
+    camOrbitDir=camOrbitType===0?(camDriftRateT>=0?1:-1):(Math.random()<0.5?1:-1);   // orizzontale: asseconda il dolly (segno del TARGET); verticale: verso libero (parte e torna alla banda comunque)
+    camOrbitDur=camOrbitType===0?16+Math.random()*10:18+Math.random()*10;
+    camOrbitNext=1+Math.random()*2;                                            // respiro tra figure 1-3s (i dolly intanto CONTINUANO a girare: mai un fermo immagine)
     if(Math.random()<0.35){ try{ window.cadutaDebugEvent(['comet','cluster','aurora','pulsar'][(Math.random()*4)|0]); }catch(_){} }   // il giro rivela qualcosa: evento leggero nel 35% delle figure
   } } }
-  else if(_zIdle) camOrbitP=Math.min(1,camOrbitP+dt/camOrbitDur);
+  else if(_zIdle) camOrbitP=Math.min(1,camOrbitP+dt*_evGo/camOrbitDur);        // ×_evGo: la figura rallenta fin quasi a fermarsi sugli eventi
   const _cp=camOrbitP*camOrbitP*(3-2*camOrbitP);                               // smoothstep: parte piano, fila, atterra dolce
   const TAU=6.283185307, _fig=camOrbitP<1;
-  const _orb=!_fig?0:(camOrbitType===0 ? camOrbitDir*TAU*_cp                                   // GIRO: rivoluzione pulita (2π ≡ 0)
-            : camOrbitType===1 ? camOrbitDir*(TAU*_cp+0.30*Math.sin(_cp*TAU*3))               // SCIVOLO: rivoluzione che SERPEGGIA (slalom a spirale, mai avanti-e-dietro)
-            : 0);                                                                              // arco verticale e vite: azimut fermo
-  const _orbPitch=(_fig&&camOrbitType===2)?camOrbitDir*1.26*Math.sin(_cp*TAU):0;               // ARCO VERTICALE: sale sopra la testa (+72°), scende sotto i piedi (−72°), rientra
-  const _orbRoll=(_fig&&camOrbitType===3)?camOrbitDir*TAU*_cp:0;                               // VITE: la camera rolla su se stessa di 360° (2π ≡ 0)
-  const _orbEl=!_fig?0:(camOrbitType===0?Math.sin(_cp*3.14159)*0.4:(camOrbitType===1?Math.sin(_cp*TAU*2.5)*0.35:0));   // quota: il giro si alza a metà, lo scivolo ondeggia
+  const _orb=(_fig&&camOrbitType===0)?camOrbitDir*TAU*_cp:0;                   // GIRO ORIZZONTALE: una rivoluzione INTERA in più sopra il dolly (2π ≡ 0 → riaggancio invisibile)
+  const _orbPitch=(_fig&&camOrbitType===1)?camOrbitDir*TAU*_cp:0;              // GIRO VERTICALE COMPLETO 2π (zenit → dietro → nadir): ora la sfera è popolata OVUNQUE (stelle+nebulose+eventi), quindi il giro verticale non trova più il vuoto
+  const _orbEl=(_fig&&camOrbitType===0)?Math.sin(_cp*3.14159)*0.4:0;           // quota: il giro orizzontale si alza a metà
   camOrbitLive=_fig?1:0;                                                       // flag per la regia: camera in figura → più pianeti/eventi
-  const _az=Math.sin(camPhase*0.05)*0.05 + camMoveAz*camMoveScale + _orb;      // micro-sway (~3°) + riframe corrente + figura
+  // REGIME DI ROTAZIONE: ogni ~45-100s la danza cambia carattere — SOLO ORIZZONTALE a cerchio,
+  // SOLO VERTICALE, o COMBINATA (richiesta utente: la rotazione deve VARIARE, mai lo stesso moto).
+  // Cambia solo tra le figure; i rate planano verso il nuovo carattere in ~8s (mai strappi).
+  camRegimeT-=dt; if(camRegimeT<=0 && camOrbitP>=1){ camRegimeT=45+Math.random()*55;
+    const _rg=Math.random(); if(_rg<0.38){ camRegH=1; camRegV=0.10; } else if(_rg<0.70){ camRegH=0.10; camRegV=1; } else { camRegH=0.75; camRegV=0.75; } }
+  // DOLLY PERPETUO SU DUE ASSI: retarget dolce delle velocità (inversione rara ~10%, planata ~8s
+  // attraverso lo zero: un'inversione elegante da film, mai una frenata secca — l'altro asse continua
+  // comunque). I retarget si APPLICANO solo tra le figure (camOrbitP>=1): mai un'inversione che
+  // trasformi il giro in corso in un controsterzo (review adversariale).
+  camDriftRetarget-=dt; if(camDriftRetarget<=0 && camOrbitP>=1){ camDriftRetarget=25+Math.random()*30;
+    camDriftRateT=(Math.random()<0.10?-1:1)*Math.sign(camDriftRateT||1)*(0.030+Math.random()*0.042)*camRegH; }
+  camDriftRate+=(camDriftRateT-camDriftRate)*Math.min(1,dt*0.12);
+  // QUOTA VERTICALE LIMITATA: a riposo la camera resta sulla BANDA (le scene belle) — la quota plana
+  // verso bersagli entro ±0.35 rad (~±20°, un filo di più nel regime verticale); il 360° verticale
+  // COMPLETO resta alle figure (ogni tot: giro intero sopra la testa e sotto i piedi, poi si torna qui)
+  camDriftVRetarget-=dt; if(camDriftVRetarget<=0 && camOrbitP>=1){ camDriftVRetarget=30+Math.random()*35;
+    camDriftVRateT=0; }               // quota verticale DISATTIVATA: la camera resta sul piano orizzontale (solo giro orizzontale, niente 360° verticale) — resta la lievissima quota "che respira" (_el)
+  camDriftVAng+=(camDriftVRateT-camDriftVAng)*Math.min(1,dt*0.05);             // planata lenta di quota (~20s): mai parcheggiata ai poli
+  // ROLL LIMITATO (ESO): l'immagine sotto si INCLINA dolcemente (±~16°) e torna — mai una rotazione
+  // libera: il personaggio deve sembrare cadere SEMPRE nella stessa direzione, la camera gira solo
+  // per mostrare la bellezza (le rotazioni complete restano ai giri 360° e al vortice dello zoom)
+  camRollRetarget-=dt; if(camRollRetarget<=0 && camOrbitP>=1){ camRollRetarget=40+Math.random()*40;
+    camRollRateT=(Math.random()*2-1)*0.28; }                                   // angolo bersaglio in ±0.28 rad
+  camDriftEase+=((_zIdle?1:0)-camDriftEase)*Math.min(1,dt*0.7);                // dive: i dolly rientrano in ~2s (lo zoom resta in asse); uscita: ripartono da soli
+  camDriftAng=(camDriftAng+(camOrbitOn?camDriftRate*camDriftEase*_evGo:0)*dt)%TAU;   // giri OFF → l'azimut del dolly non avanza (camera ferma sulla scena frontale)
+  camRollAng+=((camOrbitOn?camRollRateT:0)-camRollAng)*Math.min(1,dt*0.6);      // giri OFF → l'inclinazione rientra a 0 (assetto dritto, camera ferma)
+  // GIRI OFF → l'astronauta resta AL CENTRO (nessuno spostamento); la scena ruota via ROLL continuo (sotto).
+  const _az=Math.sin(camPhase*0.05)*0.05 + (camOrbitOn ? (camMoveAz*camMoveScale + camDriftAng + _orb) : 0);
 
   // --- UOMO: ruota su se stesso + tumble ampio di caduta libera (visore scuro = nessun volto) ---
   const mt=shaderTime; manFloatTime.value=mt; if(manMixer) manMixer.update(dt*timeScale);
@@ -3263,22 +3387,21 @@ function animate(){
   flipCur += (flipTarget-flipCur)*Math.min(1,dt*timeScale*2.4);
   const _flipping=(flipTarget-flipCur)>0.05;
   manArmOpen.value += ((_flipping?1:0)-manArmOpen.value)*Math.min(1,dt*4.0);   // braccia si aprono/chiudono dolcemente
-  manArmBack.value += (((sling>0||rocketE>0.25)?1:0)-manArmBack.value)*Math.min(1,dt*5.0);     // braccia/gambe indietro: fionda O caduta-razzo (posa streamlined)
+  manArmBack.value += (((sling>0||rocketE>0.25||camEvHold>0.5)?1:0)-manArmBack.value)*Math.min(1,dt*5.0);     // braccia/gambe indietro: fionda, caduta-razzo O evento (posa streamlined: si tuffa DRITTO nel buco nero)
   if(flipCur>=6.28318 && flipTarget>=6.28318){ flipCur-=6.28318; flipTarget-=6.28318; }  // tieni gli angoli piccoli (24/7)
   // velocità di rotazione Y che varia dolcemente nel tempo (a volte quasi ferma, a volte un giro più deciso)
-  spinRetargetT-=dt*timeScale; if(spinRetargetT<=0){ spinRetargetT=20+Math.random()*30; spinRateTarget=0.02+Math.random()*0.05; }   // capriola più lenta
-  spinRateCur += (spinRateTarget-spinRateCur)*Math.min(1,dt*0.25);
-  manSpin=(manSpin+dt*timeScale*spinRateCur*(1+rocketE*1.6)*(1-0.72*Math.cos(manSpin)))%6.28318;   // rotazione su se stesso CON INDUGIO frontale: rallenta ~3× quando guarda lo spettatore, accelera di spalle (media invariata)
-  // CAPOVOLTA continua sull'asse X: la caduta libera fa ruzzolare il corpo a 360° (lento, ritmo variabile)
-  tumbleRetargetT-=dt*timeScale; if(tumbleRetargetT<=0){ tumbleRetargetT=16+Math.random()*24; tumbleRateTarget=0.025+Math.random()*0.05; }   // capovolta più lenta
-  tumbleRateCur += (tumbleRateTarget-tumbleRateCur)*Math.min(1,dt*0.25);
-  manTumble=(manTumble+dt*timeScale*tumbleRateCur*(1+rocketE*2.4)*(1-0.72*Math.cos(manTumble)))%6.28318;   // tumble più deciso alla velocità di caduta, CON INDUGIO quando il corpo è dritto verso la camera (faccia visibile più a lungo)
+  // CADUTA IN UNA SOLA DIREZIONE (richiesta utente, punto centrale): l'astronauta NON gira più su
+  // se stesso — è la CAMERA che orbita per mostrarlo da ogni lato. Qui solo un lievissimo dondolio
+  // ±~11° che rientra: vivo, mai "in tondo". (gli animali nuotano fermi sul posto col loro _wob)
+  spinRetargetT-=dt*timeScale; if(spinRetargetT<=0){ spinRetargetT=7+Math.random()*9; manSpinT=(Math.random()*2-1)*0.20; }
+  manSpin+=(manSpinT-manSpin)*Math.min(1,dt*0.4);
+  // CAPOVOLTA continua RIMOSSA: la caduta è sempre DRITTA in una direzione (è la camera a girare).
+  tumbleRetargetT-=dt*timeScale; if(tumbleRetargetT<=0){ tumbleRetargetT=9+Math.random()*11; manTumbleT=(Math.random()*2-1)*0.15; }
+  manTumble+=(manTumbleT-manTumble)*Math.min(1,dt*0.4);   // solo micro-beccheggio ±~9° che rientra (il corpo non ruzzola più)
   // BURST capriole all'impatto: gira veloce sull'asse X (3-4 giri), decelera e atterra DRITTO (target = multiplo di 2π → reset invisibile)
   if(hitFlipTarget>0){ const _rem=hitFlipTarget-hitFlip; hitFlip += dt*timeScale*(1+rocketE*2.0)*Math.max(0.8,Math.min(9.0,_rem*2.4)); if(hitFlip>=hitFlipTarget-0.04){ hitFlip=0; hitFlipTarget=0; } }   // capriola: ease-out graduale (no stop secco) + velocità in base alla caduta
-  // CAPRIOLA LENTA occasionale su asse alternato (barrel roll completo, dolce, non un giro brusco)
-  if(barrelTarget<=barrelCur+0.01 && barrelHold<=0){ if(Math.random()<dt*0.012){ barrelCur%=6.28318; barrelTarget=barrelCur+6.28318; barrelAxis=Math.random()<0.5?0:1; barrelHold=30+Math.random()*60; } }   // wrap a inizio giro → barrelCur resta limitato (24/7, niente drift di precisione)
-  else barrelHold-=dt*timeScale;
-  barrelCur += (barrelTarget-barrelCur)*Math.min(1,dt*timeScale*0.10);   // ~10s per un giro completo
+  // BARREL ROLL COMPLETO RIMOSSO: era un altro "giro su se stesso" ogni 30-90s. Barrel tenuto a 0.
+  barrelCur += (0-barrelCur)*Math.min(1,dt*timeScale*0.3);   // eventuale residuo rientra dolce e resta 0 (caduta dritta)
   const _trem=hitTremor + planetBuffet*0.05;                          // tremore comune (colpo meteora + buffeting pianeta)
   // WIGGLE PERSONAGGIO: motion di corpo RIGIDA (beccheggio/rollio/imbardata + pagaiata) per gli animali,
   // sines incommensurabili → nuoto/pagaiata vivace in caduta libera, MAI uno strappo della mesh. Astronauta = 0 (usa il suo mesh-deform).
@@ -3299,15 +3422,22 @@ function animate(){
   // --- CAMERA: fissa dietro l'uomo, respiro lievissimo di quota/distanza ---
   const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*2.0 + camMoveDs*camMoveScale;   // + riframe di distanza
   camDist += (baseDist-camDist)*Math.min(1,dt*0.1);
-  const _el=1.0 + Math.sin(camPhase*0.045)*0.22 + camMoveEl*camMoveScale + _orbEl;   // quota che respira + riframe + onda della figura (scivolo)
-  const _pc=Math.cos(_orbPitch); camera.position.set(Math.sin(_az)*camDist*_pc, _el+Math.sin(_orbPitch)*camDist, Math.cos(_az)*camDist*_pc);   // pitch = arco verticale (0 a riposo)
+  const _el=1.0 + Math.sin(camPhase*0.045)*0.22 + camMoveEl*camMoveScale + _orbEl;   // quota che respira + riframe + arco di quota del giro
+  const _pitch=camOrbitOn ? (camDriftVAng+_orbPitch) : 0;   // giri OFF → nessun pitch (la scena gira via roll, non spostando la camera)
+  const _pc=Math.cos(_pitch), _psn=Math.sin(_pitch);
+  camera.position.set(Math.sin(_az)*camDist*_pc, _el+_psn*camDist, Math.cos(_az)*camDist*_pc);   // orbita VERA su cerchio massimo verticale (zenit → lato opposto → nadir)
+  camera.up.set(-Math.sin(_az)*_psn, _pc, -Math.cos(_az)*_psn); // up = TANGENTE dell'orbita verticale: il lookAt non si ribalta MAI ai poli (niente gimbal-flip) → oltre lo zenit si prosegue fluidi e "lo sfondo ruota sotto" (a pitch 0 è l'up classico (0,1,0))
   let lx=manRig.position.x*0.4, ly2=manRig.position.y*0.5+0.15;
   // NIENTE panoramica verso i pianeti: la camera resta SEMPRE sull'astronauta → nessun cambio d'inquadratura (richiesta utente)
   camLookX += (lx-camLookX)*Math.min(1,dt*2.2);
   camLookY += (ly2-camLookY)*Math.min(1,dt*2.2);
   tmpLook.set(camLookX,camLookY,0); camera.lookAt(tmpLook);
-  camera.rotation.z+=Math.sin(camPhase*0.03)*0.010+_orbRoll;   // micro-roll + vite 360° (0 a riposo)
-  camera.fov=baseFov+Math.sin(camPhase*0.045)*1.0 + slingE*3.0 + rocketE*7.0 + zoomFovKick; camera.updateProjectionMatrix();   // FOV si allarga DOLCEMENTE con la velocità (niente vibrazione "tamburo") + micro-kick DEEP ZOOM (0 a riposo)
+  if(!camOrbitOn && _zIdle) camSceneRoll=(camSceneRoll+camSceneRollSpd*dt)%6.283185307;   // ROLL CONTINUO: la scena gira attorno all'astronauta centrato (camera su se stessa → "rotola verso la meta"); SOLO in scena ESO (nel dive lo zoom ruota da sé)
+  camera.rotation.z+=Math.sin(camPhase*0.03)*0.010+camRollAng+camSceneRoll*camDriftEase;   // ×camDriftEase: nel dive il roll di scena sfuma a 0 (camera ferma, ruota solo l'immagine zoom)
+  // ZOOM CONTINUO (scena ESO): il FOV si stringe/allarga dolcemente (±~4°, ~20s) → accenno di ZOOM mentre
+  // la scena si muove e ruota, così sembra una caduta che "entra" nell'universo. Nel dive lo spegne (camDriftEase→0).
+  const _esoZoom=(camOrbitOn?1:camDriftEase)*(Math.sin(camPhase*0.05)*2.2 - (1-Math.cos(camPhase*0.032))*2.0);   // componente lenta che spinge IN (coseno rialzato: più tempo "dentro" lo zoom)
+  camera.fov=baseFov + _esoZoom + slingE*3.0 + rocketE*7.0 + zoomFovKick; camera.updateProjectionMatrix();   // + micro-kick DEEP ZOOM (0 a riposo)
   deepZoomUpdate(dt);   // DEEP ZOOM (zoom infinito): no-op totale se spento
 
   cinePass.uniforms.uTime.value=shaderTime; cinePass.uniforms.uRocket.value=rocketE;
@@ -3825,6 +3955,7 @@ window.cadutaMusicStatus=()=>audio.music?audio.music.status():{enabled:false,tit
 // Vedi tools/zoom/SPEC.md. TUTTO SPENTO di default: senza cadutaZoom() — o senza i manifest in
 // assets/zoom/ — la scena è IDENTICA a prima (gli hook zoomSkyRotMul/zoomEnvMul/zoomFovKick/zoomSkyPitch valgono 1/1/0/0).
 const ZOOM_DIST=4500;        // distanza locale dei quad nel rig (tra la sfera sky a 6000 e le stelle)
+const ZOOM_OVERSCAN=1.18;    // margine oltre lo schermo così, ruotando il MESH, l'immagine resta nitida e non mostra bordi/nero (il livello corrente copre già la diagonale via covV)
 const ZOOM_FADE_LO=0.72;     // il livello i entra su Θ ∈ [A_i, 0.72·A_i] (smoothstep in log Θ)
 const ZOOM_PROC_K=0.45;      // il finale procedurale prende il testimone sotto Θ = A_ultimo·0.45
 // Convenzione UV→direzione di SphereGeometry (three r160, assets/vendor/three):
@@ -3837,6 +3968,8 @@ let zoomT=0, zoomExitT=0, zoomExitDur=4, zoomDur=90, zoomMode='once', zoomK=0.09
 let zoomTheta0=82, zoomTheta=82;   // Θ = gradi di cielo reale coperti dall'hFOV (driver master del dive)
 let zoomSkyRotMul=1, zoomEnvMul=1, zoomFovKick=0, zoomSkyPitch=0;   // HOOK letti da animate()/updateSky — inerti a riposo (1/1/0/0)
 let zoomLevels=null, zoomGC=null, zoomCfgP=null, _zoomWarn=false;   // manifest lazy (primo cadutaZoom)
+let zoomFams=null, zoomFamI=0, zoomPreFamI=-1;     // FAMIGLIE di catene (varietà del loop): 0 = GC ancorata al cielo (ingresso), le altre a rotazione nelle rinascite. zoomPreFamI = prossima famiglia PRECARICATA durante il tuffo (mai attesa/vuoto al cambio)
+let zoomRollAng=0, zoomRollRate=0.05, zoomRollDir=1;   // VORTICE PER-QUAD: rate/verso del roll dell'IMMAGINE promossa (la camera resta in asse; ogni quad entra dritto e ruota solo da promosso — mai bordi in schermo)
 let zoomRig=null, zoomQuads=null, zoomStars=null, zoomStarsMat=null, zoomStarsPos=null;
 let zoomCurI=-1, zoomNxtI=-1;      // indice livello corrente/entrante (-1 = L0 sfera sky, -2 = catena foto finita)
 let zoomGCu=0.5, zoomGCv=0.5, zoomFlip=false, zoomProcOp=0, zoomHandoff=false, _zCycleDone=false, zoomGen=0;   // zoomGen: scarta i load in volo di un dive precedente
@@ -3844,32 +3977,47 @@ let zoomAimed=false, zoomAimT=0, zoomArmT=0;   // puntamento GC (il cielo ruota 
 let zoomHoldT=0, zoomRebirth=0, zoomHold=10, zoomWorldMul=1, zoomWorldBoost=5;   // loop infinito: respiro nel procedurale + rinascita su nuovo cielo; boost velocità mondo ×5: lo sfondo zoom cresce ~8%/s (esponenziale) → i corpi devono crescere PIÙ in fretta o l'occhio li incolla al flusso ("cadono insieme")
 let zoomSkyDim=1;   // oscuramento sfera sky (×tint in applyDirector, 1 a riposo): il puntamento avviene AL BUIO (blink — la sfera che ruota leggerebbe come "camera che gira" coi pianeti incollati) e nelle fasi procedurali dietro il flusso non si vede niente
 let zoomWorldDimN=1, zoomMaxA=1e9;   // dim normalizzato del "vestiario" mondo (star-layer, mondi-sfondo: 1 a riposo → 0 nel tuffo) + campo massimo dei livelli usabili in questo dive (loop: esclude il cielo largo)
-let zoomAutoOn=!/[?&]rec=1/.test(location.search), zoomAutoStarted=false, zoomAutoT=0, zoomAutoEso=70+Math.random()*50, zoomAutoZoom=80+Math.random()*60;   // REGIA AUTOMATICA: alterna ESO (~1-2min) ↔ deep zoom loop (~1.3-2.3min, 1-2 tuffi) da sola; OFF nelle sessioni ?rec=1
+let zoomAutoOn=false, zoomAutoStarted=false, zoomAutoT=0, zoomAutoEso=70+Math.random()*50, zoomAutoZoom=80+Math.random()*60;   // REGIA AUTOMATICA ZOOM: DISATTIVATA (richiesta utente: le scene zoom erano brutte/ripetitive). Lo show resta 100% scena ESO. Codice dive intatto e dormiente: riattivabile da console con cadutaZoomAuto(true) o un singolo cadutaZoom().
 const ZOOM_ENV_FLOOR=0.12;   // velo minimo di polvere durante il dive (0.35 metteva chiazze di nebbia sopra lo zoom = "sfondo")
 const ZOOM_LOOP_WIDE=25;     // livelli con campo più largo di così (gradi) = "cielo largo": esclusi dai cicli del loop
-const ZP_N=2500, ZP_RMIN=14, ZP_RMAX=4800, ZP_Z=-4200;   // finale procedurale: disco di stelle in flusso radiale
+const ZP_N=6000, ZP_RMIN=10, ZP_RMAX=5200, ZP_Z=-4200;   // finale procedurale: disco di stelle in flusso radiale FITTO (6000, da RMIN piccolo → riempie il quadro, mai "vuoto e nero" tra un'immagine e l'altra)
 const _zDir=new THREE.Vector3(), _zUp=new THREE.Vector3(), _zFwd=new THREE.Vector3(), _zM=new THREE.Matrix4(), _zZero=new THREE.Vector3(0,0,0);   // scratch riusati (zero alloc per-frame)
 const _zNeutral=new THREE.Color(1,1,1).multiplyScalar(IS_LIVE?1.06:1.0);   // "bianco" dei livelli profondi: stesso boost live del tint sky
 const _zSkyTint=new THREE.Color(1,1,1);   // tinta sky SENZA il dim (scritta da applyDirector): i quad la usano al posto di sky.material.color, che a cielo spento è nera
 
-// manifest lazy: levels.json ({levels:[{file,angle_deg:[w,h],credit,px}]}) + sky-gc.json ({skies:{file:{u,v,flip}}})
+// manifest lazy: levels.json ({levels:[{file,angle_deg:[w,h],credit,px}], families:[{name,levels:[...]}]}) + sky-gc.json ({skies:{file:{u,v,flip}}})
+function zParseLevels(arr){ const out=[];
+  if(Array.isArray(arr)) for(const e of arr){ if(!e||!e.file||!e.angle_deg) continue;
+    const f=String(e.file), aw=+e.angle_deg[0], ah=+e.angle_deg[1]; if(!(aw>0)||!(ah>0)) continue;
+    const pxw=(e.px&&+e.px[0])||0, pxh=(e.px&&+e.px[1])||0;        // dimensioni native del JPEG (per il resize adattivo in zLoadLevel)
+    out.push({file:(f.indexOf('/')>=0?f:'assets/zoom/'+f), aw, ah, pxw, pxh, aIn:aw, lgA:Math.log(aw), lgB:Math.log(aw*ZOOM_FADE_LO), credit:e.credit||'', state:0, tex:null, ldGen:-1}); }   // state: 0=da caricare 1=in volo 2=pronto 3=rotto (saltato); aIn = Θ di aggancio (il primo della catena viene riancorato a Θ0 per-dive)
+  out.sort((a,b)=>b.aw-a.aw);                                      // catena dal campo più largo al più stretto
+  return out; }
 function zoomLoadCfg(){ if(zoomCfgP) return zoomCfgP;
   zoomCfgP=Promise.all([
     fetch('assets/zoom/levels.json',{signal:AbortSignal.timeout(20000)}).then(r=>{ if(!r.ok) throw new Error('levels.json http '+r.status); return r.json(); }),   // timeout: mai 'arm' appeso per sempre
     fetch('assets/zoom/sky-gc.json',{signal:AbortSignal.timeout(20000)}).then(r=>{ if(!r.ok) throw new Error('sky-gc.json http '+r.status); return r.json(); })
   ]).then(([lv,gc])=>{
-    const arr=(lv&&lv.levels)||lv, out=[];
-    if(Array.isArray(arr)) for(const e of arr){ if(!e||!e.file||!e.angle_deg) continue;
-      const f=String(e.file), aw=+e.angle_deg[0], ah=+e.angle_deg[1]; if(!(aw>0)||!(ah>0)) continue;
-      const pxw=(e.px&&+e.px[0])||0, pxh=(e.px&&+e.px[1])||0;      // dimensioni native del JPEG (per il resize adattivo in zLoadLevel)
-      out.push({file:(f.indexOf('/')>=0?f:'assets/zoom/'+f), aw, ah, pxw, pxh, aIn:aw, lgA:Math.log(aw), lgB:Math.log(aw*ZOOM_FADE_LO), credit:e.credit||'', state:0, tex:null, ldGen:-1}); }   // state: 0=da caricare 1=in volo 2=pronto 3=rotto (saltato); aIn = Θ di aggancio (il primo della catena viene riancorato a Θ0 per-dive)
-    out.sort((a,b)=>b.aw-a.aw);                                   // catena dal campo più largo al più stretto
+    const out=zParseLevels((lv&&lv.levels)||lv);
     if(!out.length) throw new Error('levels.json vuoto/invalido');
+    const fams=[{name:'gc', levels:out}];                          // famiglia 0 = GC: l'UNICA ancorata al cielo (ingresso del dive)
+    if(lv&&Array.isArray(lv.families)) for(const F of lv.families){ const fl=zParseLevels(F&&F.levels); if(fl.length) fams.push({name:(F&&F.name)||('fam'+fams.length), levels:fl}); }
     zoomGC=(gc&&gc.skies)||gc; if(!zoomGC||typeof zoomGC!=='object') throw new Error('sky-gc.json invalido');
-    zoomLevels=out; return true;
+    zoomFams=fams; zoomFamI=0; zoomLevels=fams[0].levels; return true;
   }).catch(err=>{ if(!_zoomWarn){ _zoomWarn=true; console.warn('[zoom] manifest assenti/invalidi → deep zoom disattivo:',err&&err.message); }
-    zoomLevels=null; zoomCfgP=null; return false; });             // niente cache del fallimento: un prossimo cadutaZoom riprova
+    zoomLevels=null; zoomFams=null; zoomCfgP=null; return false; });   // niente cache del fallimento: un prossimo cadutaZoom riprova
   return zoomCfgP;
+}
+// VARIETÀ: alla rinascita del loop la catena cambia FAMIGLIA di immagini (il cielo è nero: nessun
+// aggancio al cielo necessario — l'ingresso dal cielo visibile usa sempre la famiglia GC).
+function zSwapFamily(){ if(!zoomFams||zoomFams.length<2) return;
+  let ni=zoomPreFamI; if(ni<0||ni===zoomFamI||!zoomFams[ni]) ni=-1;   // usa la famiglia GIÀ PRECARICATA durante il tuffo (immagine pronta) se valida
+  zoomGen++;   // i load in volo della famiglia USCENTE si auto-scartano; il PRECARICO già COMPLETATO (state=2, in un'altra famiglia) sopravvive
+  for(const L of zoomLevels){ zFreeTex(L); if(L.state!==3) L.state=0; }   // VRAM del ciclo finito a zero (i quad sono già stati droppati all'handoff)
+  if(ni<0){ ni=zoomFamI; while(ni===zoomFamI) ni=(Math.random()*zoomFams.length)|0; }
+  zoomPreFamI=-1;
+  zoomFamI=ni; zoomLevels=zoomFams[ni].levels; zoomRollDir=Math.random()<0.5?1:-1;   // ogni immagine col suo verso di vortice
+  console.log('[zoom] rinascita: famiglia "'+zoomFams[ni].name+'"'+(zoomLevels[0]&&zoomLevels[0].state===2?' (precaricata)':''));
 }
 // uv del centro galattico → direzione MONDO sulla sfera sky (convenzione SphereGeometry r160 + rotazione corrente)
 function zoomGcWorldDir(out){
@@ -3885,7 +4033,7 @@ function zoomBuildRig(){ if(zoomRig) return;
     const mat=new THREE.MeshBasicMaterial({map:null,transparent:true,opacity:0,depthWrite:false,depthTest:true,fog:false});   // toneMapped default true = come la sfera sky
     const m=new THREE.Mesh(new THREE.PlaneGeometry(1,1),mat);
     m.position.z=-ZOOM_DIST; m.renderOrder=-9.5; m.visible=false; m.frustumCulled=false;   // tra sfera sky (-10) e stelle (-9)
-    zoomRig.add(m); zoomQuads.push({mesh:m,lv:-1,op:0});
+    zoomRig.add(m); zoomQuads.push({mesh:m,lv:-1,op:0,rollA:0,rollV:0});   // rollA/rollV: VORTICE PER-QUAD (ogni immagine entra dritta e ruota solo da promossa)
   }
   // finale L∞: ~2500 stelle in flusso radiale dal centro (modellate su makeStarLayer: psFloor 1.7·uPix, additive)
   const pos=new Float32Array(ZP_N*3), asz=new Float32Array(ZP_N), aph=new Float32Array(ZP_N);
@@ -3914,6 +4062,24 @@ function zoomBuildRig(){ if(zoomRig) return;
   zoomStars=new THREE.Points(g,zoomStarsMat); zoomStars.frustumCulled=false; zoomStars.renderOrder=-8.95; zoomStars.visible=false;   // sopra sky2 (-9): il crossfade di rinascita del loop passa DIETRO il flusso di stelle (additivo: l'ordine con gli altri layer additivi è indifferente)
   zoomRig.add(zoomStars); zoomStarsPos=pos;
 }
+// PRECARICO di un livello di un'ALTRA famiglia (level object diretto, non via indice di zoomLevels):
+// carica la texture così alla rinascita l'immagine è GIÀ pronta → nessun "universo vuoto" in attesa
+function zPreload(L){ if(!L||L.state!==0) return; L.state=1; const gen=zoomGen; L.ldGen=gen;
+  const _cw=(renderer&&renderer.domElement)?renderer.domElement.width:1920;
+  const _tw=Math.min(L.pxw||8192, Math.max(2048, Math.ceil(_cw*((_cw>=3800&&IS_LIVE)?3.0:2.2)/256)*256));
+  fetch(L.file,{signal:AbortSignal.timeout(30000)}).then(r=>{ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })
+    .then(b=>{ const o={imageOrientation:'flipY',premultiplyAlpha:'none',colorSpaceConversion:'none'};
+      if(L.pxw&&L.pxh&&_tw<L.pxw){ o.resizeWidth=_tw; o.resizeHeight=Math.round(_tw*L.pxh/L.pxw); o.resizeQuality='high'; }
+      return createImageBitmap(b,o); })
+    .then(bmp=>{ if(gen!==zoomGen||zoomState==='idle'){ try{bmp.close();}catch(_){} if(L.ldGen===gen&&L.state===1) L.state=0; return; }   // dive cambiato → scarta (si ricaricherà)
+      const t=new THREE.Texture(bmp); t.flipY=false; t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO;
+      t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.magFilter=THREE.LinearFilter; t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;
+      if(!zoomFlip){ t.repeat.x=-1; t.offset.x=1; }
+      t.onUpdate=function(){ try{ if(t.image&&t.image.close) t.image.close(); }catch(_){} t.onUpdate=null; };
+      t.needsUpdate=true; if(L.tex) zFreeTex(L); L.tex=t; L.state=2;
+      try{ renderer.initTexture(t); }catch(_){} })   // upload GPU adesso: alla rinascita l'immagine appare SUBITO
+    .catch(err=>{ if(gen!==zoomGen){ if(L.ldGen===gen&&L.state===1) L.state=0; return; } L.state=3; });
+}
 // prossimo livello USABILE della catena dopo i (salta i rotti; -2 = catena finita → nessuno)
 function zNextUsable(i){ if(!zoomLevels||i===-2) return -1;
   for(let j=(i<0?0:i+1);j<zoomLevels.length;j++) if(zoomLevels[j].state!==3 && zoomLevels[j].aw<=zoomMaxA) return j; return -1; }   // zoomMaxA: nel loop esclude i livelli "cielo largo" (L1), in 'once' passa tutto
@@ -3924,11 +4090,13 @@ function zFreeTex(L){ if(!L.tex) return; try{ if(L.tex.image&&L.tex.image.close)
 function zLoadLevel(i){ const L=zoomLevels[i]; if(L.state!==0) return; L.state=1; const gen=zoomGen; L.ldGen=gen;   // ldGen: il marker "in volo" appartiene a QUESTO load (un resolve stantio non tocca quello di un dive nuovo)
   // texture ADATTIVA al canvas reale: su finestra piccola non servono 8192px e l'upload sincrono
   // (texImage2D+mipmap, ~150MB) può stallare il processo GPU sotto pressione di memoria ("Page
-  // Unresponsive" su Mac carichi). Budget: ~2.2 texel per px fisico (M scende fino a ~0.47),
-  // full-res solo quando il canvas è largo ≥3800px (live/rec 4K). Il resize è nel decoder, off-thread.
+  // Unresponsive" su Mac carichi). Budget: ~2.2 texel per px fisico (M scende fino a ~0.47);
+  // SOLO sulla live 4K (VM con GPU dedicata) sale a 3.0 → i livelli 16k entrano a ~11.5k e il
+  // fine crossfade resta a M≈1 (mai "mush"). Il gate IS_LIVE tiene fuori i Mac dev Retina e la
+  // registrazione ?rec=1 locale (canvas 3840 anche lì: era tornato lo scenario "Page Unresponsive").
   const _cw=(renderer&&renderer.domElement)?renderer.domElement.width:1920;
-  const _tw=Math.min(L.pxw||8192, Math.max(2048, Math.ceil(_cw*2.2/256)*256));
-  fetch(L.file).then(r=>{ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })
+  const _tw=Math.min(L.pxw||8192, Math.max(2048, Math.ceil(_cw*((_cw>=3800&&IS_LIVE)?3.0:2.2)/256)*256));
+  fetch(L.file,{signal:AbortSignal.timeout(30000)}).then(r=>{ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })   // timeout come il loader sky: un fetch appeso NON lascia il livello state=1 per sempre (→ catch: state=3, la catena lo scavalca)
     .then(b=>{ const o={imageOrientation:'flipY',premultiplyAlpha:'none',colorSpaceConversion:'none'};
       if(L.pxw&&L.pxh&&_tw<L.pxw){ o.resizeWidth=_tw; o.resizeHeight=Math.round(_tw*L.pxh/L.pxw); o.resizeQuality='high'; }
       return createImageBitmap(b,o); })
@@ -3950,6 +4118,8 @@ function zLoadLevel(i){ const L=zoomLevels[i]; if(L.state!==0) return; L.state=1
 function zAttachLevel(i){
   const s=(zoomQuads[0].lv<0)?zoomQuads[0]:zoomQuads[1], o=(s===zoomQuads[0])?zoomQuads[1]:zoomQuads[0];
   s.lv=i; s.op=0; s.mesh.visible=true; s.mesh.renderOrder=-9.45; o.mesh.renderOrder=-9.5;
+  const _curS=(zoomCurI>=0)?zSlotOf(zoomCurI):null;
+  s.rollA=_curS?_curS.rollA:0; s.rollV=_curS?_curS.rollV:zoomRollRate*zoomRollDir; s.mesh.rotation.z=s.rollA;   // VORTICE CONTINUO: l'entrante entra GIÀ ruotato come il corrente (ruotano insieme) → niente scatto, e il quad sovradimensionato non mostra bordi
   s.mesh.material.map=zoomLevels[i].tex; s.mesh.material.opacity=0; s.mesh.material.needsUpdate=true;
   zoomNxtI=i;
 }
@@ -3957,7 +4127,7 @@ function zAttachLevel(i){
 function zDropSlot(s,disp){ const i=s.lv; s.lv=-1; s.op=0; s.mesh.visible=false; s.mesh.material.map=null; s.mesh.material.needsUpdate=true;
   if(disp&&i>=0){ const L=zoomLevels[i]; zFreeTex(L); if(L.state===2) L.state=0; } }
 // avvio vero del dive (dopo l'eventuale attesa del crossfade sky in corso)
-function zoomStartDive(){
+function zoomStartDive(rebirth){
   const key='assets/'+SKY_FILES[skyIdx], gc=zoomGC[key];
   if(!gc){ console.warn('[zoom] sfondo senza aggancio GC in sky-gc.json:',key); zoomState='idle'; return; }
   zoomGCu=+gc.u||0; zoomGCv=(gc.v===undefined)?0.5:+gc.v; zoomFlip=!!gc.flip;
@@ -3971,12 +4141,13 @@ function zoomStartDive(){
   zoomMaxA=(zoomMode==='loop')?ZOOM_LOOP_WIDE:1e9;
   if(zoomMode==='loop'){ for(const L of zoomLevels){ if(L.state!==3 && L.aw<=ZOOM_LOOP_WIDE){
     const covT=L.ah*Math.PI/180*hf/(2*Math.tan(camera.fov*Math.PI/360));   // Θ a cui il quad 16:9 copre anche l'altezza del viewport
-    zoomTheta0=Math.min(hf,Math.min(L.aw*1.02,covT*0.98)); zoomTheta=zoomTheta0; break; } } }
+    zoomTheta0=Math.min(hf,Math.min(L.aw*1.06,covT*0.94)); zoomTheta=zoomTheta0; break; } } }   // margine 6% oltre lo schermo: i micro-sway/roll di camera non scoprono MAI lame nere ai bordi a inizio ciclo
   let lastA=0; for(let i=zoomLevels.length-1;i>=0;i--){ if(zoomLevels[i].state!==3){ lastA=zoomLevels[i].aw; break; } }
   const thetaEnd=Math.max(lastA,0.01)*ZOOM_PROC_K;
   zoomK=zoomKOpt||Math.log(zoomTheta0/Math.max(thetaEnd,1e-4))/(zoomDur*0.85);   // default: la catena foto dura ~85% di dur
-  zoomT=0; zoomCurI=-1; zoomNxtI=-1; zoomProcOp=0; zoomHandoff=false; _zCycleDone=false; zoomGen++;   // gen nuova per i load (il micro-kick FOV parte a puntamento finito)
-  zoomAimed=false; zoomAimT=0;                       // prima del tuffo: PUNTAMENTO (il cielo ruota finché il GC non è davanti alla camera)
+  zoomT=0; zoomCurI=-1; zoomNxtI=-1; zoomProcOp=0; zoomHandoff=false; _zCycleDone=false;
+  if(!rebirth) zoomGen++;   // gen nuova SOLO per i dive freschi: la RINASCITA non deve invalidare il precarico dell'handoff (era la causa degli 11s di nero: il load in volo veniva scartato e ripartiva da zero)
+  zoomAimed=!!rebirth; zoomAimT=0;                   // dive fresco: PUNTAMENTO (il cielo ruota finché il GC è in asse). RINASCITA del loop: GIÀ puntato (cielo congelato) → si tuffa SUBITO, niente blink al buio (era la fase "vuota" tra un'immagine e l'altra)
   zoomRig.visible=true; zoomStars.visible=false; zoomStarsMat.uniforms.uOp.value=0;
   zoomStarsMat.uniforms.uPix.value=(typeof _rec4k!=='undefined'&&_rec4k)?1:PIX;
   for(const L of zoomLevels){ L.aIn=L.aw; L.lgA=Math.log(L.aw); L.lgB=L.lgA+Math.log(ZOOM_FADE_LO); }   // finestre di fade ai default (il primo viene riancorato sotto)
@@ -3986,6 +4157,7 @@ function zoomStartDive(){
     L1.aIn=(L1.aw>=zoomTheta0*0.6)?zoomTheta0*0.98:L1.aw;   // solo se il livello copre ~lo schermo al Θ0 del ciclo (catena degradata → finestra classica)
     L1.lgA=Math.log(L1.aIn); L1.lgB=L1.lgA+Math.log(ZOOM_FADE_LO);
     zLoadLevel(c); }                                 // L1 parte subito
+  zoomRollAng=0; zoomRollRate=0.35+Math.random()*0.30;   // VORTICE: ogni ciclo con un passo suo (0.35-0.65 rad/s: rotazione VELOCE, "come cadere in un vortice")
   zoomState='dive';
   console.log('[zoom] dive: '+key+' (u '+zoomGCu.toFixed(4)+', v '+zoomGCv.toFixed(3)+', flip '+zoomFlip+') · Θ0 '+hf.toFixed(1)+'° · k '+zoomK.toFixed(4)+' · '+zoomMode+' '+zoomDur+'s');
 }
@@ -3993,7 +4165,10 @@ function zoomBeginExit(sec){ if(zoomState==='exit') return; zoomState='exit'; zo
 // fine uscita: TUTTO smontato/azzerato → un nuovo dive parte pulito, zero texture zoom residenti
 function zoomFinishExit(){
   if(zoomQuads) for(const s of zoomQuads) zDropSlot(s,true);
-  if(zoomLevels) for(const L of zoomLevels){ zFreeTex(L); L.state=0; }   // VRAM+bitmap a zero; anche i "rotti" riprovano al prossimo dive
+  if(zoomFams) for(const F of zoomFams) for(const L of F.levels){ zFreeTex(L); L.state=0; }   // VRAM+bitmap a zero su TUTTE le famiglie; anche i "rotti" riprovano al prossimo dive
+  else if(zoomLevels) for(const L of zoomLevels){ zFreeTex(L); L.state=0; }
+  if(zoomFams){ zoomFamI=0; zoomLevels=zoomFams[0].levels; }             // il prossimo ingresso riparte dalla famiglia GC (ancorata al cielo)
+  zoomRollAng=0;                                                         // vortice azzerato (il rig è invisibile: nessuno scatto)
   zoomGen++;   // i load ancora in volo di QUESTO dive si auto-scartano
   if(zoomStars){ zoomStars.visible=false; zoomStarsMat.uniforms.uOp.value=0; }
   if(zoomRig) zoomRig.visible=false;
@@ -4008,8 +4183,8 @@ function deepZoomUpdate(dt){
   // REGIA AUTOMATICA (default ON): la live ALTERNA da sola scena ESO classica ↔ deep zoom loop.
   // Il dive parte solo a orbita camera conclusa; i dive lanciati A MANO non vengono mai chiusi da qui.
   if(zoomAutoOn){
-    if(zoomState==='idle'){ if(camOrbitP>=1){ zoomAutoT+=dt;
-      if(zoomAutoT>=zoomAutoEso){ window.cadutaZoom({mode:'loop',_auto:true}); zoomAutoT=(zoomState==='idle')?zoomAutoEso-12:0; } } }   // scena non pronta → riprova tra ~12s
+    if(zoomState==='idle'){ zoomAutoT+=dt;   // il tempo ESO scorre SEMPRE (le figure ormai coprono quasi tutta la scena: gated è solo l'INNESCO)
+      if(zoomAutoT>=zoomAutoEso && camOrbitP>=1){ window.cadutaZoom({mode:'loop',_auto:true}); zoomAutoT=(zoomState==='idle')?zoomAutoEso-12:0; } }   // parte nel respiro tra due figure; scena non pronta → riprova tra ~12s
     else if(zoomState==='dive'&&zoomAutoStarted){ zoomAutoT+=dt;
       if(zoomAutoT>=zoomAutoZoom){ zoomAutoT=0; zoomAutoEso=70+Math.random()*50; zoomAutoZoom=80+Math.random()*60; zoomBeginExit(4); } }
   }
@@ -4031,6 +4206,12 @@ function deepZoomUpdate(dt){
   // rig orientato per-frame: -Z verso il GC dello sfondo corrente, up = asse della banda (Y locale della sfera)
   zoomGcWorldDir(_zDir); _zUp.set(0,1,0).applyQuaternion(sky.quaternion);
   _zM.lookAt(_zZero,_zDir,_zUp); zoomRig.quaternion.setFromRotationMatrix(_zM);   // Matrix4.lookAt(eye,target,up): +Z=eye−target → il -Z del rig punta al GC
+  // VORTICE PER-QUAD (applicato nel loop dei quad sotto): ogni immagine ENTRA dritta — bordi
+  // allineati allo schermo all'aggancio scale-matched, quindi INVISIBILI — e comincia a ruotare
+  // SOLO da promossa, quando copre il cerchio circoscritto (bordi fuori schermo a qualsiasi angolo).
+  // L'immagine si vede sempre PER INTERO e "sotto gira": l'astronauta sembra ruotare, mai un bordo.
+  // Qui gira solo il flusso di stelle procedurale (campo circolare: sempre sicuro).
+  if(dive&&zoomAimed) zoomStars.rotation.z=(zoomStars.rotation.z+0.05*zoomRollDir*dt)%6.283185307;
   // PUNTAMENTO: il GC può essere OVUNQUE sulla sfera (rotazione sky accumulata) — la camera resta
   // sull'astronauta (vincolo di regia), quindi è il CIELO a ruotare (servo yaw+pitch, panoramica ≤ ~14°/s,
   // visivamente una deriva) finché il bersaglio non è in asse: mai 90s di zoom "a vuoto" fuori inquadratura.
@@ -4052,7 +4233,8 @@ function deepZoomUpdate(dt){
   // oscuramento sfera: nel LOOP resta spenta per TUTTA la durata (la sfera statica dietro i quad
   // che zoomano si leggeva come "sfondo dietro" — mai più visibile); in 'once' torna col ciclo;
   // in uscita torna sempre. Rampa ~0.7s
-  const dimTgt=(zoomState==='dive')?((zoomMode==='loop')?0:Math.min(zoomAimed?1:0,1-zoomProcOp)):1;
+  const _zFirstReady=zoomCurI>=0||zoomNxtI>=0||zoomProcOp>0.2||(zoomLevels&&zoomLevels.some(L=>L.state===2));   // c'è già qualcosa da mostrare (o sta per esserci)
+  const dimTgt=(zoomState==='dive')?((zoomMode==='loop')?(zoomAimed?0.45:(_zFirstReady?0:1)):Math.min(zoomAimed?1:0,1-zoomProcOp)):1;   // loop: BUIO durante il puntamento (serve per agganciare il GC), poi 0.45 → la banda della Via Lattea resta BEN visibile tra un'immagine e l'altra (mai "universo vuoto"; i quad OVERSCAN la coprono durante lo zoom)
   zoomSkyDim+=(dimTgt-zoomSkyDim)*Math.min(1,dt*1.4);
   zoomWorldDimN=THREE.MathUtils.clamp((zoomEnvMul-ZOOM_ENV_FLOOR)/(1-ZOOM_ENV_FLOOR),0,1);   // vestiario mondo (star-layer, mondi-sfondo): 1 a riposo → 0 nel tuffo
   const rf=(zoomState==='exit')?(1-smooth(0,1,zoomExitT/zoomExitDur)):1;          // fade-out globale del rig in uscita
@@ -4072,28 +4254,43 @@ function deepZoomUpdate(dt){
     // D·a_rad·(hf/Θ) per QUALSIASI livello → i quad consecutivi combaciano ESATTAMENTE su tutta la
     // sovrapposizione (non solo al centro) e lo zoom non si congela mai (la tan(θ/2)+clamp 170° sì:
     // con rapporti di catena ~3-4 stallava ~30s su 76 e sfasava ogni crossfade di 2-4×)
-    const w=ZOOM_DIST*(L.aw*Math.PI/180)*(hf/zoomTheta);
+    const w=ZOOM_DIST*(L.aw*Math.PI/180)*(hf/zoomTheta)*ZOOM_OVERSCAN;   // ×OVERSCAN: il quad deborda dallo schermo → ruotando la TEXTURE l'immagine gira senza MAI bordi/nero agli angoli
     s.mesh.scale.set(w,w*(L.ah/L.aw),1);
     let tgt=(s.lv===zoomNxtI)?smooth(L.lgA,L.lgB,lg):1;                   // entrante: smoothstep su Θ∈[A,0.72A]; corrente: pieno
     if(zoomProcOp>=0.995 && s.lv===zoomCurI && zoomNxtI<0) tgt=0;         // il procedurale ha preso il testimone → l'ultima foto "si risolve in stelle"
-    s.op+=THREE.MathUtils.clamp(tgt-s.op,-dt/1.2,dt/1.2);                 // rate-limit → mai pop (anche con load in ritardo)
+    const _rl=(zoomCurI<0&&s.lv===zoomNxtI)?dt/0.8:dt/1.2;                // la PRIMA immagine del ciclo fiorisce più in fretta (accorcia il blink d'ingresso)
+    s.op+=THREE.MathUtils.clamp(tgt-s.op,-_rl,_rl);                       // rate-limit → mai pop (anche con load in ritardo)
     s.mesh.material.opacity=s.op*rf;
     s.mesh.material.color.copy(_zSkyTint).lerp(_zNeutral,Math.min(1,s.lv*0.5));   // L1 = tinta sky corrente SENZA dim (a cielo spento resta viva) → neutro da L3
+    // VORTICE PER-QUAD: solo il PROMOSSO ruota (da promosso copre il cerchio circoscritto → i suoi
+    // bordi restano fuori schermo a qualsiasi angolo); l'ENTRANTE resta dritto finché non è promosso
+    s.rollV+=(zoomRollRate*zoomRollDir-s.rollV)*Math.min(1,dt*0.6);   // ENTRAMBI i quad visibili ruotano insieme → vortice CONTINUO
+    s.rollA+=s.rollV*dt; s.mesh.rotation.z=s.rollA;   // VORTICE: ruota il MESH (immagine NITIDA, nessuna deformazione); il quad copre la diagonale → mai bordi/nero
+    if(s.lv===zoomCurI) zoomRollAng=s.rollA;
   }
   // promozione: l'entrante è pieno E copre anche in verticale (finestre strette/portrait!) →
   // il precedente sparisce e libera la sua texture (VRAM)
   if(zoomNxtI>=0){ const sn=zSlotOf(zoomNxtI), Ln=zoomLevels[zoomNxtI];
-    const covV=(Ln.ah*Math.PI/180)*(hf/zoomTheta)*0.5>=Math.tan(camera.fov*Math.PI/360)*1.06;   // mezza altezza del quad ≥ mezza altezza viewport (+6% per roll/sway camera)
+    const _tv=Math.tan(camera.fov*Math.PI/360);
+    const covV=(Ln.ah*Math.PI/180)*(hf/zoomTheta)*0.5>=Math.hypot(_tv*camera.aspect,_tv)*1.05;   // mezza altezza del quad ≥ mezza DIAGONALE viewport: col VORTICE il precedente resta finché il nuovo copre ogni angolo di roll (catene con rapporto ≥ ~2.5: lo slot si libera comunque prima dell'aggancio successivo)
     if(sn&&sn.op>=0.995&&covV){ const so=(zoomCurI>=0)?zSlotOf(zoomCurI):null; if(so) zDropSlot(so,true); zoomCurI=zoomNxtI; zoomNxtI=-1; } }
+  // PRECARICO PROSSIMA FAMIGLIA: raggiunto il livello più profondo del tuffo, scegli e CARICA subito
+  // la prossima immagine (L1) → alla rinascita è già pronta (nessuna attesa = mai "universo vuoto")
+  if(dive && zoomMode==='loop' && zoomFams && zoomFams.length>1 && zoomPreFamI<0 && zoomCurI>=0 && zNextUsable(zoomCurI)<0){
+    let ni=zoomFamI; while(ni===zoomFamI) ni=(Math.random()*zoomFams.length)|0;
+    zoomPreFamI=ni; zPreload(zoomFams[ni].levels[0]); }
   // finale procedurale: entra un filo sopra l'esaurimento dell'ultima foto e porta lo zoom all'infinito
   let lastA=0; for(let i=zoomLevels.length-1;i>=0;i--){ if(zoomLevels[i].state!==3){ lastA=zoomLevels[i].aw; break; } }
   const pA=(lastA>0)?lastA*ZOOM_PROC_K:Math.max(zoomTheta0*Math.exp(-zoomK*zoomDur*0.85),1e-4);   // tutti i livelli rotti → entra comunque a fine catena teorica
-  const pTgt=dive?smooth(Math.log(pA),Math.log(pA*0.62),lg):zoomProcOp;
-  zoomProcOp+=THREE.MathUtils.clamp(pTgt-zoomProcOp,-dt/2,dt/2);
+  let pTgt=dive?smooth(Math.log(pA),Math.log(pA*0.62),lg):zoomProcOp;
+  if(dive&&zoomCurI<0&&zoomNxtI<0&&zoomProcOp>0.05) pTgt=Math.max(pTgt,0.8);   // GARANZIA "MAI IL NERO": dopo la rinascita il flusso di stelle resta ACCESO finché la nuova immagine non è agganciata (decode lenti compresi)
+  zoomProcOp+=THREE.MathUtils.clamp(pTgt-zoomProcOp,-dt/3.2,dt/2);        // in discesa più LENTO: il flusso di stelle resta in sovrapposizione mentre l'immagine nuova fiorisce (mai un buco nero tra i due)
   if(zoomProcOp>=0.995 && !zoomHandoff && zoomNxtI<0){                    // handoff completo quando l'ultima foto è sfumata
     const so=(zoomCurI>=0)?zSlotOf(zoomCurI):null;
-    if(!so||so.op<=0.003){ if(so) zDropSlot(so,true); zoomCurI=-2; zoomHandoff=true; } }
-  zoomStarsMat.uniforms.uOp.value=zoomProcOp*rf*0.9;
+    if(!so||so.op<=0.003){ if(so) zDropSlot(so,true); zoomCurI=-2; zoomHandoff=true;
+      if(zoomMode==='loop'&&zoomFams&&zoomFams.length>1){ zSwapFamily();   // VARIETÀ: la famiglia nuova si sceglie QUI, dietro il flusso di stelle...
+        const c=zNextUsable(-1); if(c>=0&&zoomLevels[c].state===0) zLoadLevel(c); } } }   // ...e si PRECARICA subito → alla rinascita l'immagine è GIÀ pronta (niente "spazi neri" tra un ciclo e l'altro)
+  zoomStarsMat.uniforms.uOp.value=zoomProcOp*rf;   // pieno (era 0.9): il finale procedurale meno "vuoto e nero"
   zoomStarsMat.uniforms.uTime.value=shaderTime;
   if(typeof _rec4k!=='undefined') zoomStarsMat.uniforms.uPix.value=_rec4k?1:PIX;   // sempre allineato (anche dopo un batch 4K)
   const vis=zoomProcOp>0.001; if(zoomStars.visible!==vis) zoomStars.visible=vis;
@@ -4108,8 +4305,8 @@ function deepZoomUpdate(dt){
     zoomHoldT+=dt;
     if(zoomHoldT>=zoomHold){ zoomHoldT=0;
       const keepProc=zoomProcOp;                                         // niente salti: il procedurale sfuma da solo (a Θ0 il suo target è 0) mentre L1 rifiorisce dal nero
-      zoomStartDive();                                                   // ri-init ciclo: stesso ancoraggio (cielo congelato), catena da capo
-      if(zoomState==='dive'){ zoomProcOp=keepProc; zoomStars.visible=keepProc>0.001; zoomStarsMat.uniforms.uOp.value=keepProc*0.9; console.log('[zoom] loop: rinascita → nuovo ciclo'); }
+      zoomStartDive(true);                                               // ri-init ciclo (rebirth=true: NON invalida il precarico); catena della famiglia GIÀ scelta e precaricata all'handoff
+      if(zoomState==='dive'){ zoomProcOp=keepProc; zoomStars.visible=keepProc>0.001; zoomStarsMat.uniforms.uOp.value=keepProc; console.log('[zoom] loop: rinascita → nuovo ciclo'); }
       else zoomFinishExit();                                             // ciclo non riavviabile (GC mancante) → chiusura pulita
     }
   }
@@ -4128,11 +4325,12 @@ window.cadutaZoom=(opts)=>{ opts=opts||{};
   if(!built||!sky||!sky2) return 'scena non pronta (premi ENTER prima)';
   if(zoomState!=='idle') return 'dive già in corso ('+zoomState+') — cadutaZoomStop() per uscire';
   zoomMode=(opts.mode==='loop')?'loop':'once'; zoomKOpt=(+opts.k>0)?+opts.k:null;
-  zoomDur=Math.max(15,+opts.dur||(zoomMode==='loop'?28:90));               // loop RIPIDO di default (ciclo ~28s: molto zoom in poco tempo)
-  zoomHold=Math.max(3,+opts.hold||6); zoomWorldBoost=Math.max(1,+opts.world||6.5);
+  zoomDur=Math.max(5,+opts.dur||(zoomMode==='loop'?7:90));                  // loop RIPIDISSIMO (ciclo ~7s): le immagini si ALTERNANO in fretta → mai un universo vuoto tra una e l'altra
+  zoomHold=Math.max(0.3,+opts.hold||0.5); zoomWorldBoost=Math.max(1,+opts.world||8);   // respiro procedurale MINIMO (~0.5s): si passa quasi subito alla prossima immagine (niente lungo flusso di stelle "vuoto")
   zoomAutoStarted=!!opts._auto;                                            // i dive lanciati a mano NON vengono chiusi dalla regia automatica
   zoomState='arm'; zoomArmT=0;                                            // il dive parte quando manifest pronti E nessun crossfade sky in corso (watchdog 30s)
-  zoomLoadCfg().then(ok=>{ if(!ok&&zoomState==='arm') zoomState='idle'; });
+  zoomLoadCfg().then(ok=>{ if(!ok&&zoomState==='arm'){ zoomState='idle'; return; }
+    if(ok&&zoomFams&&zoomState==='arm'){ zoomFamI=0; zoomLevels=zoomFams[0].levels; zoomRollDir=Math.random()<0.5?1:-1; } });   // l'INGRESSO usa sempre la famiglia GC (ancorata al cielo visibile)
   return 'deep zoom armato ('+zoomMode+', '+zoomDur+'s)'+(((skyFading||skyLoading)&&zoomMode!=='loop')?' — attendo la fine del crossfade sfondo':'');
 };
 window.cadutaZoomStop=()=>{ zoomAutoT=0; if(zoomState==='idle') return 'nessun dive in corso';
@@ -4141,6 +4339,8 @@ window.cadutaZoomStop=()=>{ zoomAutoT=0; if(zoomState==='idle') return 'nessun d
 // regia automatica ESO ↔ zoom: cadutaZoomAuto(false) la spegne, cadutaZoomAuto(true)/() la riaccende
 window.cadutaZoomAuto=(on)=>{ zoomAutoOn=(on===undefined)?true:!!on; zoomAutoT=0;
   return 'regia automatica ESO↔zoom: '+(zoomAutoOn?'ATTIVA (eso ~'+Math.round(zoomAutoEso)+'s ↔ zoom ~'+Math.round(zoomAutoZoom)+'s)':'spenta'); };
+// GIRI DI CAMERA (orbita attorno all'astronauta): cadutaCamOrbit(true) li riattiva, (false) li spegne
+window.cadutaCamOrbit=(on)=>{ camOrbitOn=(on===undefined)?true:!!on; return 'giri di camera: '+(camOrbitOn?'ATTIVI':'SPENTI (camera ferma sulla scena)'); };
 // scanner di scena (verifica): chi sta renderizzando cosa negli strati di sfondo
 window.cadutaSceneScan=()=>{ const out=[]; scene.traverse(o=>{ if(!o.visible||o.renderOrder>-8) return;
   const m=o.material; out.push({tipo:o.type, ro:o.renderOrder, nome:o.name||'', map:!!(m&&m.map), op:m?(m.opacity!==undefined?+(+m.opacity).toFixed(2):1):null,
@@ -4151,6 +4351,14 @@ window.cadutaZoomInfo=()=>({ state:zoomState, mode:zoomMode, aimed:zoomAimed, t:
   cur:zoomCurI, nxt:zoomNxtI, proc:+zoomProcOp.toFixed(2), rebirth:zoomRebirth, world:+zoomWorldMul.toFixed(2),
   dim:+zoomSkyDim.toFixed(3), skyCol:sky?sky.material.color.getHexString():'?', env:+zoomEnvMul.toFixed(2),
   auto:zoomAutoOn, autoT:+zoomAutoT.toFixed(0), orb:+camOrbitP.toFixed(2), orbIn:+camOrbitNext.toFixed(0),
+  fig:camOrbitType, drift:+camDriftAng.toFixed(3), driftV:+(camDriftRate*camDriftEase).toFixed(4),   // dolly perpetuo azimut: angolo, velocità efficace (rad/s; ~0 nel dive)
+  vert:+camDriftVAng.toFixed(3), vertT:+camDriftVRateT.toFixed(3),                                   // quota verticale limitata: angolo attuale e bersaglio (±0.35: la camera resta sulla banda)
+  regime:[+camRegH.toFixed(2),+camRegV.toFixed(2)], hold:+camEvHold.toFixed(2), rollC:+camRollAng.toFixed(3),   // regime H/V + freno eventi + roll perpetuo ESO
+  roll:+((typeof zoomRollAng==='number')?zoomRollAng:0).toFixed(3), fam:(zoomFams&&zoomFams[zoomFamI])?zoomFams[zoomFamI].name:'-',   // vortice zoom + famiglia attiva
+  az:+Math.atan2(camera.position.x,camera.position.z).toFixed(3),                                    // azimut camera REALE attorno all'astronauta (verifica "mai ferma")
+  pitch:+Math.asin(Math.max(-1,Math.min(1,(camera.position.y-1)/Math.max(camDist,1)))).toFixed(3),   // pitch camera REALE (verifica giro verticale)
+  quads:zoomQuads?zoomQuads.map(s=>({lv:s.lv,op:+s.op.toFixed(2),roll:+s.rollA.toFixed(2)})):null,   // stato slot (diagnosi "scene nere"/"fogli": chi è in schermo, quanto opaco, quanto ruotato)
+  man:[+manSpin.toFixed(2),+manTumble.toFixed(2),+barrelCur.toFixed(2)],   // assetto astronauta (verifica "va dritto": devono restare piccoli, mai accumulo di giri interi)
   levels:zoomLevels?zoomLevels.map(L=>L.state):null, tex:renderer.info.memory.textures });
 
 /* ---------------- REGISTRAZIONE clip 4K (locale): forza 3840x2160, 16:9 pieno, scena pulita; musica a parte ---------------- */

@@ -20,8 +20,8 @@
       ],
       "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
       "px": [
-        8192,
-        4608
+        16384,
+        9216
       ]
     },
     {
@@ -32,8 +32,8 @@
       ],
       "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
       "px": [
-        8192,
-        4608
+        16383,
+        9215
       ]
     },
     {
@@ -77,5 +77,292 @@
         ]
       }
     ]
-  }
+  },
+  "families": [
+    {
+      "name": "carina",
+      "levels": [
+        {
+          "file": "assets/zoom/car_a.jpg",
+          "angle_deg": [
+            12.0,
+            8.182
+          ],
+          "credit": "© ESO/T. Preibisch — Carina VLT (eso1208a, CC BY 4.0)",
+          "px": [
+            13092,
+            8926
+          ]
+        },
+        {
+          "file": "assets/zoom/car_b.jpg",
+          "angle_deg": [
+            4.444,
+            3.03
+          ],
+          "credit": "© ESO/T. Preibisch — Carina VLT (eso1208a, CC BY 4.0)",
+          "px": [
+            4849,
+            3306
+          ]
+        }
+      ]
+    },
+    {
+      "name": "m17",
+      "levels": [
+        {
+          "file": "assets/zoom/m17_a.jpg",
+          "angle_deg": [
+            12.0,
+            12.0
+          ],
+          "credit": "© ESO/INAF-VST/OmegaCAM — Messier 17 (eso1119a, CC BY 4.0)",
+          "px": [
+            16017,
+            16017
+          ]
+        },
+        {
+          "file": "assets/zoom/m17_b.jpg",
+          "angle_deg": [
+            4.444,
+            4.444
+          ],
+          "credit": "© ESO/INAF-VST/OmegaCAM — Messier 17 (eso1119a, CC BY 4.0)",
+          "px": [
+            5932,
+            5932
+          ]
+        }
+      ]
+    },
+    {
+      "name": "deepfield",
+      "levels": [
+        {
+          "file": "assets/zoom/uvd_a.jpg",
+          "angle_deg": [
+            12.0,
+            7.587
+          ],
+          "credit": "© ESO/UltraVISTA — deep field (eso1213a, CC BY 4.0)",
+          "px": [
+            16384,
+            10358
+          ]
+        },
+        {
+          "file": "assets/zoom/uvd_b.jpg",
+          "angle_deg": [
+            4.444,
+            2.81
+          ],
+          "credit": "© ESO/UltraVISTA — deep field (eso1213a, CC BY 4.0)",
+          "px": [
+            6341,
+            4009
+          ]
+        }
+      ]
+    },
+    {
+      "name": "orione",
+      "levels": [
+        {
+          "file": "assets/zoom/ori_a.jpg",
+          "angle_deg": [
+            12.0,
+            9.32
+          ],
+          "credit": "© ESO/G. Beccari — Orione VST (eso1723a, CC BY 4.0)",
+          "px": [
+            16384,
+            12724
+          ]
+        },
+        {
+          "file": "assets/zoom/ori_b.jpg",
+          "angle_deg": [
+            4.444,
+            3.451
+          ],
+          "credit": "© ESO/G. Beccari — Orione VST (eso1723a, CC BY 4.0)",
+          "px": [
+            6251,
+            4854
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vvv2",
+      "levels": [
+        {
+          "file": "assets/zoom/vvv2_a.jpg",
+          "angle_deg": [
+            15.0,
+            8.4375
+          ],
+          "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
+          "px": [
+            16384,
+            9216
+          ]
+        },
+        {
+          "file": "assets/zoom/vvv2_b.jpg",
+          "angle_deg": [
+            5.0,
+            2.8125
+          ],
+          "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
+          "px": [
+            13255,
+            7456
+          ]
+        },
+        {
+          "file": "assets/zoom/vvv2_c.jpg",
+          "angle_deg": [
+            1.667,
+            0.9375
+          ],
+          "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
+          "px": [
+            8837,
+            4971
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vvv3",
+      "levels": [
+        {
+          "file": "assets/zoom/vvv3_a.jpg",
+          "angle_deg": [
+            15.0,
+            8.4375
+          ],
+          "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
+          "px": [
+            16384,
+            9216
+          ]
+        },
+        {
+          "file": "assets/zoom/vvv3_b.jpg",
+          "angle_deg": [
+            5.0,
+            2.8125
+          ],
+          "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
+          "px": [
+            13255,
+            7456
+          ]
+        },
+        {
+          "file": "assets/zoom/vvv3_c.jpg",
+          "angle_deg": [
+            1.667,
+            0.9375
+          ],
+          "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)",
+          "px": [
+            8837,
+            4971
+          ]
+        }
+      ]
+    },
+    {
+      "name": "orion2",
+      "levels": [
+        {
+          "file": "assets/zoom/ori2_a.jpg",
+          "angle_deg": [
+            12.0,
+            6.75
+          ],
+          "credit": "© ESO/H. Drass et al. — Orion Nebula HAWK-I (eso1625a, CC BY 4.0)",
+          "px": [
+            16373,
+            9210
+          ]
+        },
+        {
+          "file": "assets/zoom/ori2_b.jpg",
+          "angle_deg": [
+            4.444,
+            2.5
+          ],
+          "credit": "© ESO/H. Drass et al. — Orion Nebula HAWK-I (eso1625a, CC BY 4.0)",
+          "px": [
+            6064,
+            3411
+          ]
+        }
+      ]
+    },
+    {
+      "name": "flame",
+      "levels": [
+        {
+          "file": "assets/zoom/flame_a.jpg",
+          "angle_deg": [
+            12.0,
+            6.75
+          ],
+          "credit": "© ESO/J. Emerson/VISTA — Flame Nebula (eso0949a, CC BY 4.0)",
+          "px": [
+            7546,
+            4245
+          ]
+        },
+        {
+          "file": "assets/zoom/flame_b.jpg",
+          "angle_deg": [
+            4.444,
+            2.5
+          ],
+          "credit": "© ESO/J. Emerson/VISTA — Flame Nebula (eso0949a, CC BY 4.0)",
+          "px": [
+            2795,
+            1572
+          ]
+        }
+      ]
+    },
+    {
+      "name": "helix",
+      "levels": [
+        {
+          "file": "assets/zoom/helix_a.jpg",
+          "angle_deg": [
+            12.0,
+            6.75
+          ],
+          "credit": "© ESO/VISTA/J. Emerson — Helix Nebula (eso1205a, CC BY 4.0)",
+          "px": [
+            6592,
+            3708
+          ]
+        },
+        {
+          "file": "assets/zoom/helix_b.jpg",
+          "angle_deg": [
+            4.444,
+            2.5
+          ],
+          "credit": "© ESO/VISTA/J. Emerson — Helix Nebula (eso1205a, CC BY 4.0)",
+          "px": [
+            2441,
+            1373
+          ]
+        }
+      ]
+    }
+  ]
 }

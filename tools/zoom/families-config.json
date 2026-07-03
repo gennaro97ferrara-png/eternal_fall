@@ -1,0 +1,475 @@
+{
+  "_commento": "FAMIGLIE zoom (varieta' del loop): catene annidate concentriche per rinascite al buio — gli angle_deg sono NOMINALI (nel loop il cielo e' nero: contano solo i RAPPORTI tra livelli consecutivi, ~2.7-3). Nebulose = 2 livelli (full 16k + crop 1/2.7 a res nativa); VVV extra = 3 livelli 16:9 (liv. piramide 7/8/9 come la famiglia GC). Build: python3 tools/zoom/build-levels.py --config tools/zoom/families-config.json --outdir <scratch> --cache assets/zoom/_cache --jobs 6 ; poi merge in assets/zoom/levels.json campo families (levels.json della build da IGNORARE).",
+  "levels": [
+    {
+      "name": "car_a",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1208a/",
+        "level": "max"
+      },
+      "center_px": [
+        6546,
+        4463
+      ],
+      "crop_px": [
+        13092,
+        8926
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        12.0,
+        8.182
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/T. Preibisch — Carina VLT (eso1208a, CC BY 4.0)"
+    },
+    {
+      "name": "car_b",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1208a/",
+        "level": "max"
+      },
+      "center_px": [
+        6546,
+        4463
+      ],
+      "crop_px": [
+        4849,
+        3306
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        4.444,
+        3.03
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/T. Preibisch — Carina VLT (eso1208a, CC BY 4.0)"
+    },
+    {
+      "name": "m17_a",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1119a/",
+        "level": "max"
+      },
+      "center_px": [
+        8008,
+        8008
+      ],
+      "crop_px": [
+        16017,
+        16017
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        12.0,
+        12.0
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/INAF-VST/OmegaCAM — Messier 17 (eso1119a, CC BY 4.0)"
+    },
+    {
+      "name": "m17_b",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1119a/",
+        "level": "max"
+      },
+      "center_px": [
+        8008,
+        8008
+      ],
+      "crop_px": [
+        5932,
+        5932
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        4.444,
+        4.444
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/INAF-VST/OmegaCAM — Messier 17 (eso1119a, CC BY 4.0)"
+    },
+    {
+      "name": "uvd_a",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1213a/",
+        "level": "max"
+      },
+      "center_px": [
+        8560,
+        5412
+      ],
+      "crop_px": [
+        17121,
+        10824
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        12.0,
+        7.587
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/UltraVISTA — deep field (eso1213a, CC BY 4.0)",
+      "gamma": 0.7,
+      "norm": {
+        "target": 0.85
+      }
+    },
+    {
+      "name": "uvd_b",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1213a/",
+        "level": "max"
+      },
+      "center_px": [
+        8560,
+        5412
+      ],
+      "crop_px": [
+        6341,
+        4009
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        4.444,
+        2.81
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/UltraVISTA — deep field (eso1213a, CC BY 4.0)",
+      "gamma": 0.7,
+      "norm": {
+        "target": 0.85
+      }
+    },
+    {
+      "name": "ori_a",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1723a/",
+        "level": "max"
+      },
+      "center_px": [
+        8438,
+        6553
+      ],
+      "crop_px": [
+        16877,
+        13107
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        12.0,
+        9.32
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/G. Beccari — Orione VST (eso1723a, CC BY 4.0)"
+    },
+    {
+      "name": "ori_b",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1723a/",
+        "level": "max"
+      },
+      "center_px": [
+        8438,
+        6553
+      ],
+      "crop_px": [
+        6251,
+        4854
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        4.444,
+        3.451
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/G. Beccari — Orione VST (eso1723a, CC BY 4.0)"
+    },
+    {
+      "name": "vvv2_a",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1242a/",
+        "level": 7
+      },
+      "center_px": [
+        46000,
+        42000
+      ],
+      "crop_px": [
+        19883,
+        11184
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        15.0,
+        8.4375
+      ],
+      "out_max": 16384,
+      "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
+    },
+    {
+      "name": "vvv2_b",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1242a/",
+        "level": 8
+      },
+      "center_px": [
+        46000,
+        42000
+      ],
+      "crop_px": [
+        13255,
+        7456
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        5.0,
+        2.8125
+      ],
+      "out_max": 16384,
+      "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
+    },
+    {
+      "name": "vvv2_c",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1242a/",
+        "level": 9
+      },
+      "center_px": [
+        46000,
+        42000
+      ],
+      "crop_px": [
+        8837,
+        4971
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        1.667,
+        0.9375
+      ],
+      "out_max": 16384,
+      "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
+    },
+    {
+      "name": "vvv3_a",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1242a/",
+        "level": 7
+      },
+      "center_px": [
+        66000,
+        38000
+      ],
+      "crop_px": [
+        19883,
+        11184
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        15.0,
+        8.4375
+      ],
+      "out_max": 16384,
+      "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
+    },
+    {
+      "name": "vvv3_b",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1242a/",
+        "level": 8
+      },
+      "center_px": [
+        66000,
+        38000
+      ],
+      "crop_px": [
+        13255,
+        7456
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        5.0,
+        2.8125
+      ],
+      "out_max": 16384,
+      "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
+    },
+    {
+      "name": "vvv3_c",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1242a/",
+        "level": 9
+      },
+      "center_px": [
+        66000,
+        38000
+      ],
+      "crop_px": [
+        8837,
+        4971
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        1.667,
+        0.9375
+      ],
+      "out_max": 16384,
+      "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
+    },
+    {
+      "name": "ori2_a",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1625a/",
+        "level": "max"
+      },
+      "center_px": [
+        8186,
+        6206
+      ],
+      "crop_px": [
+        16373,
+        9210
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        12.0,
+        6.75
+      ],
+      "out_max": 16384,
+      "gamma": 0.82,
+      "credit": "© ESO/H. Drass et al. — Orion Nebula HAWK-I (eso1625a, CC BY 4.0)"
+    },
+    {
+      "name": "ori2_b",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1625a/",
+        "level": "max"
+      },
+      "center_px": [
+        8186,
+        6206
+      ],
+      "crop_px": [
+        6064,
+        3411
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        4.444,
+        2.5
+      ],
+      "out_max": 16384,
+      "gamma": 0.82,
+      "credit": "© ESO/H. Drass et al. — Orion Nebula HAWK-I (eso1625a, CC BY 4.0)"
+    },
+    {
+      "name": "flame_a",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso0949a/",
+        "level": "max"
+      },
+      "center_px": [
+        3773,
+        4616
+      ],
+      "crop_px": [
+        7546,
+        4245
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        12.0,
+        6.75
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/J. Emerson/VISTA — Flame Nebula (eso0949a, CC BY 4.0)"
+    },
+    {
+      "name": "flame_b",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso0949a/",
+        "level": "max"
+      },
+      "center_px": [
+        3773,
+        4616
+      ],
+      "crop_px": [
+        2795,
+        1572
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        4.444,
+        2.5
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/J. Emerson/VISTA — Flame Nebula (eso0949a, CC BY 4.0)"
+    },
+    {
+      "name": "helix_a",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1205a/",
+        "level": "max"
+      },
+      "center_px": [
+        3296,
+        3296
+      ],
+      "crop_px": [
+        6592,
+        3708
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        12.0,
+        6.75
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/VISTA/J. Emerson — Helix Nebula (eso1205a, CC BY 4.0)"
+    },
+    {
+      "name": "helix_b",
+      "source": {
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1205a/",
+        "level": "max"
+      },
+      "center_px": [
+        3296,
+        3296
+      ],
+      "crop_px": [
+        2441,
+        1373
+      ],
+      "rotate_deg": 0.0,
+      "angle_deg": [
+        4.444,
+        2.5
+      ],
+      "out_max": 16384,
+      "credit": "© ESO/VISTA/J. Emerson — Helix Nebula (eso1205a, CC BY 4.0)"
+    }
+  ]
+}

@@ -25,6 +25,10 @@ permanent.json
 /assets/skies/_base/
 assets/characters/*.glb
 
+# basi sky hi-res 16k (grandi, rigenerabili: tools/exr-downsample.py dall'EXR NASA + tools/blend-base.py; al deploy rsync come gli skies)
+/assets/milkyway_16k.jpg
+/assets/milkyway_16k_nasa.jpg
+
 # livelli zoom infinito (grandi, rigenerabili con tools/zoom/build-levels.py)
 /assets/zoom/*.jpg
 /assets/zoom/_src/

@@ -78,16 +78,16 @@ def costruisci_livello(liv, cache, jobs):
         # rotazione ANTIORARIA attorno al centro del ritaglio; expand=False
         # (stessa cornice), gli angoli scoperti restano neri come il padding
         im = im.rotate(rot, resample=Image.BICUBIC, expand=False, fillcolor=(0, 0, 0))
+    out_max = int(liv.get("out_max", 8192))
+    if max(im.size) > out_max:                        # mai upscale: solo riduzione — PRIMA della
+        s = out_max / max(im.size)                    # normalizzazione: il float32 di un crop 24k
+        im = im.resize((max(1, round(im.size[0] * s)), max(1, round(im.size[1] * s))), Image.LANCZOS)   # sarebbe ~4GB a copia (OOM su 16GB); il gain è lineare → l'ordine è equivalente
     arr = np.asarray(im, np.float32) / 255.0
     arr, gain = normalizza(arr, liv.get("norm"))
     gamma = liv.get("gamma")
     if gamma:
         arr = np.clip(arr, 0, 1) ** float(gamma)      # <1 = schiarisce le ombre (rivela stelle deboli)
     im = Image.fromarray((np.clip(arr, 0, 1) * 255 + 0.5).astype(np.uint8))
-    out_max = int(liv.get("out_max", 8192))
-    if max(im.size) > out_max:                        # mai upscale: solo riduzione
-        s = out_max / max(im.size)
-        im = im.resize((max(1, round(im.size[0] * s)), max(1, round(im.size[1] * s))), Image.LANCZOS)
     return im, gain
 
 def contact_sheet(voci, immagini, cartella):

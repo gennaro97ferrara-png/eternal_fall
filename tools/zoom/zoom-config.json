@@ -1,5 +1,5 @@
 {
-  "_commento": "Catena livelli zoom infinito — vedi tools/zoom/SPEC.md. Centro = Sgr A*. Le sorgenti in _src/ sono gia' centrate sul centro galattico: VVV px full-res (55560,27289) [cross-correlazione FFT con HAWK-I], HAWK-I px (20186,9932) [WCS AVM ±20px], stitched con tools/zoom/fetch-tiles.py (VVV livelli piramide 5/7/9, HAWK-I 6/8); svs_gal_crop.png da starmap_2020_32k_gal.exr via tools/zoom/exr-crop.py --x 13107 --y 6349 --w 6554 --h 3686. px/grado: L1 91, L2 331, L3 1325, L4 5302, L5 16949, L6 67815.",
+  "_commento": "Catena livelli zoom infinito — vedi tools/zoom/SPEC.md. Centro = Sgr A*. Le sorgenti in _src/ sono gia' centrate sul centro galattico: VVV px full-res (55560,27289) [cross-correlazione FFT con HAWK-I], HAWK-I px (20186,9932) [WCS AVM ±20px], stitched con tools/zoom/fetch-tiles.py (VVV livelli piramide 5/7/9, HAWK-I 6/8); svs_gal_crop.png da starmap_2020_32k_gal.exr via tools/zoom/exr-crop.py --x 13107 --y 6349 --w 6554 --h 3686. px/grado: L1 91, L2 331, L3 1325, L4 5302, L5 16949, L6 67815. AGGIORNAMENTO 16k: L2/L3 ora sorgente zoomify diretta (liv. piramide 7 e 8, cache assets/zoom/_cache), out_max 16384 (stessi angle_deg: cambia solo la densita' px; L4 gia' al max nativo 5302 px/gr). center_px zoomify = pixel FULL-RES.",
   "levels": [
     {
       "name": "L1",
@@ -26,45 +26,47 @@
     {
       "name": "L2",
       "source": {
-        "type": "file",
-        "path": "assets/zoom/_src/vvv_L2_hi.png"
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1242a/",
+        "level": 7
       },
       "center_px": [
-        5967,
-        3356
+        55560,
+        27289
       ],
       "crop_px": [
-        11934,
-        6713
+        23859,
+        13421
       ],
       "rotate_deg": 0.0,
       "angle_deg": [
         18.0,
         10.125
       ],
-      "out_max": 8192,
+      "out_max": 16384,
       "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
     },
     {
       "name": "L3",
       "source": {
-        "type": "file",
-        "path": "assets/zoom/_src/vvv_L3.png"
+        "type": "zoomify",
+        "base": "https://cdn.eso.org/images/zoomable/eso1242a/",
+        "level": 8
       },
       "center_px": [
-        4096,
-        2304
+        55560,
+        27289
       ],
       "crop_px": [
-        8192,
-        4608
+        16383,
+        9215
       ],
       "rotate_deg": 0.0,
       "angle_deg": [
         6.18,
         3.476
       ],
-      "out_max": 8192,
+      "out_max": 16384,
       "credit": "ESO/VVV Survey/D. Minniti — Ack.: I. Toledo, M. Kornmesser (CC BY 4.0)"
     },
     {
