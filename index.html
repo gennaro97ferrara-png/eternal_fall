@@ -3681,7 +3681,8 @@ function animate(){
   if(shower && shower!==shownShowerLog){ shownShowerLog=shower; $t.log.textContent='— meteor shower: the '+shower+'. The sky is on fire.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),13000); }
   if(!shower) shownShowerLog='';
   // asteroidi / meteore (+ conteggio sfiorati)
-  const _astN=(!!shower)?AST_N:Math.round(AST_N*Math.max(director.cur.aster,(typeof Regions!=='undefined'?Regions.mul.aster:0))*0.9);   // asteroidi SOLO nella cintura / preset ad alta densità (Regions.mul.aster=1) → niente sassi scuri sparsi sui pianeti; a riposo aster≈0 → 0 asteroidi
+  const _av=Math.max(director.cur.aster,(typeof Regions!=='undefined'?Regions.mul.aster:0));   // densità asteroidi (mood + regione)
+  const _astN=(!!shower)?AST_N:(_av>0.4?Math.round(AST_N*_av*0.9):0);   // asteroidi SOLO con aster ALTA (regione CINTURA dedicata) → mai sassi scuri sui pianeti nelle altre scene
   asteroids.visible=(_astN>0)||!!shower; asteroids.count=Math.max(1,_astN);
   if(asteroids.visible){ const adz=speed*dt*(shower?2.4:1.2);
     for(let i=0;i<_astN;i++){ const a=astData[i]; const pz=a.z; a.z+=adz; a.rx+=a.vrx*dt; a.ry+=a.vry*dt; a.rz+=a.vrz*dt;
