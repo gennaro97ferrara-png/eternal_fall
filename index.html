@@ -260,7 +260,7 @@ if(window.obsstudio || /[?&]live=1/.test(location.search)) document.documentElem
 const IS_MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'') || (window.matchMedia && matchMedia('(pointer:coarse)').matches && !matchMedia('(pointer:fine)').matches);
 // ULTRA: macchina potente da REGISTRAZIONE (es. RTX 4090). Massima qualità, NESSUN downgrade (auto-scaler off), 4K nativo implicito. &ss=1.5/2 = supersample (render oltre il 4K → downscale = SSAA).
 const ULTRA = /[?&]ultra=1/.test(location.search);
-const SS = ULTRA ? (parseFloat((/[?&]ss=(1\.5|2)/.exec(location.search)||[])[1]||'1')||1) : 1;
+const SS = ULTRA ? (parseFloat((/[?&]ss=(1\.25|1\.5|2)/.exec(location.search)||[])[1]||'1.5')||1.5) : 1;   // ULTRA: SUPERSAMPLE 1.5× DI DEFAULT (render 5760×3240 → 4K = SSAA perfetto + spreme la GPU, prima al 20%). &ss=2 per spingere al massimo.
 const PIX_HI = IS_MOBILE?1.75:2.0;   // mobile: niente 2x (la GPU regge e l'auto-scaler non deve crollare a 1.0 = sfocato)
 let PIX=Math.min(window.devicePixelRatio||1,PIX_HI);
 renderer.setPixelRatio(PIX);
@@ -433,7 +433,7 @@ class Director{
     this.t+=dt;
     if(this.t>=this.dur+this.hold){ this.from=Object.assign({},this.to); this.to=this._pick(); this.t=0;
       const hm=(typeof EF!=='undefined'&&EF.ready&&EF.tempo)?EF.tempo.holdMul:1;   // ritmo del capitolo: notte = tenute lunghe/lente, mezzogiorno = più mosso
-      this.dur=18+Math.random()*14; this.hold=(34+Math.random()*90)*hm; }
+      this.dur=14+Math.random()*12; this.hold=(16+Math.random()*30)*hm; }   // scene/palette cambiano MOLTO più spesso (era hold 34-124s → 16-46s): "cambi immagine" continui
     const x=Math.min(this.t/this.dur,1),e=x*x*(3-2*x),L=(a,b)=>a+(b-a)*e,c=this.cur,f=this.from,t=this.to;
     for(const k of ['skyBright','exposure','neb','dust','planet','aster','star','speed','kInt','aB','aD']) c[k]=L(f[k],t[k]);
     this.grade.copy(this._a.set(f.grade)).lerp(this._b.set(t.grade),e);
@@ -461,7 +461,7 @@ const director=new Director();
 const Arc={
   on:true, phase:'CALM', t:0, dur:0,
   tension:0.06, sat:1.0, brace:0.0, crest:0.0,
-  satPeak:1.38, budgetT:90+Math.random()*90,   // primo beat dopo ~1.5-3min (poi a regime 18-25min via EF.arc); i test usano cadutaArc('go')
+  satPeak:1.38, budgetT:15+Math.random()*20,   // primo momento-eroe SUBITO (~15-35s); a regime ~1-2min via EF.arc — show CONTINUAMENTE eventful (energia V1)
   kind:null, label:'', nextBeatT:0, _lastKind:null, _armed:false, _mbOn:false, _mbT:0, _mbEvery:0.78, _mbN:0, _mbTotal:6, _white:0,
   _ease(x){ x=x<0?0:x>1?1:x; return x*x*(3-2*x); },
   _label(k){ return k==='zoom'?'GALACTIC DIVE':k==='showpiece'?'DEEP SIGNAL':k==='montage'?'TRANSMISSION BURST':'CLOSE APPROACH'; },
@@ -500,13 +500,13 @@ const Arc={
       else if(pick==='blackhole'){ if(typeof blackhole!=='undefined'&&blackhole&&!blackhole.active&&!(typeof wormhole!=='undefined'&&wormhole&&wormhole.active)) blackhole.spawn(); }
       else { if(typeof wormhole!=='undefined'&&wormhole&&!wormhole.active&&!(typeof blackhole!=='undefined'&&blackhole&&blackhole.active)) wormhole.spawn(); } }catch(_){} },
   _enter(ph){ this.phase=ph; this.t=0;
-    if(ph==='GATHER'){ this.dur=26+Math.random()*18; this.kind=this._pickKind(); this.label=this._label(this.kind);
+    if(ph==='GATHER'){ this.dur=11+Math.random()*11; this.kind=this._pickKind(); this.label=this._label(this.kind);
       this.satPeak=(typeof EF!=='undefined'&&EF.arc&&EF.arc.satPeak)||1.38; }
     else if(ph==='SURGE'){ this.dur=10+Math.random()*8; }
     else if(ph==='CREST'){ this.dur=12+Math.random()*18; if(!this.kind){ this.kind=this._pickKind(); this.label=this._label(this.kind); } this._armed=false; try{ this.arm(this.kind); }catch(_){} }
     else if(ph==='RELEASE'){ this.dur=12+Math.random()*8; try{ this.disarm(); }catch(_){} }
     else { this.phase='CALM'; this.dur=0; this.kind=null; this.label='';
-      this.budgetT=(typeof EF!=='undefined'&&EF.arc&&EF.arc.crestEvery)||(1080+Math.random()*420); } },
+      this.budgetT=(typeof EF!=='undefined'&&EF.arc&&EF.arc.crestEvery)||(50+Math.random()*60); } },
   ready(){ return this.budgetT<=0 && !(typeof EF!=='undefined'&&EF.ready===false)
       && (typeof zoomState==='undefined'||zoomState==='idle')
       && !(typeof introActive!=='undefined'&&introActive); },
@@ -520,7 +520,7 @@ const Arc={
     else if(this.phase==='CREST'){ const p=this.t/this.dur; ten=0.80+0.20*this._ease(Math.min(1,p*3)); if(p>=1) this._enter('RELEASE'); }
     else if(this.phase==='RELEASE'){ const p=this.t/this.dur; ten=0.06+0.94*(1-this._ease(p)); if(p>=1) this._enter('CALM'); }
     this.tension=ten;
-    this.sat=1.0+this._ease((ten-0.45)/0.55)*(this.satPeak-1.0);
+    this.sat=1.10+this._ease((ten-0.45)/0.55)*(this.satPeak-1.10);   // base 1.0→1.10: colori SEMPRE più vividi (look "space-edit" V1), non solo al picco
     this.brace=this._ease((ten-0.20)/0.80);
     this.crest=this._ease((ten-0.80)/0.20);
     // OUTPUT — sempre max/additivo, mai overwrite. In CALM tutto torna a riposo → nessuna regressione.
@@ -569,7 +569,7 @@ const Regions={
     for(const key in this._to){ this._from[key]=this.mul[key]; this._to[key]=a[key]; }
     this.t=0; this.dur=this.fade;
     const hm=(typeof EF!=='undefined'&&EF.tempo)?EF.tempo.holdMul:1;
-    this.hold=(96+this._rnd()*70)*hm;                                    // regione dura ~96-166s × ritmo capitolo
+    this.hold=(42+this._rnd()*40)*hm;                                    // regione cambia MOLTO più spesso (~42-82s): attraversamenti continui di zone diverse
     try{ if(typeof director!=='undefined'){ director.surgePhase=1; director._st=0; director._surgeDur=6; } }catch(_){}   // TRANSIZIONE = ARRIVO (whoosh)
     if(a.neb>1.2){ try{ nebBoost=Math.max(nebBoost,0.9); }catch(_){} }   // entrando in NUBE arma il gas
     this._tBoost=1.4;                                                    // boost polvere-veloce in ingresso
@@ -722,7 +722,7 @@ const EF={
     this.cam={ regimeBias:r(), dollyGain:0.6+r()*0.8, rollGain:0.4+r()*1.2, reframeMul:0.7+r()*0.7, orbitFreq:0.6+r()*0.8 };   // carattere camera
     // FIRMA ARC per-capitolo (stream indipendente, ordine-safe): ogni episodio ha un climax firmato e riproducibile
     try{ const ra=this.rng('arc'), _ck=['planet','showpiece','zoom','montage'];
-      this.arc={ crestType:_ck[(ra()*_ck.length)|0], crestEvery:1080+ra()*420, satPeak:((typeof ULTRA!=='undefined'&&ULTRA)?1.48:1.36)+ra()*0.12,
+      this.arc={ crestType:_ck[(ra()*_ck.length)|0], crestEvery:50+ra()*70, satPeak:((typeof ULTRA!=='undefined'&&ULTRA)?1.48:1.36)+ra()*0.12,
         zoomDur:((typeof ULTRA!=='undefined'&&ULTRA)?200:140)+ra()*40, zoomWorld:2.2+ra()*0.8, planetScale:4+ra()*3,
         showpiece:['eclipse','supernova','blackhole','wormhole'][(ra()*4)|0] }; }catch(_){ this.arc=null; }
     this._skyBag=null; this._skyBagCh=null;       // sky bag ricostruito lazy (SKY_FILES non ancora definito all'init)
