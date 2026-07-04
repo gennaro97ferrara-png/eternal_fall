@@ -494,7 +494,7 @@ const Arc={
       fp.spawn(!!sun,null,false); fp.mesh.position.set((Math.random()*2-1)*160,(Math.random()*2-1)*95,-620-Math.random()*380);   // GRANDE ma non incollato alla camera (evita glitch quando engulfa)
       const g=4.5+Math.random()*2.6; fp.mesh.scale.multiplyScalar(g); if(fp.mesh.scale.x>360) fp.mesh.scale.setScalar(360); if(fp.glow) fp.glow.scale.multiplyScalar(g); fp._heroLit=true; }catch(_){} },   // cap R≤360 (niente mostri che riempiono a muro) + lato illuminato verso la camera
   _armZoom(sp){ try{ if(typeof zoomState==='undefined'||zoomState!=='idle') return false;
-      const U=(typeof ULTRA!=='undefined'&&ULTRA), dur=(sp&&sp.zoomDur)||(U?220:150), world=(sp&&sp.zoomWorld)||2.5;
+      const U=(typeof ULTRA!=='undefined'&&ULTRA), dur=(sp&&sp.zoomDur)||(U?85:65), world=(sp&&sp.zoomWorld)||2.5;   // tuffo PIÙ VELOCE (era 220/150): la parte zoom "zooma veloce" (richiesta utente)
       window.cadutaZoom({mode:'once',dur,world}); return (typeof zoomState!=='undefined'&&zoomState!=='idle'); }catch(_){ return false; } },
   _armPlanet(sp){ try{ if(typeof planets==='undefined') return; const fp=planets.find(p=>!p.active)||planets[0]; if(!fp) return;
       fp.spawn(false,null,false); fp.mesh.position.set(38+(Math.random()*8-4),6,-240);
@@ -2648,7 +2648,7 @@ const FlashbackShader={
 };
 // Controller: sequenza di still con stacchi mascherati da dip-to-white (come i reel). Precarica le immagini al boot.
 const Flashback={
-  on:true, active:false, _loaded:false, tex:[], shots:[], idx:0, t:0, dwell:0, amt:0, warp:0,
+  on:false, active:false, _loaded:false, tex:[], shots:[], idx:0, t:0, dwell:0, amt:0, warp:0,   // OFF per ora (richiesta utente: "le flashback per ora togliamole"). Codice intatto → riattivabile con on:true.
   ken0:new THREE.Vector4(), ken1:new THREE.Vector4(), cool:0, pend:0, pendReason:'', reason:'',
   FILES:['cs_carina','cs_orion','cs_orion2','cs_m17','cs_flame','cs_helix'],   // solo le drammatiche: via corebulge/deepfield (campi-stelle scuri = "non sono niente")
   load(){ if(this._loaded) return; this._loaded=true;
@@ -3642,7 +3642,8 @@ function startIntro(){ if(!built) return; introActive=true; introT=0; window.__i
 }
 function endIntro(){ introActive=false; window.__intro=false; introApproach=0; introNodK=0; introTitleK=0;
   const ic=document.getElementById('introcard'); if(ic) ic.style.opacity='0';
-  try{ if(audio&&audio.music&&audio.music.next) audio.music.next(); }catch(_){}   // esci dalla rock → traccia adatta al tema
+  // la ROCK d'intro RESTA la prima traccia (richiesta utente: "la canzone intro e la prima devono essere sempre quella rock") → NIENTE cambio canzone a fine intro.
+  try{ if(typeof Arc!=='undefined'&&Arc){ Arc.on=true; Arc.budgetT=Math.min(Arc.budgetT||0,5); if(Arc._bigHero) Arc._bigHero(); } }catch(_){}   // subito dopo l'intro accade GIÀ qualcosa: un gigante riempie il quadro + l'onda punta presto a un evento
 }
 function updateIntro(dt){ if(!introActive) return; introT+=dt; const T=introT;
   introApproach=_ss(1.0,4.0,T)*(1-_ss(11.5,14.5,T));                  // avvicinamento+giro verso camera: sale, TIENE fino a ~11.5s, poi rientra
@@ -3698,7 +3699,7 @@ function animate(){
     if(fallPhaseT<=0){ fallFast=!fallFast; fallTarget=fallFast?(20+Math.random()*12):1; fallPhaseT=45+Math.random()*60;   // veloce ancora più spinto (20-32×); fasi più corte (~45-105s)
       if($t.log){ $t.log.textContent=fallFast?'— acceleration. the fall quickens.':'— drifting. the fall slows.'; $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),9000); } } }
   fallMul += (fallTarget-fallMul)*Math.min(1,dt*0.08);                  // rampa graduale (~25-30s) verso il target — fasi più corte ma transizioni morbide
-  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul*zoomWorldMul*((typeof EF!=='undefined'&&EF.ready&&EF.fallSig)||1.45)*1.4*(typeof Regions!=='undefined'?Regions.mul.speed:1);   // ×1.4 momentum globale (viaggio, +23%: caduta più veloce ovunque) × Regions.mul.speed × EF.fallSig per-capitolo
+  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul*zoomWorldMul*((typeof EF!=='undefined'&&EF.ready&&EF.fallSig)||1.45)*1.28*(typeof Regions!=='undefined'?Regions.mul.speed:1);   // ×1.28 momentum globale (viaggio: un filo più veloce dell'originale ma ridotto da 1.4) × Regions.mul.speed × EF.fallSig per-capitolo
   const rocketE=THREE.MathUtils.clamp((fallMul-1)/9,0,1);               // 0..1: i cue "RAZZO" crescono (gradualmente) con la velocità di caduta
   if(audio.music && audio.music.setSpeedMul) audio.music.setSpeedMul(1+rocketE*0.6);   // la musica accelera nelle fasi veloci
 
@@ -3732,7 +3733,8 @@ function animate(){
   } else sky.rotation.y+=dt*0.0016*zoomSkyRotMul;
   sky.rotation.x=Math.sin(shaderTime*0.004)*0.05*zoomSkyRotMul+zoomSkyPitch;   // ×zoomSkyRotMul: DEEP ZOOM congela la rotazione con rampa; +zoomSkyPitch: beccheggio di puntamento GC (0 a riposo)
   // campo stellare volumetrico: ogni strato scorre a velocità diversa (parallasse) e ricicla senza pop
-  for(const L of starLayers){ L.mat.uniforms.uTime.value=shaderTime;   // le stelle che luccicano restano SEMPRE (anche nel deep zoom — scelta utente; uGDim resta a 1, disponibile per il futuro)
+  for(const L of starLayers){ L.mat.uniforms.uTime.value=shaderTime;
+    L.mat.uniforms.uGDim.value=zoomWorldDimN;   // ★ le mini-stelline SI SPENGONO nel deep zoom (richiesta utente): il loro scroll lineare sopra l'immagine-zoom sembrava "una seconda immagine sovrapposta"
     if(L.sphere) continue;   // il CIELO SFERICO avvolge tutto e non scorre (twinkle basta)
     const bandL=L.zF-L.zN; L.mat.uniforms.uScroll.value=(L.mat.uniforms.uScroll.value+speed*dt*L.mul)%bandL; }   // SCROLL nel vertex shader: 1 op/layer invece di 27.800 iterazioni JS + niente re-upload buffer/frame (era il costo CPU dominante del render — la CPU single-thread e' il collo)
   // lastre di nebulosa profonde che scorrono e riciclano
