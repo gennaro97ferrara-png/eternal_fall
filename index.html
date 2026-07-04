@@ -478,13 +478,13 @@ const Arc={
     if(this._mbOn){ this._white=Math.max(this._white,0.9); this._mbOn=false; }   // flash finale lungo maschera il rientro alla caduta
     try{ if(typeof solarEclipse!=='undefined'&&solarEclipse) solarEclipse._neon=false; }catch(_){} },
   // RAFFICA-MONTAGGIO (kind='montage', stile reel V1): 5-7 stacchi a tempo mascherati da dip-to-white, poi rientro morbido
-  _armMontage(sp){ try{ this._mbOn=true; this._mbT=0; this._mbN=0; this._mbTotal=5+(Math.random()*3|0); this._mbEvery=0.70+Math.random()*0.16; this._white=0.85; this._montageCut(0); }catch(_){ this._mbOn=false; } return true; },
+  _armMontage(sp){ try{ this._mbOn=true; this._mbT=0; this._mbN=0; this._mbTotal=5+(Math.random()*3|0); this._mbEvery=0.70+Math.random()*0.16; this._white=0.55; this._montageCut(0); }catch(_){ this._mbOn=false; } return true; },
   _montageTick(dt){ this._mbT+=dt;
-    while(this._mbT>=this._mbEvery && this._mbN<this._mbTotal){ this._mbT-=this._mbEvery; this._mbN++; this._white=Math.max(this._white,0.85); this._montageCut(this._mbN); }
+    while(this._mbT>=this._mbEvery && this._mbN<this._mbTotal){ this._mbT-=this._mbEvery; this._mbN++; this._white=Math.max(this._white,0.55); this._montageCut(this._mbN); }
     if(this._mbN>=this._mbTotal) this._mbOn=false; },
   _montageCut(n){ try{ const slot=n%6;   // ogni STACCO rivela un soggetto GIGANTE che riempie il quadro (stile reel V1: mai il vuoto)
-    if(slot===1){ if(typeof supernova!=='undefined'&&supernova){ supernova.active=true; supernova.t=0; supernova.spr.visible=true; supernova.spr.position.set((Math.random()*2-1)*180,(Math.random()*2-1)*110,-520); supernova.spr.material.color.set(0xffffff); supernova.spr.material.opacity=1.9; supernova.spr.scale.setScalar(100); supernova.ring.visible=true; supernova.ring.position.copy(supernova.spr.position); supernova.ring.material.opacity=0.65; supernova.ring.scale.setScalar(50); } }   // ESPLOSIONE grande
-    else if(slot===2){ this._bigHero(true); }   // SOLE gigante
+    if(slot===1){ if(typeof supernova!=='undefined'&&supernova){ supernova.active=true; supernova.t=0; supernova.spr.visible=true; supernova.spr.position.set((Math.random()*2-1)*320,(Math.random()*2-1)*180,-1100); supernova.spr.material.color.set(0xffffff); supernova.spr.material.opacity=1.0; supernova.spr.scale.setScalar(55); supernova.ring.visible=true; supernova.ring.position.copy(supernova.spr.position); supernova.ring.material.opacity=0.5; supernova.ring.scale.setScalar(40); } }   // esplosione LONTANA (non sbianca)
+    else if(slot===2){ this._bigHero(); }   // altro pianeta gigante (niente sole: troppo luminoso, sbianca)
     else if(slot===4){ try{ nebBoost=Math.max(nebBoost,1.0); }catch(_){} this._bigHero(); }   // muro di gas + gigante
     else if(slot===5){ if(typeof blackhole!=='undefined'&&blackhole&&!blackhole.active&&!(typeof wormhole!=='undefined'&&wormhole&&wormhole.active)) blackhole.spawn(); else this._bigHero(); }
     else { this._bigHero(); }   // slot 0,3: pianeta gigante
@@ -531,7 +531,7 @@ const Arc={
     else if(this.phase==='CREST'){ const p=this.t/this.dur; ten=0.80+0.20*this._ease(Math.min(1,p*3)); if(p>=1) this._enter('RELEASE'); }
     else if(this.phase==='RELEASE'){ const p=this.t/this.dur; ten=0.06+0.94*(1-this._ease(p)); if(p>=1) this._enter('CALM'); }
     this.tension=ten;
-    this.sat=1.10+this._ease((ten-0.45)/0.55)*(this.satPeak-1.10);   // base 1.0→1.10: colori SEMPRE più vividi (look "space-edit" V1), non solo al picco
+    this.sat=1.02+this._ease((ten-0.45)/0.55)*(this.satPeak-1.02);   // base vivida ma sobria (1.02): niente eccesso che, col bloom, sbianca
     this.brace=this._ease((ten-0.20)/0.80);
     this.crest=this._ease((ten-0.80)/0.20);
     // OUTPUT — sempre max/additivo, mai overwrite. In CALM tutto torna a riposo → nessuna regressione.
@@ -3940,9 +3940,9 @@ function animate(){
   eclipseDim=Math.max(0,eclipseDim-dt*0.8);                                           // decadimento morbido (l'eclissi lo ricarica finché è in totalità)
   cinePass.uniforms.uVignette.value=1.0+rocketE*0.22+director.surge*0.08+eclipseDim;  // tunnel in warp + iris-down alla totalità dell'eclissi
   cinePass.uniforms.uGrain.value=Math.min(0.026, 0.020*(1.0+director.surge*0.30))*(0.1+0.9*zoomWorldDimN);    // la camera "sente" la caduta; nero pulito per l'encoder. Nel DEEP ZOOM la grana quasi sparisce: sul nero delle fasi profonde leggeva come un campo di finte stelline ("lo sfondo sotto")
-  bloomPass.strength=Math.min(ULTRA?1.25:0.85, (0.36+director.cur.aB*0.30+director.surge*(ULTRA?0.42:0.20))*((typeof EF!=='undefined'&&EF.bloomBias)||1))*(introActive?(1-0.6*introApproach):1);   // ULTRA: al picco (surge) aloni molto più intensi; CALM identica (surge=0)
-  bloomPass.threshold=Math.max(0.86, 0.92-director.cur.neb*0.05-director.surge*(ULTRA?0.12:0.02)); // ULTRA: al picco più sorgenti entrano nel bloom
-  bloomPass.radius=Math.min(ULTRA?0.85:0.62, 0.42+director.cur.aB*0.24+director.surge*(ULTRA?0.26:0.10)+rocketE*0.08);   // ULTRA: al picco alone più ampio (la 5090 regge il fill)
+  bloomPass.strength=Math.min(ULTRA?0.95:0.85, (0.36+director.cur.aB*0.30+director.surge*(ULTRA?0.25:0.20))*((typeof EF!=='undefined'&&EF.bloomBias)||1))*(introActive?(1-0.6*introApproach):1);   // bloom contenuto: non deve sbiancare tutto
+  bloomPass.threshold=Math.max(0.90, 0.94-director.cur.neb*0.05-director.surge*(ULTRA?0.08:0.02)); // soglia ALZATA (0.86→0.90): fa alone solo la luce MOLTO forte, non la foschia/Via Lattea → niente washout
+  bloomPass.radius=Math.min(ULTRA?0.66:0.62, 0.42+director.cur.aB*0.24+director.surge*(ULTRA?0.12:0.10)+rocketE*0.08);   // raggio ridotto: l'alone non si allarga a tutto schermo
 
   composer.render();
   telUpdate(dt); updateAccent(dt); updateSky(dt);   // accento UI + crossfade sfondi col mood
