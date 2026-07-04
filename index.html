@@ -492,17 +492,17 @@ const Arc={
   }catch(_){} },
   _bigHero(sun){ try{ if(typeof planets==='undefined') return; const fp=planets.find(p=>!p.active); if(!fp) return;
       fp.spawn(!!sun,null,false); fp.mesh.position.set((Math.random()*2-1)*160,(Math.random()*2-1)*95,-620-Math.random()*380);   // GRANDE ma non incollato alla camera (evita glitch quando engulfa)
-      const g=4.5+Math.random()*2.6; fp.mesh.scale.multiplyScalar(g); if(fp.glow) fp.glow.scale.multiplyScalar(g); }catch(_){} },
+      const g=4.5+Math.random()*2.6; fp.mesh.scale.multiplyScalar(g); if(fp.mesh.scale.x>360) fp.mesh.scale.setScalar(360); if(fp.glow) fp.glow.scale.multiplyScalar(g); fp._heroLit=true; }catch(_){} },   // cap R≤360 (niente mostri che riempiono a muro) + lato illuminato verso la camera
   _armZoom(sp){ try{ if(typeof zoomState==='undefined'||zoomState!=='idle') return false;
       const U=(typeof ULTRA!=='undefined'&&ULTRA), dur=(sp&&sp.zoomDur)||(U?220:150), world=(sp&&sp.zoomWorld)||2.5;
       window.cadutaZoom({mode:'once',dur,world}); return (typeof zoomState!=='undefined'&&zoomState!=='idle'); }catch(_){ return false; } },
   _armPlanet(sp){ try{ if(typeof planets==='undefined') return; const fp=planets.find(p=>!p.active)||planets[0]; if(!fp) return;
       fp.spawn(false,null,false); fp.mesh.position.set(38+(Math.random()*8-4),6,-240);
-      const g=(sp&&sp.planetScale)||(4+Math.random()*3); fp.mesh.scale.multiplyScalar(g); if(fp.glow) fp.glow.scale.multiplyScalar(g); }catch(_){} },
+      const g=(sp&&sp.planetScale)||(4+Math.random()*3); fp.mesh.scale.multiplyScalar(g); if(fp.mesh.scale.x>360) fp.mesh.scale.setScalar(360); if(fp.glow) fp.glow.scale.multiplyScalar(g); fp._heroLit=true; }catch(_){} },
   _armImpact(sp){ try{ if(typeof planets==='undefined') return; const fp=planets.find(p=>!p.active)||planets[0]; if(!fp) return;
       fp.spawn(false,null,false); fp.mesh.position.set(0,0,-1400);                    // pianeta CENTRATO che viene incontro all'astronauta
-      const g=(sp&&sp.impactScale)||(5+Math.random()*2.5); fp.mesh.scale.multiplyScalar(g); if(fp.glow) fp.glow.scale.multiplyScalar(g);
-      fp._impact=true; fp._graze=false; fp._distant=false; fp._passK=6.0;             // avanza FORTE verso l'origine → collisione in ~4-6s
+      const g=(sp&&sp.impactScale)||(5+Math.random()*2.5); fp.mesh.scale.multiplyScalar(g); if(fp.mesh.scale.x>200) fp.mesh.scale.setScalar(200); if(fp.glow) fp.glow.scale.multiplyScalar(g);   // cap R≤200: uno spawn già-gigante ×g detonava all'istante (z=-1400 < R*1.04) e poteva inghiottire la camera
+      fp._impact=true; fp._graze=false; fp._distant=false; fp._passK=6.0; fp._heroLit=true;   // avanza FORTE verso l'origine → collisione in ~4-6s, lato illuminato verso la camera
       impactArmed=true; impactWhip=(Math.random()<0.5?-1:1);
       try{ fallTarget=Math.max(fallTarget,14); }catch(_){} }catch(_){} },             // RUSH: la caduta impenna verso il pianeta
   _armShowpiece(sp){ try{ const pick=(sp&&sp.showpiece)||['eclipse','supernova','blackhole','wormhole'][Math.random()*4|0];
@@ -854,6 +854,12 @@ const PMETA=[
   {f:'4k_sun',hue:0.08,sun:true,bump:0},
 ];
 { const _texByFile={}; ASSETS.pt=PMETA.map(m=>{ if(_texByFile[m.f]) return _texByFile[m.f]; const t=tex('assets/'+m.f+'.jpg'); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO; return _texByFile[m.f]=t; }); }   // DE-DUP: una sola THREE.Texture per file (le voci PMETA ri-tinte condividono la texture, hue/bump via uniform) → niente 2ª texture per URL già in cache (causava shader 'uvundefined' → crash)
+// WARM-UP texture pianeti: upload GPU di TUTTE le texture (una volta, quando l'immagine è pronta) → il primo bind non è mai NERO.
+// "quadrati neri" causa C (sfratto/first-bind) + niente pop-in su un VIDEO precaricato. Riprova finché tutte sono residenti.
+function warmPlanetTex(tries){ tries=tries||0; if(typeof renderer==='undefined'||!renderer) return; let pending=0; const seen=new Set();
+  try{ for(const t of (ASSETS.pt||[])){ if(!t||seen.has(t)) continue; seen.add(t);
+    if(t.image&&(t.image.width||t.image.complete)){ try{ renderer.initTexture(t); }catch(_){} } else pending++; } }catch(_){ }
+  if(pending>0 && tries<50) setTimeout(()=>warmPlanetTex(tries+1),400); }
 const SUN_IDX=PMETA.findIndex(m=>m.sun), MOON_IDX=PMETA.findIndex(m=>m.gray);
 ASSETS.clouds=tex('assets/4k_earth_clouds.jpg'); ASSETS.clouds.colorSpace=THREE.SRGBColorSpace; ASSETS.clouds.anisotropy=MAXANISO;
 ASSETS.ring=tex('assets/2k_saturn_ring_alpha.png'); ASSETS.ring.colorSpace=THREE.SRGBColorSpace;
@@ -866,7 +872,7 @@ loadGLB(5);   // bump ?v= quando rigeneri il modello (anti-cache)
 const enterBtn=document.getElementById('enter');
 mgr.onProgress=(u,d,t)=>{ if(!built) enterBtn.textContent='Loading… '+Math.round(d/t*100)+'%'; };
 mgr.onError=(u)=>console.warn('asset KO (riprovo in background):',u);   // NON bloccante
-function tryBuild(){ if(built || !mwReady || !glbReady) return; build(); enterBtn.disabled=false; enterBtn.textContent='Enter';
+function tryBuild(){ if(built || !mwReady || !glbReady) return; build(); try{ warmPlanetTex(); }catch(_){} enterBtn.disabled=false; enterBtn.textContent='Enter';
   // avvio automatico per la live: dentro OBS (window.obsstudio) o con ?live=1 → niente click su "Enter"
   if(window.obsstudio || /[?&]live=1/.test(location.search) || ULTRA) setTimeout(()=>{ try{ begin(); }catch(_){} }, 200); }   // auto-start anche in ULTRA (registrazione headless: niente click su Enter)
 
@@ -984,7 +990,8 @@ const STAR_MUL=(ULTRA?2.7:1.2), DUST_MUL=(ULTRA?6:1.5);   // "VIAGGIO INCREDIBIL
 const planets=[], nearStars=[], wisps=[];
 let asteroids, astData=[];
 const DUST_N=Math.round(300*DUST_MUL),DZN=240,DZF=-260,DSP=98, AST_N=Math.round(90*(ULTRA?2:1));   // DSP 130→98: stessi grani più fitti/vicini = fiume di polvere, non pulviscolo rado   // polvere (1800 in ULTRA) + cintura asteroidi (360 in ULTRA) MOLTO più dense → senso di viaggio e materia attraversata
-let lensflare, mystery, parallel, supernova, blackhole, lensPass, smaaPass;
+let lensflare, mystery, parallel, supernova, blackhole, lensPass, smaaPass, flashbackPass;
+const _fbk=new THREE.Vector4();   // scratch Ken-Burns (zero alloc per-frame)
 let nebulaField, comet, cluster, derelict, cometTail;
 let pulsar, redgiant, binary, remnant;
 let signal, spores, magnetar, dyson, aurora, duststorm;
@@ -1544,6 +1551,8 @@ function build(){
   lensPass=new ShaderPass(BHLensShader); composer.addPass(lensPass);   // lensing del buco nero (prima del bloom)
   bloomPass=new UnrealBloomPass(new THREE.Vector2(Math.floor(WIDTH*PIX/bloomDiv),Math.floor(HEIGHT*PIX/bloomDiv)),0.6,0.6,0.86); // bloom ridotto + threshold più alto → centro non bruciato
   composer.addPass(bloomPass);
+  flashbackPass=new ShaderPass(FlashbackShader); composer.addPass(flashbackPass);   // FLASHBACK/cutscene: still hi-res SOPRA la scena (passthrough a uAmt=0), prima del grade cine
+  try{ Flashback.load(); }catch(_){}                                                // precarica le still (è un video: niente pop-in)
   cinePass=new ShaderPass(CineShader); composer.addPass(cinePass);
   composer.addPass(new OutputPass());
   // ANTI-ALIAS: la scena renderizza in una RT offscreen (composer) → il flag antialias del renderer è bypassato e NON fa nulla.
@@ -1714,7 +1723,7 @@ class Planet{
     // passaggio ravvicinato NATURALE e raro (armato da grazeNext): riempie il quadro ma sfiora SOLO l'alta atmosfera.
     // garanzia: superficie solida a (dist-r), tetto atmosfera a r*1.025; con dist=r*1.18+14+rand*8 → clearance 0.155*r+14 > 0 SEMPRE.
     const _flyby=grazeNext && !this.isSun && !forceSun && forceIdx==null && !_distant;
-    this._graze=_flyby; this._distant=_distant; this._impact=false; this._spawnT=0;   // micro-fade allo spawn: nasconde il frame-nero del cambio-texture (i "quadrati neri a scatti")
+    this._graze=_flyby; this._distant=_distant; this._impact=false; this._spawnT=0; this._heroLit=false;   // micro-fade allo spawn; _heroLit: solo i giganti-hero del montaggio puntano la luce verso la camera
     if(_distant){
       this._scatterDistant();   // guscio di sfondo: bersaglio-schermo ai bordi (anti-cluster), z profondo, deriva lenta → su TUTTO il quadro
     } else {
@@ -1772,13 +1781,24 @@ class Planet{
       op=Math.min(opIn,opOut);
     }
     if(this._spawnT<1){ this._spawnT=Math.min(1,this._spawnT+dt*4.5); const _sf=this._spawnT*this._spawnT*(3-2*this._spawnT); op*=_sf; }   // micro-fade d'ingresso (~0.25s): il frame-nero dello spawn è a opacità ~0 → invisibile
+    // ENVELOP-GUARD (fix "quadrati neri"): un gigante che sta per inghiottire la camera (near-plane 0.1) mostrerebbe l'interno/back-face NERO
+    // per qualche frame → dissolvi il corpo appena la sua superficie raggiunge la camera. Sui pianeti normali (dist_xy>R) non morde mai.
+    if(!this._distant){ const _R=this.mesh.scale.x;
+      const _dcx=this.mesh.position.x-camera.position.x, _dcy=this.mesh.position.y-camera.position.y, _dcz=this.mesh.position.z-camera.position.z;
+      const _dCam=Math.sqrt(_dcx*_dcx+_dcy*_dcy+_dcz*_dcz), _clr=THREE.MathUtils.clamp((_dCam-_R)/(_R*0.22),0,1);
+      op*=_clr*_clr*(3-2*_clr); }
+    if(!(op>=0)) op=0;   // anti-NaN: qualunque NaN a monte non deve mai diventare un quadro nero opaco
     this.mat.opacity=op; this.atmoMat.uniforms.uOp.value=op; this.ringMat.uniforms.uOp.value=op;
     if(this.clouds.visible){ this.clouds.rotation.y+=dt*0.018; this.cloudMat.opacity=op; }
-    this.atmoMat.uniforms.uLight.value.copy(sunDir);
-    if(this.ring.visible){ // direzione del Sole in spazio-anello (per l'ombra del pianeta sugli anelli) — niente alloc
-      _s.copy(sunDir).applyQuaternion(_q.copy(this.ring.quaternion).invert());
+    // luce EFFICACE: i giganti "hero" del montaggio/CREST puntano il Sole verso la camera → mostrano SEMPRE il lato bello illuminato
+    // (fix "quadrati neri" causa B: mai più l'emisfero notturno pieno-schermo). I pianeti normali usano il Sole globale.
+    if(this._heroLit){ _p.copy(camera.position).sub(this.mesh.position); const _pl=_p.length(); if(_pl>1e-4) _p.multiplyScalar(1/_pl); else _p.copy(sunDir); }
+    else _p.copy(sunDir);
+    this.atmoMat.uniforms.uLight.value.copy(_p);
+    if(this.ring.visible){ // direzione della luce in spazio-anello (per l'ombra del pianeta sugli anelli) — niente alloc
+      _s.copy(_p).applyQuaternion(_q.copy(this.ring.quaternion).invert());
       this.ringMat.uniforms.uLightL.value.copy(_s); }
-    this.pUni.uSunDir.value.copy(sunDir); this.pUni.uTime.value=shaderTime; this.pUni.uNight.value.copy(director.grade);   // shaderTime è già wrappato (niente drift di precisione 24/7)
+    this.pUni.uSunDir.value.copy(_p); this.pUni.uTime.value=shaderTime; this.pUni.uNight.value.copy(director.grade);   // shaderTime è già wrappato (niente drift di precisione 24/7)
     for(let i=0;i<this.nMoons;i++){ const mo=this.moons[i]; mo.ph+=mo.sp*dt; mo.mesh.material.opacity=op; mo.mesh.position.set(Math.cos(mo.ph)*mo.rad,Math.sin(mo.ph*0.6)*0.4,Math.sin(mo.ph)*mo.rad); }
     if(!this.counted && !this._distant && z>-30){ this.counted=true; TEL.planets++; TEL.moons+=this.nMoons; }   // i mondi lontani di sfondo non contano nella telemetria
     if(!this._distant && z>340+this.mesh.scale.x*2.0){
@@ -1842,8 +1862,10 @@ function detonatePlanet(p){ try{
   impactHold=1.0; impactWhipK=1.0; impactArmed=false;   // (5) dramma: freno camera + whip post-urto (consumati dalla camera)
   try{ if(typeof Arc!=='undefined') Arc._white=Math.max(Arc._white,0.9); }catch(_){}   // dip-to-white maschera lo stacco
   try{ fallTarget=1; }catch(_){}                          // fine del RUSH
+  try{ if(typeof Flashback!=='undefined' && Math.random()<0.55) Flashback.arm('impact',1.2); }catch(_){}   // ~55% degli impatti → FLASHBACK (cutscene di still): rara/speciale, non ad ogni urto
 }catch(_){} }
 window.cadutaImpact=()=>{ try{ Arc._armImpact((typeof EF!=='undefined'&&EF.arc)||{}); return 'IMPACT armed'; }catch(e){ return ''+e; } };   // test console: astronauta distrugge un pianeta
+window.cadutaFlashback=(n)=>{ try{ if(typeof Flashback==='undefined') return 'no Flashback'; Flashback.cool=0; return Flashback.start('manual',n)?('FLASHBACK go ('+Flashback.shots.length+' still)'):('non pronto: loaded='+Flashback._loaded+' tex='+Flashback.tex.length+' active='+Flashback.active); }catch(e){ return ''+e; } };   // test console: lancia una cutscene di still
 window.cadutaDebugHit=(n)=>{ hitFlipTarget+=6.28318*(n||4); hitFlash=Math.max(hitFlash,0.6); return 'BURST x'+(n||4); };  // test: capriole verticali da impatto (console)
   window.cadutaFall=(m)=>{ if(m===undefined||m==='auto'){ fallAuto=true; return 'fase di caduta: AUTO (cicli 2-5 min)'; } fallAuto=false; fallTarget=fallMul=(+m||1); return 'velocità di caduta ×'+fallMul+' (manuale; cadutaFall("auto") per riattivare le fasi)'; };
   // taratura del SORPASSO dei mondi (si applica ai prossimi spawn; quelli in volo mantengono il loro)
@@ -2575,6 +2597,73 @@ function currentShower(){ if(window._forceShower) return window._forceShower; co
   for(const s of SHOWERS){ if(mo===s.m && Math.abs(da-s.d)<=s.w) return s.n; } return null; }
 
 /* ---------------- passata cinematografica ---------------- */
+// ============================ FLASHBACK / CUTSCENE (stile reel @alwaysrelaxingspace) ============================
+// Passata fullscreen che mostra una STILL hi-res (ESO regradata) SOPRA la scena, con cover-fit + Ken-Burns (zoom/pan
+// lento) + warp d'ingresso radiale + grade punchy. A uAmt=0 è passthrough identico. Sta PRIMA del CineShader → eredita
+// grana/vignetta/streak cinematici. Le still sono precaricate (è un VIDEO): niente pop-in.
+const FlashbackShader={
+  uniforms:{ tDiffuse:{value:null}, tFlash:{value:null}, uAmt:{value:0}, uTime:{value:0}, uWarp:{value:0},
+    uAspect:{value:1.777}, uImgAspect:{value:1.5}, uSat:{value:1.16}, uVig:{value:1.0}, uKen:{value:new THREE.Vector4(0,0,1.08,0)} },
+  vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position,1.0); }`,
+  fragmentShader:`uniform sampler2D tDiffuse,tFlash; uniform float uAmt,uTime,uWarp,uAspect,uImgAspect,uSat,uVig; uniform vec4 uKen; varying vec2 vUv;
+    void main(){ vec4 scene=texture2D(tDiffuse,vUv);
+      if(uAmt<=0.0011){ gl_FragColor=scene; return; }
+      vec2 uv=vUv-0.5;
+      if(uAspect>uImgAspect) uv.y*=uImgAspect/uAspect; else uv.x*=uAspect/uImgAspect;   // COVER: riempi senza deformare
+      uv/=max(uKen.z,0.2);                                                              // zoom Ken-Burns
+      float c=cos(uKen.w), s=sin(uKen.w); uv=vec2(uv.x*c-uv.y*s, uv.x*s+uv.y*c);         // micro-rotazione
+      uv+=uKen.xy+0.5;                                                                   // pan
+      vec3 img;
+      if(uWarp>0.002){ vec2 d=uv-0.5; img=vec3(0.0); for(int i=0;i<8;i++){ float f=1.0+uWarp*0.16*(float(i)/7.0); img+=texture2D(tFlash,0.5+d*f).rgb; } img/=8.0; } // warp d'ingresso (zoom-blur che si chiude)
+      else img=texture2D(tFlash,uv).rgb;
+      float l=dot(img,vec3(0.299,0.587,0.114)); img=mix(vec3(l),img,uSat);               // saturazione punchy
+      float vg=smoothstep(1.35,0.30,length(vUv-0.5)*2.0); img*=mix(1.0,vg,0.55*uVig);    // vignetta morbida
+      gl_FragColor=vec4(mix(scene.rgb,img,clamp(uAmt,0.0,1.0)),1.0); }`
+};
+// Controller: sequenza di still con stacchi mascherati da dip-to-white (come i reel). Precarica le immagini al boot.
+const Flashback={
+  on:true, active:false, _loaded:false, tex:[], shots:[], idx:0, t:0, dwell:0, amt:0, warp:0,
+  ken0:new THREE.Vector4(), ken1:new THREE.Vector4(), cool:0, pend:0, pendReason:'', reason:'',
+  FILES:['cs_carina','cs_orion','cs_orion2','cs_m17','cs_flame','cs_helix','cs_corebulge','cs_deepfield'],
+  load(){ if(this._loaded) return; this._loaded=true;
+    try{ this.tex=this.FILES.map(f=>{ const t=tex('assets/cutscenes/'+f+'.jpg'); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO; t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping; return t; }); }catch(_){ this.tex=[]; }
+    this._warm(0); },
+  _warm(tries){ if(typeof renderer==='undefined'||!renderer) return; let pend=0;
+    for(const t of this.tex){ if(t&&t.image&&(t.image.width||t.image.complete)){ try{ renderer.initTexture(t); }catch(_){} } else pend++; }
+    if(pend>0 && tries<50) setTimeout(()=>this._warm(tries+1),400); },
+  arm(reason,delay){ if(!this.on||this.active||this.cool>0||!this.tex.length) return false;
+    if(typeof introActive!=='undefined'&&introActive) return false;                 // niente flashback durante il saluto d'intro
+    if(typeof zoomState!=='undefined'&&zoomState!=='idle') return false;            // né durante il tuffo-galassia (deep zoom)
+    this.pend=Math.max(0.01,delay||0.6); this.pendReason=reason||''; return true; },
+  start(reason,n){ if(!this.on||this.active||!this.tex.length) return false;
+    this.active=true; this.reason=reason||''; this.pend=0;
+    const N=this.tex.length, k=Math.max(2,Math.min(n||(3+(Math.random()*3|0)),N)), pool=[]; for(let i=0;i<N;i++) pool.push(i);
+    this.shots=[]; for(let i=0;i<k;i++) this.shots.push(pool.splice((Math.random()*pool.length)|0,1)[0]);
+    this.idx=0; this._beginShot(true); return true; },
+  _beginShot(first){ this.t=0; this.dwell=2.2+Math.random()*1.3;
+    const dir=Math.random()<0.5?1:-1, z0=1.06+Math.random()*0.10, z1=z0+dir*(0.10+Math.random()*0.12);
+    const px=(Math.random()*2-1)*0.09, py=(Math.random()*2-1)*0.07;
+    this.ken0.set(px,py,z0,(Math.random()*2-1)*0.015); this.ken1.set(px*0.15,py*0.15,z1,(Math.random()*2-1)*0.015);
+    this.warp=first?1.0:0.5;
+    const t=this.tex[this.shots[this.idx]];
+    if(flashbackPass){ flashbackPass.uniforms.tFlash.value=t; flashbackPass.uniforms.uImgAspect.value=(t&&t.image&&t.image.width)?(t.image.width/t.image.height):1.5; }
+    try{ if(typeof Arc!=='undefined') Arc._white=Math.max(Arc._white||0,first?0.7:0.55); }catch(_){}   // dip-to-white maschera lo stacco tra le still
+  },
+  update(dt){ if(this.cool>0) this.cool-=dt;
+    if(this.pend>0){ this.pend-=dt; if(this.pend<=0) this.start(this.pendReason); }
+    const u=flashbackPass&&flashbackPass.uniforms;
+    if(!this.active){ if(u&&u.uAmt.value>0.001) u.uAmt.value=Math.max(0,u.uAmt.value-dt/0.6); return; }
+    this.t+=dt;
+    const last=(this.idx>=this.shots.length-1); let tgt=1;
+    if(this.idx===0 && this.t<0.55) tgt=this.t/0.55; else if(last && (this.dwell-this.t)<0.6) tgt=Math.max(0,(this.dwell-this.t)/0.6);
+    this.amt=tgt; this.warp=Math.max(0,this.warp-dt/0.5);
+    const kp=THREE.MathUtils.clamp(this.t/this.dwell,0,1), ks=kp*kp*(3-2*kp);
+    if(u){ u.uAmt.value=this.amt; u.uWarp.value=this.warp; u.uTime.value=(u.uTime.value+dt)%1000;
+      u.uAspect.value=(typeof WIDTH!=='undefined'&&WIDTH)?(WIDTH/HEIGHT):1.777;
+      _fbk.copy(this.ken0).lerp(this.ken1,ks); u.uKen.value.copy(_fbk); }
+    if(this.t>=this.dwell){ this.idx++; if(this.idx>=this.shots.length) this._end(); else this._beginShot(false); } },
+  _end(){ this.active=false; this.amt=0; this.warp=0; this.cool=22+Math.random()*22; this.shots=[]; if(flashbackPass) flashbackPass.uniforms.uAmt.value=0; }
+};
 const CineShader={
   uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.020},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeHi:{value:new THREE.Color(0xfff1de)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.7},uHalation:{value:0.4},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)},uSharp:{value:0.30},uPix:{value:1.0},uSat:{value:1.0},uWhite:{value:0},uRocket:{value:0}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,1.0);}`,
@@ -3549,6 +3638,7 @@ function animate(){
   director.step(dt); applyDirector();
   try{ EF.step(dt); }catch(_){}   // ALMANAC: fenomeno-guida dell'ora + showpiece rari programmati + rollover capitolo/tema (housekeeping ogni ~5s)
   try{ Arc.update(dt); }catch(_){}   // ARC CONDUCTOR: onda di tensione (CALM→GATHER→SURGE→CREST→RELEASE); a riposo no-op (identico a oggi)
+  try{ Flashback.update(dt); }catch(_){}   // FLASHBACK/cutscene: sequenza di still hi-res dopo impatto/buco nero (a riposo passthrough)
   try{ Regions.update(dt); }catch(_){}   // REGION CONDUCTOR: profilo densità della regione attraversata (a riposo mul=1 → identico a oggi)
   try{ updateIntro(dt); }catch(_){}   // INTRO di capitolo (envelope: avvicinamento, cenno, title-card)
   // DILATAZIONE TEMPORALE vicino ai buchi neri: il mondo rallenta, l'orologio "sfasa"
@@ -3564,7 +3654,8 @@ function animate(){
   } else { if($t.clk) $t.clk.classList.remove('dilate'); dilLogged=false; }
   // FIONDA GRAVITAZIONALE: eravamo vicini al buco nero e ora ne siamo sfuggiti → spinta di ~5s
   if(bhClose && bhNear<0.18){ bhClose=false; sling=5.0;
-    $t.log.textContent='— slingshot. The hole flings us into the deep.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),10000); }
+    $t.log.textContent='— slingshot. The hole flings us into the deep.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),10000);
+    try{ if(typeof Flashback!=='undefined') Flashback.arm('blackhole',1.4); }catch(_){} }   // fionda dal buco nero → FLASHBACK (evento raro/epico: sempre)
   if(sling>0) sling=Math.max(0,sling-dt);
   const _se=sling*0.2, slingE=_se*_se;                          // kick forte all'inizio, decadimento in ~5s
   // ── FASE DI CADUTA: cicli lento<->veloce graduali, cambio ogni 2-5 min (musica e cue "razzo" seguono) ──
