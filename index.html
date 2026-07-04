@@ -494,7 +494,7 @@ const Arc={
       fp.spawn(!!sun,null,false); fp.mesh.position.set((Math.random()*2-1)*160,(Math.random()*2-1)*95,-620-Math.random()*380);   // GRANDE ma non incollato alla camera (evita glitch quando engulfa)
       const g=4.5+Math.random()*2.6; fp.mesh.scale.multiplyScalar(g); if(fp.mesh.scale.x>360) fp.mesh.scale.setScalar(360); if(fp.glow) fp.glow.scale.multiplyScalar(g); fp._heroLit=true; }catch(_){} },   // cap R≤360 (niente mostri che riempiono a muro) + lato illuminato verso la camera
   _armZoom(sp){ try{ if(typeof zoomState==='undefined'||zoomState!=='idle') return false;
-      const U=(typeof ULTRA!=='undefined'&&ULTRA), dur=(sp&&sp.zoomDur)||(U?85:65), world=(sp&&sp.zoomWorld)||2.5;   // tuffo PIÙ VELOCE (era 220/150): la parte zoom "zooma veloce" (richiesta utente)
+      const U=(typeof ULTRA!=='undefined'&&ULTRA), dur=(sp&&sp.zoomDur)||(U?55:42), world=(sp&&sp.zoomWorld)||2.5;   // tuffo VELOCE (era 220/150→85/65→55/42): "lo zoom deve zoommare veloce" (richiesta utente)
       window.cadutaZoom({mode:'once',dur,world}); return (typeof zoomState!=='undefined'&&zoomState!=='idle'); }catch(_){ return false; } },
   _armPlanet(sp){ try{ if(typeof planets==='undefined') return; const fp=planets.find(p=>!p.active)||planets[0]; if(!fp) return;
       fp.spawn(false,null,false); fp.mesh.position.set(38+(Math.random()*8-4),6,-240);
@@ -1050,6 +1050,7 @@ let barrelTarget=0, barrelCur=0, barrelAxis=0, barrelHold=40;  // capriola lenta
 let spinRateCur=0.03, spinRateTarget=0.03, spinRetargetT=22, manSpinT=0;   // manSpinT = piccolo angolo bersaglio di imbardata (l'astronauta NON gira più su se stesso: dondola e basta)
 let manTumble=0, tumbleRateCur=0.04, tumbleRateTarget=0.04, tumbleRetargetT=16, manTumbleT=0;   // manTumbleT = piccolo angolo bersaglio di beccheggio (capovolta continua RIMOSSA: caduta stabile in una direzione)
 let sling=0, bhClose=false, flythruCD=0;    // fionda gravitazionale (buco nero); flythruCD: cooldown attraversamento pianeti
+let flythruWarp=0; const flythruWarpPos=new THREE.Vector3();   // WARP tipo buco nero quando l'astronauta SFONDA un pianeta (lensing transitorio)
 let fallMul=1, fallTarget=1, fallPhaseT=90, fallAuto=false, fallFast=false;   // CADUTA LENTA di default (niente fasi warp): drift calmo da documentario. cadutaFall('auto') riattiva i cicli veloci, cadutaFall(x) override manuale
 // --- REAZIONE SOBRIA al colpo/sfioramento (solo passaggi NATURALI ravvicinati) ---
 let hitFlash=0, hitTremor=0, hitTumble=0;          // scalari decadenti del colpo meteora (one-shot)
@@ -1787,7 +1788,7 @@ class Planet{
       const _fw=(this._spawnZ>-1500)?300:700;                       // spawn ravvicinati (montaggio/impact z>-1500): fade-in in ~300u di corsa → niente pop-in, ma svelto
       const opIn=THREE.MathUtils.clamp((z-this._spawnZ)/_fw,0,1);   // dissolvenza dal punto di spawn REALE (non da SPAWN_Z fisso)
       const opOut=THREE.MathUtils.clamp((outEnd-z)/(this.mesh.scale.x*2.6+200),0,1); // dissolvenza in uscita (niente pop)
-      op=Math.min(opIn,opOut);
+      op=Math.min(opIn,opOut)*zoomWorldDimN;   // ×zoomWorldDimN: durante il DEEP ZOOM anche i pianeti hero si spengono → dive pulito (niente pianeti che sfrecciano sopra lo zoom)
     }
     if(this._spawnT<1){ this._spawnT=Math.min(1,this._spawnT+dt*4.5); const _sf=this._spawnT*this._spawnT*(3-2*this._spawnT); op*=_sf; }   // micro-fade d'ingresso (~0.25s): il frame-nero dello spawn è a opacità ~0 → invisibile
     // ENVELOP-GUARD (fix "quadrati neri"): un gigante che sta per inghiottire la camera (near-plane 0.1) mostrerebbe l'interno/back-face NERO
@@ -1884,7 +1885,8 @@ function detonatePlanet(p){ try{
 // AZIONE: attraversamento DISTRUTTIVO — la camera sfonda un gigante → esplosione (detonatePlanet) + warp/fionda tipo buco nero.
 function destroyOnFlythrough(p){ try{
   detonatePlanet(p);                                          // lampo + onda d'urto + frammenti (sul posto = riempie il quadro = "sfondamento")
-  try{ sling=Math.max(sling,3.0); }catch(_){}                 // WARP tipo buco nero: FOV-punch + dust-stretch + spinta velocità (~3s)
+  try{ flythruWarp=1.0; flythruWarpPos.copy(p.mesh.position); }catch(_){}   // ★ WARP/LENSING tipo buco nero sul punto d'attraversamento (effetto ottico, non solo esplosione)
+  try{ sling=Math.max(sling,3.0); }catch(_){}                 // fionda: FOV-punch + dust-stretch + spinta velocità (~3s)
   try{ if(typeof Arc!=='undefined') Arc._white=Math.max(Arc._white,1.0); }catch(_){}   // lampo bianco d'impatto
   try{ fallTarget=Math.max(fallTarget,12); }catch(_){}        // impennata: caduta veloce e distruttiva subito dopo
   flythruCD=3.5;                                              // cooldown → non a raffica
@@ -1974,15 +1976,15 @@ class BlackHole{
     this.horizon=new THREE.Mesh(new THREE.SphereGeometry(1,48,32), new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:1})); this.group.add(this.horizon);
     this.photon=new THREE.Mesh(new THREE.RingGeometry(1.03,1.2,80), new THREE.MeshBasicMaterial({color:0xfff1d8,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,opacity:0})); this.group.add(this.photon);
     this.diskMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
-      uniforms:{uTime:{value:0},uInner:{value:1.5},uOuter:{value:3.6},uOp:{value:0},uDopp:{value:0}},
+      uniforms:{uTime:{value:0},uInner:{value:1.5},uOuter:{value:3.6},uOp:{value:0},uDopp:{value:0},uTint:{value:new THREE.Color(1,1,1)}},
       vertexShader:`varying float vR;varying float vA;void main(){vR=length(position.xy);vA=atan(position.y,position.x);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-      fragmentShader:NOISE_GLSL+`varying float vR;varying float vA;uniform float uTime,uInner,uOuter,uOp,uDopp;
+      fragmentShader:NOISE_GLSL+`varying float vR;varying float vA;uniform float uTime,uInner,uOuter,uOp,uDopp;uniform vec3 uTint;
         void main(){ float t=clamp((vR-uInner)/(uOuter-uInner),0.0,1.0);
           float a=vA - uTime*(1.6/max(vR,1.0));                                  // il disco ORBITA (rotazione differenziale: interno più veloce)
           float n=fbm(vec3(cos(a)*3.0,sin(a)*3.0,uTime*0.10+vR*1.4));
           float bands=0.55+0.7*n;
           vec3 hot=vec3(1.0,0.96,0.86),warm=vec3(1.0,0.5,0.16),cool=vec3(0.45,0.3,0.95);
-          vec3 c=mix(hot,warm,smoothstep(0.0,0.6,t)); c=mix(c,cool,smoothstep(0.6,1.0,t));
+          vec3 c=mix(hot,warm,smoothstep(0.0,0.6,t)); c=mix(c,cool,smoothstep(0.6,1.0,t)); c*=uTint;   // uTint: palette per-spawn (oro/blu/viola/rosso) → buchi neri diversi
           float dopp=clamp(0.25+1.30*cos(vA-uDopp),0.06,1.6);                    // beaming Doppler estremo: un lato brucia, l'altro quasi sparisce (lobo FISSO, mai un faro che gira)
           float bright=(1.0-t*0.7)*bands*dopp;
           float edge=smoothstep(0.0,0.07,t)*smoothstep(1.0,0.88,t);
@@ -1993,18 +1995,23 @@ class BlackHole{
   }
   spawn(){
     this.active=true; this.counted=false;
-    const r=34+Math.random()*26; this.group.scale.setScalar(r);
+    const r=30+Math.random()*46; this.group.scale.setScalar(r);   // taglia più varia (30-76)
     const u=Math.random()*2-1, ph=Math.random()*6.283185307, s2=Math.sqrt(Math.max(0,1-u*u));   // direzione uniforme sulla sfera → il buco nasce lontano in QUALSIASI direzione
-    this._dir.set(s2*Math.cos(ph),u,s2*Math.sin(ph)); this._R0=2500+Math.random()*400; this._rad=this._R0;
+    this._dir.set(s2*Math.cos(ph),u,s2*Math.sin(ph)); this._R0=2500+Math.random()*500; this._rad=this._R0;
     this.group.position.copy(this._dir).multiplyScalar(this._rad);
-    this.disk.rotation.set(Math.PI*0.5-0.3-Math.random()*0.3,0,Math.random()*0.6);
-    this.diskMat.uniforms.uDopp.value=Math.random()*6.28; this.diskMat.uniforms.uTime.value=0; this.spin=(Math.random()*2-1)*0.1; this.group.visible=true;   // uTime a 0 allo spawn: la fase orbitale del disco riparte pulita (mai il salto del wrap)
+    this._slow=0.34+Math.random()*0.30;                            // ★ approccio PIÙ LENTO e VARIO (0.34-0.64× della velocità: il buco nero deve essere sempre lento)
+    this._diskSpin=0.45+Math.random()*1.05;                        // churn del disco per-spawn (accrescimento più/meno vorticoso)
+    this.disk.rotation.set(Math.PI*0.5-0.6+Math.random()*0.8,0,Math.random()*6.283185307);   // ★ tilt/orientamento del disco MOLTO più vario (non sempre "di taglio")
+    const _pal=[[1.0,1.0,1.0],[1.18,0.78,0.5],[0.58,0.72,1.28],[1.22,0.55,0.98],[1.28,0.6,0.34],[0.7,1.05,0.95]];   // bianco/oro/blu/viola/rosso/verde-acqua
+    const _pc=_pal[(Math.random()*_pal.length)|0]; this.diskMat.uniforms.uTint.value.setRGB(_pc[0],_pc[1],_pc[2]);   // ★ palette diversa ad ogni buco nero
+    const _ir=1.32+Math.random()*0.4; this.diskMat.uniforms.uInner.value=_ir; this.diskMat.uniforms.uOuter.value=_ir+1.5+Math.random()*1.4;   // spessore/apertura del disco vari
+    this.diskMat.uniforms.uDopp.value=Math.random()*6.28; this.diskMat.uniforms.uTime.value=0; this.spin=(Math.random()*2-1)*0.16; this.group.visible=true;   // uTime a 0 allo spawn: la fase orbitale del disco riparte pulita (mai il salto del wrap)
     $t.log.textContent='— a hole in everything. Light goes in; nothing returns.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),13000);
   }
   update(dt,speed){
     if(!this.active) return;
-    this._rad-=speed*dt; this.group.position.copy(this._dir).multiplyScalar(this._rad);   // deriva RADIALE verso l'astronauta: il buco "cade addosso" da qualsiasi lato, lo oltrepassa (rad<0) e si dissolve
-    this.diskMat.uniforms.uTime.value=(this.diskMat.uniforms.uTime.value+dt)%100000; this.disk.rotation.z+=this.spin*dt*0.2;
+    this._rad-=speed*dt*(this._slow||0.5); this.group.position.copy(this._dir).multiplyScalar(this._rad);   // ★ ×_slow: deriva RADIALE PIÙ LENTA (il buco nero è sempre lento) — lo oltrepassa (rad<0) e si dissolve
+    this.diskMat.uniforms.uTime.value=(this.diskMat.uniforms.uTime.value+dt*(this._diskSpin||1))%100000; this.disk.rotation.z+=this.spin*dt*0.2;
     this.photon.lookAt(camera.position);
     const rad=this._rad, appear=this._R0-700, outEnd=-(150+this.group.scale.x*1.5);
     const opIn=THREE.MathUtils.clamp((appear-rad)/700,0,1);
@@ -2037,6 +2044,8 @@ function updateLens(){
     srcPos=blackhole.group.position; srcR=blackhole.group.scale.x*2.6; srcSt=s*op;
   } else if(wormhole && wormhole.active){
     srcPos=wormhole.g.position; srcR=wormhole.g.scale.x*1.15; srcSt=0.085*wormhole.mat.uniforms.uOp.value;
+  } else if(typeof flythruWarp!=='undefined' && flythruWarp>0.01){
+    srcPos=flythruWarpPos; srcR=90*flythruWarp+40; srcSt=0.26*flythruWarp;   // ★ WARP tipo buco nero quando l'astronauta SFONDA un pianeta (lensing transitorio sul punto)
   }
   if(srcPos && srcSt>0.0005){
     const v=_bhProj.copy(srcPos).project(camera);
@@ -3686,6 +3695,7 @@ function animate(){
     try{ if(typeof Flashback!=='undefined') Flashback.arm('blackhole',1.4); }catch(_){} }   // fionda dal buco nero → FLASHBACK (evento raro/epico: sempre)
   if(sling>0) sling=Math.max(0,sling-dt);
   if(flythruCD>0) flythruCD-=dt;   // cooldown attraversamento distruttivo pianeti
+  if(flythruWarp>0) flythruWarp=Math.max(0,flythruWarp-dt/0.7);   // WARP attraversamento: pulse di lensing ~0.7s
   if(window.__pdiag>0){ window.__pdiag-=dt;   // DETECTOR quadrati neri: ogni frame controlla i pianeti attivi per cause JS-side di "nero"
     try{ for(const p of planets){ if(!p.active||p._distant) continue;
       const tx=p.mat&&p.mat.map, imgBad=!tx||!tx.image||!(tx.image.width||tx.image.complete);
@@ -3847,7 +3857,7 @@ function animate(){
   mysteryTimer-=dt; if(mysteryTimer<=0 && !mystery.active){ mysteryTimer=62+Math.random()*98; mystery.spawn(); } mystery.update(dt);
   parallelTimer-=dt; if(parallelTimer<=0 && !parallel.active){ parallelTimer=50+Math.random()*80; parallel.spawn(); } parallel.update(dt,speed);
   supernova.update(dt);
-  bhTimer-=dt; if(bhTimer<=0 && !blackhole.active){ bhTimer=175+Math.random()*250; blackhole.spawn(); } blackhole.update(dt,speed); updateLens();
+  bhTimer-=dt; if(bhTimer<=0 && !blackhole.active && !(typeof wormhole!=='undefined'&&wormhole&&wormhole.active) && (typeof zoomState==='undefined'||zoomState==='idle') && !(typeof introActive!=='undefined'&&introActive)){ bhTimer=55+Math.random()*75; blackhole.spawn(); } blackhole.update(dt,speed); updateLens();   // ★ black hole PIÙ FREQUENTE (era 175-425s → 55-130s)
   // nebulosa volumetrica (attraversamento) + nuovi corpi + strutture
   if(nebBoost>0) nebBoost=Math.max(0,nebBoost-dt*0.12);
   _nebCol.copy(director.grade).lerp(_white,0.14);
@@ -4906,8 +4916,13 @@ function deepZoomUpdate(dt){
     // D·a_rad·(hf/Θ) per QUALSIASI livello → i quad consecutivi combaciano ESATTAMENTE su tutta la
     // sovrapposizione (non solo al centro) e lo zoom non si congela mai (la tan(θ/2)+clamp 170° sì:
     // con rapporti di catena ~3-4 stallava ~30s su 76 e sfasava ogni crossfade di 2-4×)
-    const w=ZOOM_DIST*(L.aw*Math.PI/180)*(hf/zoomTheta)*ZOOM_OVERSCAN;   // ×OVERSCAN: il quad deborda dallo schermo → ruotando la TEXTURE l'immagine gira senza MAI bordi/nero agli angoli
-    s.mesh.scale.set(w,w*(L.ah/L.aw),1);
+    const w=ZOOM_DIST*(L.aw*Math.PI/180)*(hf/zoomTheta)*ZOOM_OVERSCAN;   // ×OVERSCAN base
+    let _sx=w, _sy=w*(L.ah/L.aw);
+    // ★ COVERAGE FLOOR (fix "immagini sovrapposte"): il quad RUOTA (vortice) → per non mostrare MAI i bordi (e la seconda
+    // immagine sotto) il suo lato più corto deve coprire la DIAGONALE del viewport a QUALSIASI aspetto (finestra larga/verticale).
+    const _cov=2.0*ZOOM_DIST*Math.tan(camera.fov*Math.PI/360)*Math.sqrt(1+camera.aspect*camera.aspect)*1.04;
+    const _mn=Math.min(_sx,_sy); if(_mn<_cov){ const _f=_cov/_mn; _sx*=_f; _sy*=_f; }
+    s.mesh.scale.set(_sx,_sy,1);
     let tgt=(s.lv===zoomNxtI)?smooth(L.lgA,L.lgB,lg):1;                   // entrante: smoothstep su Θ∈[A,0.72A]; corrente: pieno
     if(zoomProcOp>=0.995 && s.lv===zoomCurI && zoomNxtI<0) tgt=0;         // il procedurale ha preso il testimone → l'ultima foto "si risolve in stelle"
     const _rl=(zoomCurI<0&&s.lv===zoomNxtI)?dt/0.55:dt/0.85;              // crossfade più svelto → le immagini zoom si alternano più in fretta (non restano troppo)
