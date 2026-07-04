@@ -38,7 +38,7 @@ const CLIENT_ID = process.env.CLIENT_ID || process.env.YT_OAUTH_CLIENT_ID || '';
 const CLIENT_SECRET = process.env.CLIENT_SECRET || process.env.YT_OAUTH_CLIENT_SECRET || '';
 const PORT = parseInt(process.env.OAUTH_PORT || '8124', 10);
 const REDIRECT = 'http://localhost:' + PORT + '/oauth2callback';
-const SCOPE = 'https://www.googleapis.com/auth/youtube.readonly';
+const SCOPE = process.env.OAUTH_SCOPE || 'https://www.googleapis.com/auth/youtube.upload';   // upload video (era readonly: non bastava per caricare)
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
   console.error('\n✖ Mancano CLIENT_ID / CLIENT_SECRET.');
