@@ -1870,7 +1870,7 @@ function detonatePlanet(p){ try{
   impactHold=1.0; impactWhipK=1.0; impactArmed=false;   // (5) dramma: freno camera + whip post-urto (consumati dalla camera)
   try{ if(typeof Arc!=='undefined') Arc._white=Math.max(Arc._white,0.9); }catch(_){}   // dip-to-white maschera lo stacco
   try{ fallTarget=1; }catch(_){}                          // fine del RUSH
-  try{ if(typeof Flashback!=='undefined' && Math.random()<0.55) Flashback.arm('impact',1.2); }catch(_){}   // ~55% degli impatti → FLASHBACK (cutscene di still): rara/speciale, non ad ogni urto
+  try{ if(typeof Flashback!=='undefined' && Math.random()<0.35) Flashback.arm('impact',1.2); }catch(_){}   // ~35% degli impatti → FLASHBACK: rara/speciale, non ad ogni urto
 }catch(_){} }
 window.cadutaImpact=()=>{ try{ Arc._armImpact((typeof EF!=='undefined'&&EF.arc)||{}); return 'IMPACT armed'; }catch(e){ return ''+e; } };   // test console: astronauta distrugge un pianeta
 window.cadutaFlashback=(n)=>{ try{ if(typeof Flashback==='undefined') return 'no Flashback'; Flashback.cool=0; return Flashback.start('manual',n)?('FLASHBACK go ('+Flashback.shots.length+' still)'):('non pronto: loaded='+Flashback._loaded+' tex='+Flashback.tex.length+' active='+Flashback.active); }catch(e){ return ''+e; } };   // test console: lancia una cutscene di still
@@ -2632,7 +2632,7 @@ const FlashbackShader={
 const Flashback={
   on:true, active:false, _loaded:false, tex:[], shots:[], idx:0, t:0, dwell:0, amt:0, warp:0,
   ken0:new THREE.Vector4(), ken1:new THREE.Vector4(), cool:0, pend:0, pendReason:'', reason:'',
-  FILES:['cs_carina','cs_orion','cs_orion2','cs_m17','cs_flame','cs_helix','cs_corebulge','cs_deepfield'],
+  FILES:['cs_carina','cs_orion','cs_orion2','cs_m17','cs_flame','cs_helix'],   // solo le drammatiche: via corebulge/deepfield (campi-stelle scuri = "non sono niente")
   load(){ if(this._loaded) return; this._loaded=true;
     try{ this.tex=this.FILES.map(f=>{ const t=tex('assets/cutscenes/'+f+'.jpg'); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO; t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping; return t; }); }catch(_){ this.tex=[]; }
     this._warm(0); },
@@ -2645,10 +2645,10 @@ const Flashback={
     this.pend=Math.max(0.01,delay||0.6); this.pendReason=reason||''; return true; },
   start(reason,n){ if(!this.on||this.active||!this.tex.length) return false;
     this.active=true; this.reason=reason||''; this.pend=0;
-    const N=this.tex.length, k=Math.max(2,Math.min(n||(3+(Math.random()*3|0)),N)), pool=[]; for(let i=0;i<N;i++) pool.push(i);
+    const N=this.tex.length, k=Math.max(1,Math.min(n||(Math.random()<0.55?1:2),N)), pool=[]; for(let i=0;i<N;i++) pool.push(i);   // 1-2 immagini (non un slideshow frenetico): una scena bella tenuta a lungo
     this.shots=[]; for(let i=0;i<k;i++) this.shots.push(pool.splice((Math.random()*pool.length)|0,1)[0]);
     this.idx=0; this._beginShot(true); return true; },
-  _beginShot(first){ this.t=0; this.dwell=1.7+Math.random()*1.0;   // alternanza più rapida (le still non restano troppo)
+  _beginShot(first){ this.t=0; this.dwell=3.4+Math.random()*1.6;   // scena tenuta a lungo (3.4-5s) con Ken-Burns lento → contemplativa, non frenetica
     const dir=Math.random()<0.5?1:-1, z0=1.06+Math.random()*0.10, z1=z0+dir*(0.10+Math.random()*0.12);
     const px=(Math.random()*2-1)*0.09, py=(Math.random()*2-1)*0.07;
     this.ken0.set(px,py,z0,(Math.random()*2-1)*0.015); this.ken1.set(px*0.15,py*0.15,z1,(Math.random()*2-1)*0.015);
@@ -4868,6 +4868,12 @@ function deepZoomUpdate(dt){
   }
   // quad attivi: scala apparente (mai dolly/FOV) + opacità (finestra in log Θ, rate-limited) + tinta di continuità
   for(let q=0;q<2;q++){ const s=zoomQuads[q]; if(s.lv<0) continue; const L=zoomLevels[s.lv];
+    // ★ FIX "QUADRATI NERI": il quad-zoom NON deve mai renderizzarsi se la sua texture non è pronta.
+    // Prima: zAttachLevel lo rendeva visibile con map possibilmente null/non caricata → grande RETTANGOLO
+    // NERO/tinta dietro i pianeti durante i GALACTIC DIVE. Ora: nascosto finché state===2, poi riaggancia la texture.
+    if(!L || L.state!==2 || !L.tex){ s.op=0; s.mesh.material.opacity=0; s.mesh.visible=false; continue; }
+    if(s.mesh.material.map!==L.tex){ s.mesh.material.map=L.tex; s.mesh.material.needsUpdate=true; }
+    if(!s.mesh.visible) s.mesh.visible=true;
     // legge di scala LINEARE (C¹, mai clampata): un punto a 'a' gradi dal GC finisce a schermo in
     // D·a_rad·(hf/Θ) per QUALSIASI livello → i quad consecutivi combaciano ESATTAMENTE su tutta la
     // sovrapposizione (non solo al centro) e lo zoom non si congela mai (la tan(θ/2)+clamp 170° sì:
