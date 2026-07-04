@@ -979,7 +979,7 @@ let starLayers=[], fastDust=null, nebSheets=[], bloomDiv=(ULTRA?1:2);   // ULTRA
 const STAR_MUL=(ULTRA?2.7:1.2), DUST_MUL=(ULTRA?6:1.5);   // "VIAGGIO INCREDIBILE": campo stellare + polvere MOLTO più densi (punti = economici; la 5090 straborda). Base alzata anche fuori ULTRA.
 const planets=[], nearStars=[], wisps=[];
 let asteroids, astData=[];
-const DUST_N=Math.round(300*DUST_MUL),DZN=240,DZF=-260,DSP=98, AST_N=Math.round(90*(ULTRA?4:1.4));   // DSP 130→98: stessi grani più fitti/vicini = fiume di polvere, non pulviscolo rado   // polvere (1800 in ULTRA) + cintura asteroidi (360 in ULTRA) MOLTO più dense → senso di viaggio e materia attraversata
+const DUST_N=Math.round(300*DUST_MUL),DZN=240,DZF=-260,DSP=98, AST_N=Math.round(90*(ULTRA?2:1));   // DSP 130→98: stessi grani più fitti/vicini = fiume di polvere, non pulviscolo rado   // polvere (1800 in ULTRA) + cintura asteroidi (360 in ULTRA) MOLTO più dense → senso di viaggio e materia attraversata
 let lensflare, mystery, parallel, supernova, blackhole, lensPass, smaaPass;
 let nebulaField, comet, cluster, derelict, cometTail;
 let pulsar, redgiant, binary, remnant;
@@ -3444,7 +3444,7 @@ let shaderTime=0; const SWRAP=100000;
 let camPhase=0,camDist=10,started=false,camOrbit=0,manSpin=0;
 let camMoveAz=0,camMoveEl=0,camMoveDs=0,camMoveAzT=0,camMoveElT=0,camMoveDsT=0,camMoveNext=20,camMoveScale=1;   // RIFRAME lenti: la camera plana verso nuove inquadrature e vi indugia (richiesta utente: "più cambi di inquadratura")
 let camOrbitP=1,camOrbitDir=1,camOrbitNext=6,camOrbitType=0,camOrbitDur=22,camOrbitLive=0;   // FIGURE: giro 360° completo attorno all'astronauta (dominante) + arco verticale; P=progresso 0..1
-let camOrbitOn=true;    // GIRI DI CAMERA ATTIVI: dolly orizzontale continuo + figure 360° attorno all'astronauta → mostra tutto l'universo (meno monotonia). cadutaCamOrbit(false) li rispegne.
+let camOrbitOn=false;   // GIRI DI CAMERA OFF (richiesta utente): camera FRONTALE + lo SFONDO che RUOTA di continuo (camSceneRoll) come prima; niente orbita che rivela il lato vuoto dietro. cadutaCamOrbit(true) li riaccende.
 let camDriftAng=0,camDriftRate=0.05,camDriftRateT=0.05,camDriftRetarget=20,camDriftEase=1;    // DOLLY CIRCOLARE PERPETUO (azimut): rivoluzione lenta SEMPRE attiva attorno all'astronauta (rad/s, ~2-3.5 min/giro) — la camera non è mai ferma; nel dive rientra a 0 in rampa (lo zoom deve restare in asse)
 let camDriftVAng=0,camDriftVRateT=0,camDriftVRetarget=26;                                     // QUOTA VERTICALE: ondulazione LIMITATA (±~20°, camDriftVRateT = angolo bersaglio) — la camera resta principalmente sulla BANDA centrale (richiesta utente: i poli si attraversano SOLO nei giri verticali completi, mai parcheggiati)
 let camRegimeT=30,camRegH=1,camRegV=0.15;                                                     // REGIME DI ROTAZIONE: la danza CAMBIA CARATTERE ogni ~45-100s — solo orizzontale a cerchio, solo verticale, o combinata (mai lo stesso moto fisso)
@@ -3681,8 +3681,8 @@ function animate(){
   if(shower && shower!==shownShowerLog){ shownShowerLog=shower; $t.log.textContent='— meteor shower: the '+shower+'. The sky is on fire.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),13000); }
   if(!shower) shownShowerLog='';
   // asteroidi / meteore (+ conteggio sfiorati)
-  const _astN=Math.max(1, !!shower?AST_N:Math.round(AST_N*(0.10+Math.max(director.cur.aster,(typeof Regions!=='undefined'?Regions.mul.aster:0))*0.90)));   // floor ~10% di sassi radi SEMPRE (mai "vuoto in movimento"); pieno campo in CINTURA (Regions.mul.aster=1)
-  asteroids.visible=true; asteroids.count=_astN;
+  const _astN=(!!shower)?AST_N:Math.round(AST_N*Math.max(director.cur.aster,(typeof Regions!=='undefined'?Regions.mul.aster:0))*0.9);   // asteroidi SOLO nella cintura / preset ad alta densità (Regions.mul.aster=1) → niente sassi scuri sparsi sui pianeti; a riposo aster≈0 → 0 asteroidi
+  asteroids.visible=(_astN>0)||!!shower; asteroids.count=Math.max(1,_astN);
   if(asteroids.visible){ const adz=speed*dt*(shower?2.4:1.2);
     for(let i=0;i<_astN;i++){ const a=astData[i]; const pz=a.z; a.z+=adz; a.rx+=a.vrx*dt; a.ry+=a.vry*dt; a.rz+=a.vrz*dt;
       if(pz<0&&a.z>=0){ const _hd=Math.hypot(a.x,a.y);
