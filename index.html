@@ -1053,7 +1053,7 @@ let sling=0, bhClose=false, flythruCD=0;    // fionda gravitazionale (buco nero)
 let flythruWarp=0; const flythruWarpPos=new THREE.Vector3();   // WARP tipo buco nero quando l'astronauta SFONDA un pianeta (lensing transitorio)
 let bigPlanetNear=0, slowMo=1;                                 // SLOW-MOTION vicino ai giganti (momento "low motion")
 let cam360Timer=70+Math.random()*70, cam360Ang=0, cam360On=false, cam360Dir=1;   // SCENE a 360°: la camera fa un giro completo attorno all'astronauta ogni tanto
-let tunnelCamRoll=0, tunnelFovK=0, tunnelTimer=150+Math.random()*150;   // TUNNEL DI STELLE: roll+fov guidati dal tunnel, timer auto
+let tunnelCamRoll=0, tunnelFovK=0, tunnelTimer=150+Math.random()*150, tunnelDim=1;   // TUNNEL DI STELLE: roll+fov guidati dal tunnel, timer auto, tunnelDim: 1=scena normale → ~0.15 durante il tunnel (il tunnel DOMINA)
 let fallMul=1, fallTarget=1, fallPhaseT=90, fallAuto=false, fallFast=false;   // CADUTA LENTA di default (niente fasi warp): drift calmo da documentario. cadutaFall('auto') riattiva i cicli veloci, cadutaFall(x) override manuale
 // --- REAZIONE SOBRIA al colpo/sfioramento (solo passaggi NATURALI ravvicinati) ---
 let hitFlash=0, hitTremor=0, hitTumble=0;          // scalari decadenti del colpo meteora (one-shot)
@@ -2086,21 +2086,25 @@ class StarTunnel{
         void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d); float a=smoothstep(0.5,0.0,r);
           vec3 c=mix(vec3(0.55,0.72,1.0),vec3(1.0,0.98,0.9),vB);
           gl_FragColor=vec4(c*(0.3+2.1*vB), a*uOp*(0.35+0.65*vB)); }`});
-    this.pts=new THREE.Points(this.geo,this.mat); this.pts.frustumCulled=false; this.pts.renderOrder=7; this.pts.visible=false; scene.add(this.pts);
+    this.pts=new THREE.Points(this.geo,this.mat); this.pts.frustumCulled=false; this.pts.renderOrder=21; this.pts.visible=false; scene.add(this.pts);
+    // BLACKOUT: sfera nera attorno alla camera che COPRE tutta la scena (ESO/pianeti/tutto) → durante il tunnel si vede SOLO il tunnel.
+    this.black=new THREE.Mesh(new THREE.SphereGeometry(3000,24,16), new THREE.MeshBasicMaterial({color:0x000000,side:THREE.BackSide,transparent:true,opacity:0,depthWrite:false,depthTest:false,fog:false,toneMapped:false}));
+    this.black.renderOrder=20; this.black.frustumCulled=false; this.black.visible=false; scene.add(this.black);
     this.active=false; this.t=0; this.dur=0; this._pos=pos; this._sz=sz; this._bhFired=false;
   }
   _place(pos,sz,i,anyZ){ const a=Math.random()*6.28318, rr=5+Math.random()*74;      // CILINDRO attorno all'asse di caduta
     pos[i*3]=Math.cos(a)*rr; pos[i*3+1]=Math.sin(a)*rr; pos[i*3+2]=anyZ?(-720+Math.random()*740):(-720-Math.random()*40);
     sz[i]=0.6+Math.random()*2.4; }
-  start(dur){ if(this.active) return false; this.active=true; this.t=0; this.dur=Math.max(14,dur||26); this._bhFired=false; this.pts.rotation.z=0; this.pts.visible=true;
+  start(dur){ if(this.active) return false; this.active=true; this.t=0; this.dur=Math.max(14,dur||26); this._bhFired=false; this.pts.rotation.z=0; this.pts.visible=true; this.black.visible=true;
     try{ if($t&&$t.log){ $t.log.textContent='— the star tunnel. Hold on.'; $t.log.classList.add('on'); setTimeout(()=>{try{$t.log.classList.remove('on');}catch(_){}},9000);} }catch(_){} return true; }
-  update(dt){ if(!this.active){ tunnelFovK=Math.max(0,tunnelFovK-dt*2.0); return; } this.t+=dt;
+  update(dt){ if(!this.active){ tunnelFovK=Math.max(0,tunnelFovK-dt*2.0); if(this.black.visible){ this.black.material.opacity=0; this.black.visible=false; } return; } this.t+=dt;
     const spd=1350, p=this._pos;
     for(let i=0;i<this.N;i++){ p[i*3+2]+=spd*dt; if(p[i*3+2]>30) this._place(p,this._sz,i,false); }   // rush verso la camera; riciclo dietro
     this.geo.attributes.position.needsUpdate=true;
     this.pts.rotation.z+=dt*1.9;                                                     // il tunnel RUOTA (spirale)
     const fin=THREE.MathUtils.clamp(this.t/1.6,0,1), fout=THREE.MathUtils.clamp((this.dur-this.t)/2.4,0,1), k=Math.min(fin,fout);
     this.mat.uniforms.uOp.value=k; this.mat.uniforms.uPix.value=PIX;
+    this.black.material.opacity=Math.min(1,k*1.4);                                   // ★ BLACKOUT: copre TUTTA la scena (né ESO né pianeti né nulla) → si vede SOLO il tunnel
     tunnelFovK+=(k-tunnelFovK)*Math.min(1,dt*2.2);                                   // FOV-warp guidato dal tunnel (ease pulito, niente accumulo)
     if(!this._bhFired && this.t>this.dur-3.4){ this._bhFired=true;                   // ★ ALL'USCITA: un BLACK HOLE davanti
       try{ if(typeof blackhole!=='undefined'&&blackhole&&!blackhole.active){ blackhole.spawn(); blackhole._dir.set(0,0.02,-1).normalize(); blackhole._R0=1000; blackhole._rad=1000; blackhole._slow=0.5; blackhole.group.scale.setScalar(54); blackhole.group.position.copy(blackhole._dir).multiplyScalar(1000); } }catch(_){} }
