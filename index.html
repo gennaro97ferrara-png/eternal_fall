@@ -1801,6 +1801,7 @@ class Planet{
         this._flythru=true; try{ destroyOnFlythrough(this); }catch(_){} this.active=false; this.mesh.visible=false; return; }
       op*=_clr*_clr*(3-2*_clr); }
     if(!(op>=0)) op=0;   // anti-NaN: qualunque NaN a monte non deve mai diventare un quadro nero opaco
+    { const _tm=this.mat.map; if(_tm&&(!_tm.image||!(_tm.image.width||_tm.image.complete))) op=0; }   // ★ 3ª guardia: texture non pronta → pianeta INVISIBILE (mai un disco NERO da texture non caricata)
     this.mat.opacity=op; this.atmoMat.uniforms.uOp.value=op; this.ringMat.uniforms.uOp.value=op;
     if(this.clouds.visible){ this.clouds.rotation.y+=dt*0.018; this.cloudMat.opacity=op; }
     // ★ luce EFFICACE (fix "quadrati neri SUI PIANETI"): un pianeta che RIEMPIE il quadro (gigante vicino) mostrerebbe il
