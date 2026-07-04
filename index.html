@@ -1729,7 +1729,7 @@ class Planet{
     // passaggio ravvicinato NATURALE e raro (armato da grazeNext): riempie il quadro ma sfiora SOLO l'alta atmosfera.
     // garanzia: superficie solida a (dist-r), tetto atmosfera a r*1.025; con dist=r*1.18+14+rand*8 → clearance 0.155*r+14 > 0 SEMPRE.
     const _flyby=grazeNext && !this.isSun && !forceSun && forceIdx==null && !_distant;
-    this._graze=_flyby; this._distant=_distant; this._impact=false; this._spawnT=0; this._heroLit=false;   // micro-fade allo spawn; _heroLit: solo i giganti-hero del montaggio puntano la luce verso la camera
+    this._graze=_flyby; this._distant=_distant; this._impact=false; this._spawnT=0; this._heroLit=false; this._spawnZ=null;   // micro-fade allo spawn; _spawnZ catturato al 1º update (dopo eventuale ri-posizionamento montaggio/impact); _heroLit: giganti-hero puntano la luce verso la camera
     if(_distant){
       this._scatterDistant();   // guscio di sfondo: bersaglio-schermo ai bordi (anti-cluster), z profondo, deriva lenta → su TUTTO il quadro
     } else {
@@ -1767,6 +1767,7 @@ class Planet{
   }
   update(dt,speed){
     if(!this.active) return;
+    if(this._spawnZ==null) this._spawnZ=this.mesh.position.z;   // z reale di spawn (anche montaggio/impact ri-posizionati) → fade-in dal punto giusto, niente "compare dal nulla"
     this.mesh.rotation.y+=this.spin*dt;   // traslazione per-tier sotto: RADIALE per i lontani (guscio), z per gli hero (corsia)
     let op, z;
     if(this._distant){
@@ -1782,7 +1783,8 @@ class Planet{
       if(this._impact){ const _px=this.mesh.position, _d=Math.sqrt(_px.x*_px.x+_px.y*_px.y+_px.z*_px.z);   // AZIONE: il pianeta viene INCONTRO all'astronauta (origine); quando la superficie tocca → DETONA
         if(_d<=this.mesh.scale.x*1.04){ try{ detonatePlanet(this); }catch(_){} this.active=false; this.mesh.visible=false; this._impact=false; return; } }
       const outEnd=340+this.mesh.scale.x*2.0;
-      const opIn=THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1);        // dissolvenza dal profondo
+      const _fw=(this._spawnZ>-1500)?300:700;                       // spawn ravvicinati (montaggio/impact z>-1500): fade-in in ~300u di corsa → niente pop-in, ma svelto
+      const opIn=THREE.MathUtils.clamp((z-this._spawnZ)/_fw,0,1);   // dissolvenza dal punto di spawn REALE (non da SPAWN_Z fisso)
       const opOut=THREE.MathUtils.clamp((outEnd-z)/(this.mesh.scale.x*2.6+200),0,1); // dissolvenza in uscita (niente pop)
       op=Math.min(opIn,opOut);
     }
@@ -1791,7 +1793,7 @@ class Planet{
     // per qualche frame → dissolvi il corpo appena la sua superficie raggiunge la camera. Sui pianeti normali (dist_xy>R) non morde mai.
     if(!this._distant){ const _R=this.mesh.scale.x;
       const _dcx=this.mesh.position.x-camera.position.x, _dcy=this.mesh.position.y-camera.position.y, _dcz=this.mesh.position.z-camera.position.z;
-      const _dCam=Math.sqrt(_dcx*_dcx+_dcy*_dcy+_dcz*_dcz), _clr=THREE.MathUtils.clamp((_dCam-_R)/(_R*0.22),0,1);
+      const _dCam=Math.sqrt(_dcx*_dcx+_dcy*_dcy+_dcz*_dcz), _clr=THREE.MathUtils.clamp((_dCam-_R)/(_R*0.12),0,1);   // banda stretta: dissolve SOLO all'inghiottimento, non "trasparente" in avvicinamento
       op*=_clr*_clr*(3-2*_clr); }
     if(!(op>=0)) op=0;   // anti-NaN: qualunque NaN a monte non deve mai diventare un quadro nero opaco
     this.mat.opacity=op; this.atmoMat.uniforms.uOp.value=op; this.ringMat.uniforms.uOp.value=op;
@@ -2609,7 +2611,7 @@ function currentShower(){ if(window._forceShower) return window._forceShower; co
 // grana/vignetta/streak cinematici. Le still sono precaricate (è un VIDEO): niente pop-in.
 const FlashbackShader={
   uniforms:{ tDiffuse:{value:null}, tFlash:{value:null}, uAmt:{value:0}, uTime:{value:0}, uWarp:{value:0},
-    uAspect:{value:1.777}, uImgAspect:{value:1.5}, uSat:{value:1.16}, uVig:{value:1.0}, uKen:{value:new THREE.Vector4(0,0,1.08,0)} },
+    uAspect:{value:1.777}, uImgAspect:{value:1.777}, uSat:{value:1.16}, uVig:{value:1.0}, uKen:{value:new THREE.Vector4(0,0,1.08,0)} },
   vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position,1.0); }`,
   fragmentShader:`uniform sampler2D tDiffuse,tFlash; uniform float uAmt,uTime,uWarp,uAspect,uImgAspect,uSat,uVig; uniform vec4 uKen; varying vec2 vUv;
     void main(){ vec4 scene=texture2D(tDiffuse,vUv);
@@ -2646,13 +2648,13 @@ const Flashback={
     const N=this.tex.length, k=Math.max(2,Math.min(n||(3+(Math.random()*3|0)),N)), pool=[]; for(let i=0;i<N;i++) pool.push(i);
     this.shots=[]; for(let i=0;i<k;i++) this.shots.push(pool.splice((Math.random()*pool.length)|0,1)[0]);
     this.idx=0; this._beginShot(true); return true; },
-  _beginShot(first){ this.t=0; this.dwell=2.2+Math.random()*1.3;
+  _beginShot(first){ this.t=0; this.dwell=1.7+Math.random()*1.0;   // alternanza più rapida (le still non restano troppo)
     const dir=Math.random()<0.5?1:-1, z0=1.06+Math.random()*0.10, z1=z0+dir*(0.10+Math.random()*0.12);
     const px=(Math.random()*2-1)*0.09, py=(Math.random()*2-1)*0.07;
     this.ken0.set(px,py,z0,(Math.random()*2-1)*0.015); this.ken1.set(px*0.15,py*0.15,z1,(Math.random()*2-1)*0.015);
     this.warp=first?1.0:0.5;
     const t=this.tex[this.shots[this.idx]];
-    if(flashbackPass){ flashbackPass.uniforms.tFlash.value=t; flashbackPass.uniforms.uImgAspect.value=(t&&t.image&&t.image.width)?(t.image.width/t.image.height):1.5; }
+    if(flashbackPass){ flashbackPass.uniforms.tFlash.value=t; flashbackPass.uniforms.uImgAspect.value=(t&&t.image&&t.image.width)?(t.image.width/t.image.height):((typeof WIDTH!=='undefined'&&WIDTH)?WIDTH/HEIGHT:1.777); }   // fallback = aspetto schermo (copre), poi corretto per-frame in update() quando l'immagine è pronta
     try{ if(typeof Arc!=='undefined') Arc._white=Math.max(Arc._white||0,first?0.7:0.55); }catch(_){}   // dip-to-white maschera lo stacco tra le still
   },
   update(dt){ if(this.cool>0) this.cool-=dt;
@@ -2666,6 +2668,7 @@ const Flashback={
     const kp=THREE.MathUtils.clamp(this.t/this.dwell,0,1), ks=kp*kp*(3-2*kp);
     if(u){ u.uAmt.value=this.amt; u.uWarp.value=this.warp; u.uTime.value=(u.uTime.value+dt)%1000;
       u.uAspect.value=(typeof WIDTH!=='undefined'&&WIDTH)?(WIDTH/HEIGHT):1.777;
+      const _ct=u.tFlash.value; if(_ct&&_ct.image&&_ct.image.width) u.uImgAspect.value=_ct.image.width/_ct.image.height;   // aspetto reale appena l'immagine è pronta → cover fullscreen, mai "quadrato centrale"
       _fbk.copy(this.ken0).lerp(this.ken1,ks); u.uKen.value.copy(_fbk); }
     if(this.t>=this.dwell){ this.idx++; if(this.idx>=this.shots.length) this._end(); else this._beginShot(false); } },
   _end(){ this.active=false; this.amt=0; this.warp=0; this.cool=22+Math.random()*22; this.shots=[]; if(flashbackPass) flashbackPass.uniforms.uAmt.value=0; }
@@ -4873,7 +4876,7 @@ function deepZoomUpdate(dt){
     s.mesh.scale.set(w,w*(L.ah/L.aw),1);
     let tgt=(s.lv===zoomNxtI)?smooth(L.lgA,L.lgB,lg):1;                   // entrante: smoothstep su Θ∈[A,0.72A]; corrente: pieno
     if(zoomProcOp>=0.995 && s.lv===zoomCurI && zoomNxtI<0) tgt=0;         // il procedurale ha preso il testimone → l'ultima foto "si risolve in stelle"
-    const _rl=(zoomCurI<0&&s.lv===zoomNxtI)?dt/0.8:dt/1.2;                // la PRIMA immagine del ciclo fiorisce più in fretta (accorcia il blink d'ingresso)
+    const _rl=(zoomCurI<0&&s.lv===zoomNxtI)?dt/0.55:dt/0.85;              // crossfade più svelto → le immagini zoom si alternano più in fretta (non restano troppo)
     s.op+=THREE.MathUtils.clamp(tgt-s.op,-_rl,_rl);                       // rate-limit → mai pop (anche con load in ritardo)
     s.mesh.material.opacity=s.op*rf;
     s.mesh.material.color.copy(_zSkyTint).lerp(_zNeutral,Math.min(1,s.lv*0.5));   // L1 = tinta sky corrente SENZA dim (a cielo spento resta viva) → neutro da L3
@@ -4941,7 +4944,7 @@ window.cadutaZoom=(opts)=>{ opts=opts||{};
   if(zoomState!=='idle') return 'dive già in corso ('+zoomState+') — cadutaZoomStop() per uscire';
   zoomMode=(opts.mode==='loop')?'loop':'once'; zoomKOpt=(+opts.k>0)?+opts.k:null;
   zoomDur=Math.max(5,+opts.dur||(zoomMode==='loop'?7:90));                  // loop RIPIDISSIMO (ciclo ~7s): le immagini si ALTERNANO in fretta → mai un universo vuoto tra una e l'altra
-  zoomHold=Math.max(0.3,+opts.hold||0.5); zoomWorldBoost=Math.max(1,+opts.world||8);   // respiro procedurale MINIMO (~0.5s): si passa quasi subito alla prossima immagine (niente lungo flusso di stelle "vuoto")
+  zoomHold=Math.max(0.25,+opts.hold||0.35); zoomWorldBoost=Math.max(1,+opts.world||8);   // respiro procedurale ridotto (~0.35s): si passa PRIMA alla prossima immagine (alternanza più rapida)
   zoomAutoStarted=!!opts._auto;                                            // i dive lanciati a mano NON vengono chiusi dalla regia automatica
   zoomState='arm'; zoomArmT=0;                                            // il dive parte quando manifest pronti E nessun crossfade sky in corso (watchdog 30s)
   zoomLoadCfg().then(ok=>{ if(!ok&&zoomState==='arm'){ zoomState='idle'; return; }
