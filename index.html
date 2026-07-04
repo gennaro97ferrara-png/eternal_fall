@@ -464,14 +464,15 @@ const Arc={
   satPeak:1.38, budgetT:15+Math.random()*20,   // primo momento-eroe SUBITO (~15-35s); a regime ~1-2min via EF.arc — show CONTINUAMENTE eventful (energia V1)
   kind:null, label:'', nextBeatT:0, _lastKind:null, _armed:false, _mbOn:false, _mbT:0, _mbEvery:0.78, _mbN:0, _mbTotal:6, _white:0,
   _ease(x){ x=x<0?0:x>1?1:x; return x*x*(3-2*x); },
-  _label(k){ return k==='zoom'?'GALACTIC DIVE':k==='showpiece'?'DEEP SIGNAL':k==='montage'?'TRANSMISSION BURST':'CLOSE APPROACH'; },
+  _label(k){ return k==='impact'?'DIRECT IMPACT':k==='zoom'?'GALACTIC DIVE':k==='showpiece'?'DEEP SIGNAL':k==='montage'?'TRANSMISSION BURST':'CLOSE APPROACH'; },
   _pickKind(){ const s=(typeof EF!=='undefined'&&EF.arc&&EF.arc.crestType)||null; if(s) return s;
-    const pool=['planet','showpiece','zoom','montage']; let k; do{ k=pool[Math.random()*pool.length|0]; }while(k===this._lastKind); this._lastKind=k; return k; },
+    const pool=['impact','impact','planet','showpiece','zoom','montage']; let k; do{ k=pool[Math.random()*pool.length|0]; }while(k===this._lastKind); this._lastKind=k; return k; },   // 'impact' pesato 2× (il momento-firma d'azione)
   // --- PAYLOAD del CREST: eseguiti UNA volta all'ingresso CREST (arm), puliti al RELEASE (disarm). Tutto guardato/try-catch. ---
   arm(kind){ if(this._armed) return; this._armed=true; const sp=(typeof EF!=='undefined'&&EF.arc)||{};
     if(kind==='zoom'){ if(!this._armZoom(sp)) this._armMontage(sp); }       // zoom fallisce il gate idle → ripiega su montaggio (non fallisce mai)
     else if(kind==='showpiece'){ this._armShowpiece(sp); }
     else if(kind==='montage'){ this._armMontage(sp); }
+    else if(kind==='impact'){ this._armImpact(sp); }
     else this._armPlanet(sp); },
   disarm(){ this._armed=false;
     if(this._mbOn){ this._white=Math.max(this._white,0.9); this._mbOn=false; }   // flash finale lungo maschera il rientro alla caduta
@@ -494,6 +495,12 @@ const Arc={
   _armPlanet(sp){ try{ if(typeof planets==='undefined') return; const fp=planets.find(p=>!p.active)||planets[0]; if(!fp) return;
       fp.spawn(false,null,false); fp.mesh.position.set(38+(Math.random()*8-4),6,-240);
       const g=(sp&&sp.planetScale)||(4+Math.random()*3); fp.mesh.scale.multiplyScalar(g); if(fp.glow) fp.glow.scale.multiplyScalar(g); }catch(_){} },
+  _armImpact(sp){ try{ if(typeof planets==='undefined') return; const fp=planets.find(p=>!p.active)||planets[0]; if(!fp) return;
+      fp.spawn(false,null,false); fp.mesh.position.set(0,0,-1400);                    // pianeta CENTRATO che viene incontro all'astronauta
+      const g=(sp&&sp.impactScale)||(5+Math.random()*2.5); fp.mesh.scale.multiplyScalar(g); if(fp.glow) fp.glow.scale.multiplyScalar(g);
+      fp._impact=true; fp._graze=false; fp._distant=false; fp._passK=6.0;             // avanza FORTE verso l'origine → collisione in ~4-6s
+      impactArmed=true; impactWhip=(Math.random()<0.5?-1:1);
+      try{ fallTarget=Math.max(fallTarget,14); }catch(_){} }catch(_){} },             // RUSH: la caduta impenna verso il pianeta
   _armShowpiece(sp){ try{ const pick=(sp&&sp.showpiece)||['eclipse','supernova','blackhole','wormhole'][Math.random()*4|0];
       if(pick==='eclipse'){ if(typeof solarEclipse!=='undefined'&&solarEclipse&&!solarEclipse.active) solarEclipse.spawn(); }
       else if(pick==='supernova'){ if(typeof supernova!=='undefined'&&supernova&&supernova.flash) supernova.flash(); }
@@ -721,7 +728,7 @@ const EF={
     this.nebSig=0.7+r()*0.6; this.nebSheetsN=7+((r()*7)|0); this.nebHue=r();                // nebulosa: densità/n.lastre/hue
     this.cam={ regimeBias:r(), dollyGain:0.6+r()*0.8, rollGain:0.4+r()*1.2, reframeMul:0.7+r()*0.7, orbitFreq:0.6+r()*0.8 };   // carattere camera
     // FIRMA ARC per-capitolo (stream indipendente, ordine-safe): ogni episodio ha un climax firmato e riproducibile
-    try{ const ra=this.rng('arc'), _ck=['planet','showpiece','zoom','montage'];
+    try{ const ra=this.rng('arc'), _ck=['impact','impact','planet','showpiece','zoom','montage'];
       this.arc={ crestType:_ck[(ra()*_ck.length)|0], crestEvery:50+ra()*70, satPeak:((typeof ULTRA!=='undefined'&&ULTRA)?1.48:1.36)+ra()*0.12,
         zoomDur:((typeof ULTRA!=='undefined'&&ULTRA)?200:140)+ra()*40, zoomWorld:2.2+ra()*0.8, planetScale:4+ra()*3,
         showpiece:['eclipse','supernova','blackhole','wormhole'][(ra()*4)|0] }; }catch(_){ this.arc=null; }
@@ -1034,6 +1041,7 @@ let astHitCD=0;                                     // cooldown anti doppio-trig
 const _hitImp=new THREE.Vector3();                  // impulso direzionale RIUSATO (mai allocato nel loop)
 let planetBuffet=0;                                 // buffeting continuo dalla ghiera d'atmosfera del pianeta (0..1)
 let grazeNext=false;                               // il PROSSIMO spawn di pianeta sarà un raro flyby ravvicinato
+let impactArmed=false, impactHold=0, impactWhip=0, impactWhipK=0;   // AZIONE: stato del payload Arc 'impact' (astronauta che distrugge un pianeta)
 let hitFlip=0, hitFlipTarget=0, grazeFired=false;  // BURST all'impatto: 3-4 capriole verticali veloci su se stesso, poi atterra dritto
 let manMixer=null;
 let built=false, exposureCur=1.0;
@@ -1702,7 +1710,7 @@ class Planet{
     // passaggio ravvicinato NATURALE e raro (armato da grazeNext): riempie il quadro ma sfiora SOLO l'alta atmosfera.
     // garanzia: superficie solida a (dist-r), tetto atmosfera a r*1.025; con dist=r*1.18+14+rand*8 → clearance 0.155*r+14 > 0 SEMPRE.
     const _flyby=grazeNext && !this.isSun && !forceSun && forceIdx==null && !_distant;
-    this._graze=_flyby; this._distant=_distant;
+    this._graze=_flyby; this._distant=_distant; this._impact=false;
     if(_distant){
       this._scatterDistant();   // guscio di sfondo: bersaglio-schermo ai bordi (anti-cluster), z profondo, deriva lenta → su TUTTO il quadro
     } else {
@@ -1752,6 +1760,8 @@ class Planet{
         op=Math.min(fadeIn,fadeOut)*zoomWorldDimN; }   // fade a due lati (bordo esterno / interno) + ×zoomWorldDimN (nel deep zoom i mondi-sfondo spariscono)
     } else {
       this.mesh.position.z+=Math.max(speed*(this._driftK+this._passK),24)*dt; z=this.mesh.position.z;   // hero: SORPASSO nella corsia (-z→+z) con PAVIMENTO 24/s (mai fermi nei momenti calmi)
+      if(this._impact){ const _px=this.mesh.position, _d=Math.sqrt(_px.x*_px.x+_px.y*_px.y+_px.z*_px.z);   // AZIONE: il pianeta viene INCONTRO all'astronauta (origine); quando la superficie tocca → DETONA
+        if(_d<=this.mesh.scale.x*1.04){ try{ detonatePlanet(this); }catch(_){} this.active=false; this.mesh.visible=false; this._impact=false; return; } }
       const outEnd=340+this.mesh.scale.x*2.0;
       const opIn=THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1);        // dissolvenza dal profondo
       const opOut=THREE.MathUtils.clamp((outEnd-z)/(this.mesh.scale.x*2.6+200),0,1); // dissolvenza in uscita (niente pop)
@@ -1815,6 +1825,20 @@ function seedCompanions(){
 }
 // Fase B: window.cadutaAddStar(name) accende subito una stella del pubblico
 window.cadutaAddStar=(name)=>{ if(!name) return; companionPool.push(String(name).slice(0,40)); TEL.companions++; flipTarget+=6.28318*2.5; };  // arriva qualcuno → capriola verticale più ampia (2.5 giri)
+// AZIONE: l'astronauta SFONDA un pianeta → lampo + onda d'urto + il pianeta esplode in frammenti + scossa. Riuso Supernova/ShatteredWorld/Bolide (Supernova pilotata a mano: niente voce/log ad ogni impatto).
+function detonatePlanet(p){ try{
+  const pos=p.mesh.position, sc=p.mesh.scale.x;
+  try{ if(supernova){ supernova.active=true; supernova.t=0;
+      supernova.spr.visible=true; supernova.spr.position.copy(pos); supernova.spr.material.color.set(0xffffff); supernova.spr.material.opacity=1.8; supernova.spr.scale.setScalar(Math.max(60,sc*2.2));
+      supernova.ring.visible=true; supernova.ring.position.copy(pos); supernova.ring.material.opacity=0.6; supernova.ring.scale.setScalar(sc*0.6); } }catch(_){}   // (1) LAMPO + ONDA D'URTO sul posto
+  try{ if(shattered){ shattered.spawn(); shattered.g.position.copy(pos); shattered.g.scale.setScalar(Math.max(1,sc/16)); shattered._explode=true; shattered._t=0; } }catch(_){}   // (2) il pianeta DIVENTA i suoi frammenti che schizzano
+  try{ if(bolide&&!bolide.active){ bolide.spawn(); if(bolide.pts) bolide.pts.position.copy(pos); } }catch(_){}   // (3) schegge extra
+  try{ hitFlash=Math.max(hitFlash,1.0); hitTremor=Math.max(hitTremor,0.32); hitTumble=Math.max(hitTumble,0.25); hitFlipTarget+=6.28318*(4+Math.random()*2); _hitImp.set((Math.random()*2-1)*0.3,(Math.random()*2-1)*0.3,0.6); }catch(_){}   // (4) l'astronauta viene SCARAVENTATO indietro + capriole + flash visore
+  impactHold=1.0; impactWhipK=1.0; impactArmed=false;   // (5) dramma: freno camera + whip post-urto (consumati dalla camera)
+  try{ if(typeof Arc!=='undefined') Arc._white=Math.max(Arc._white,0.9); }catch(_){}   // dip-to-white maschera lo stacco
+  try{ fallTarget=1; }catch(_){}                          // fine del RUSH
+}catch(_){} }
+window.cadutaImpact=()=>{ try{ Arc._armImpact((typeof EF!=='undefined'&&EF.arc)||{}); return 'IMPACT armed'; }catch(e){ return ''+e; } };   // test console: astronauta distrugge un pianeta
 window.cadutaDebugHit=(n)=>{ hitFlipTarget+=6.28318*(n||4); hitFlash=Math.max(hitFlash,0.6); return 'BURST x'+(n||4); };  // test: capriole verticali da impatto (console)
   window.cadutaFall=(m)=>{ if(m===undefined||m==='auto'){ fallAuto=true; return 'fase di caduta: AUTO (cicli 2-5 min)'; } fallAuto=false; fallTarget=fallMul=(+m||1); return 'velocità di caduta ×'+fallMul+' (manuale; cadutaFall("auto") per riattivare le fasi)'; };
   // taratura del SORPASSO dei mondi (si applica ai prossimi spawn; quelli in volo mantengono il loro)
@@ -2728,21 +2752,26 @@ class ShatteredWorld{
     for(let i=0;i<this.N;i++){ this.ph[i]=Math.random()*6.283; this.rad[i]=cr*(1.7+Math.random()*1.4); this.yj[i]=(Math.random()*2-1)*cr*0.25;
       this.sp[i]=(0.2+Math.random()*0.3)*(Math.random()<0.5?1:-1); this.sz[i]=cr*(0.05+Math.random()*0.09);
       this.rot[i*3]=Math.random()*6.283; this.rot[i*3+1]=Math.random()*6.283; this.rot[i*3+2]=Math.random()*6.283; }
+    this._explode=false; this._t=0;                                   // AZIONE: modalità esplosione (detriti che schizzano via)
+    if(!this.rad0){ this.rad0=new Float32Array(this.N); this.vexp=new Float32Array(this.N); }
+    for(let i=0;i<this.N;i++){ this.rad0[i]=this.rad[i]; this.vexp[i]=cr*(1.4+Math.random()*3.4); }   // velocità radiale per-scheggia
     this.tilt=(Math.random()*2-1)*0.5; this.g.rotation.set(this.tilt,Math.random()*6.28,0);
     const ang=Math.random()*Math.PI*2,dist=cr*2.4+90+Math.random()*130;
     this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*55,SPAWN_Z-Math.random()*380);
     this.spin=(Math.random()*2-1)*0.01; this.g.visible=true; }
-  update(dt,speed){ if(!this.active) return; this.g.position.z+=speed*dt; this.g.rotation.y+=this.spin*dt;
+  update(dt,speed){ if(!this.active) return; if(this._explode) this._t+=dt; this.g.position.z+=speed*dt; this.g.rotation.y+=this.spin*dt;
     for(let i=0;i<this.N;i++){ this.ph[i]=(this.ph[i]+this.sp[i]*dt)%6.283185;
-      const a=this.ph[i]; _p.set(Math.cos(a)*this.rad[i],this.yj[i],Math.sin(a)*this.rad[i]);
-      this.rot[i*3+1]+=dt*0.4; _e.set(this.rot[i*3],this.rot[i*3+1],this.rot[i*3+2]); _q.setFromEuler(_e); _s.setScalar(this.sz[i]); _m.compose(_p,_q,_s); this.rubble.setMatrixAt(i,_m); }
+      const a=this.ph[i], rr=this._explode?(this.rad0[i]+this._t*this.vexp[i]):this.rad[i];   // AZIONE: in esplosione il raggio CRESCE → le schegge schizzano via
+      _p.set(Math.cos(a)*rr,this.yj[i]*(this._explode?1+this._t*0.5:1),Math.sin(a)*rr);
+      this.rot[i*3+1]+=dt*(this._explode?1.7:0.4); _e.set(this.rot[i*3],this.rot[i*3+1],this.rot[i*3+2]); _q.setFromEuler(_e); _s.setScalar(this.sz[i]); _m.compose(_p,_q,_s); this.rubble.setMatrixAt(i,_m); }
     this.rubble.instanceMatrix.needsUpdate=true;
     const z=this.g.position.z, cr=this.core.scale.x, outEnd=340+cr*4.0;
-    const op=Math.min(THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1),THREE.MathUtils.clamp((outEnd-z)/(cr*4.0+200),0,1));
+    let op=Math.min(THREE.MathUtils.clamp((z-SPAWN_Z)/700,0,1),THREE.MathUtils.clamp((outEnd-z)/(cr*4.0+200),0,1));
+    if(this._explode) op*=THREE.MathUtils.clamp(1-(this._t-2.2)/1.8,0,1);   // svanisce dopo ~4s dall'esplosione
     this.coreMat.opacity=op; this.rmat.opacity=op;
     this.coreMat.color.copy(_white).lerp(director.grade,0.25);
     if(!this._counted && z>-30){ this._counted=true; TEL.planets++; }
-    if(z>outEnd){ this.active=false; this.g.visible=false; } } }
+    if(z>outEnd || (this._explode&&this._t>4.4)){ this.active=false; this.g.visible=false; this._explode=false; } } }
 class WhiteDwarf{
   constructor(){
     this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
@@ -3753,7 +3782,7 @@ function animate(){
   const _zIdle=(typeof zoomState==='undefined'||zoomState==='idle');
   // REGIA EVENTI: eclissi in totalità o buco nero vicino all'astronauta → le camere SI FERMANO
   // (in ~2s) per riprendere la scena; alla fine dell'evento il moto riparte da solo
-  camEvHold+=((Math.max((eclipseDim>0.04||bhNear>0.18)?1:0,(typeof Arc!=='undefined'?Arc.brace:0))-camEvHold))*Math.min(1,dt*0.5);   // freno camera: eventi (eclissi/BH, soglia 0.18) O ArcConductor (brace del CREST); il max non riaccende nulla a riposo
+  camEvHold+=((Math.max((eclipseDim>0.04||bhNear>0.18)?1:0,(typeof Arc!=='undefined'?Arc.brace:0),impactHold)-camEvHold))*Math.min(1,dt*0.5);   // freno camera: eventi (eclissi/BH) O ArcConductor (brace) O IMPATTO (impactHold); il max non riaccende nulla a riposo
   const _evGo=1-0.92*camEvHold;                                                // 0.08 residuo: respiro minimo, mai fermo-immagine assoluto
   if(camOrbitP>=1){ if(_zIdle && camOrbitOn){ camOrbitNext-=dt; if(camOrbitNext<=0 && camEvHold<0.4){
     camOrbitP=0;
@@ -3827,6 +3856,7 @@ function animate(){
     if(fatClock>68){ fatClock=-1; fatT=60+Math.random()*90; uFat.value=0; } }
   if(astHitCD>0) astHitCD-=dt;
   hitFlash =Math.max(0,hitFlash -dt*2.2);   // ~0.45s di flash
+  impactHold=Math.max(0,impactHold-dt*0.85);   // AZIONE: freno drammatico post-impatto ~1.2s (auto-recupera, mai freno permanente)
   hitTremor=Math.max(0,hitTremor-dt*1.4);   // ~0.7s di tremore
   hitTumble=Math.max(0,hitTumble-dt*0.9);   // ~1.1s di micro-capriola extra
   _hitImp.multiplyScalar(Math.max(0,1-dt*1.6));   // l'impulso direzionale rientra in ~0.6s (drift fuori asse)
