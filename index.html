@@ -491,7 +491,7 @@ const Arc={
     if(typeof manArmBack!=='undefined') manArmBack.value=1;
   }catch(_){} },
   _bigHero(sun){ try{ if(typeof planets==='undefined') return; const fp=planets.find(p=>!p.active); if(!fp) return;
-      fp.spawn(!!sun,null,false); fp.mesh.position.set((Math.random()*2-1)*130,(Math.random()*2-1)*80,-360-Math.random()*280);   // VICINO e GRANDE → riempie il quadro subito
+      fp.spawn(!!sun,null,false); fp.mesh.position.set((Math.random()*2-1)*160,(Math.random()*2-1)*95,-620-Math.random()*380);   // GRANDE ma non incollato alla camera (evita glitch quando engulfa)
       const g=4.5+Math.random()*2.6; fp.mesh.scale.multiplyScalar(g); if(fp.glow) fp.glow.scale.multiplyScalar(g); }catch(_){} },
   _armZoom(sp){ try{ if(typeof zoomState==='undefined'||zoomState!=='idle') return false;
       const U=(typeof ULTRA!=='undefined'&&ULTRA), dur=(sp&&sp.zoomDur)||(U?220:150), world=(sp&&sp.zoomWorld)||2.5;
@@ -1714,7 +1714,7 @@ class Planet{
     // passaggio ravvicinato NATURALE e raro (armato da grazeNext): riempie il quadro ma sfiora SOLO l'alta atmosfera.
     // garanzia: superficie solida a (dist-r), tetto atmosfera a r*1.025; con dist=r*1.18+14+rand*8 → clearance 0.155*r+14 > 0 SEMPRE.
     const _flyby=grazeNext && !this.isSun && !forceSun && forceIdx==null && !_distant;
-    this._graze=_flyby; this._distant=_distant; this._impact=false;
+    this._graze=_flyby; this._distant=_distant; this._impact=false; this._spawnT=0;   // micro-fade allo spawn: nasconde il frame-nero del cambio-texture (i "quadrati neri a scatti")
     if(_distant){
       this._scatterDistant();   // guscio di sfondo: bersaglio-schermo ai bordi (anti-cluster), z profondo, deriva lenta → su TUTTO il quadro
     } else {
@@ -1771,6 +1771,7 @@ class Planet{
       const opOut=THREE.MathUtils.clamp((outEnd-z)/(this.mesh.scale.x*2.6+200),0,1); // dissolvenza in uscita (niente pop)
       op=Math.min(opIn,opOut);
     }
+    if(this._spawnT<1){ this._spawnT=Math.min(1,this._spawnT+dt*4.5); const _sf=this._spawnT*this._spawnT*(3-2*this._spawnT); op*=_sf; }   // micro-fade d'ingresso (~0.25s): il frame-nero dello spawn è a opacità ~0 → invisibile
     this.mat.opacity=op; this.atmoMat.uniforms.uOp.value=op; this.ringMat.uniforms.uOp.value=op;
     if(this.clouds.visible){ this.clouds.rotation.y+=dt*0.018; this.cloudMat.opacity=op; }
     this.atmoMat.uniforms.uLight.value.copy(sunDir);
