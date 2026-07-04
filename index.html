@@ -128,12 +128,6 @@
   #introcard .ic-n{ font-family:var(--disp); font-weight:400; font-size:clamp(18px,3.6vw,64px); letter-spacing:0.2em; text-transform:uppercase; color:var(--red); margin-top:0.35em; text-shadow:0 2px 22px rgba(0,0,0,0.92); }
   .rdot{ width:0.62em; height:0.62em; border-radius:50%; background:var(--red); box-shadow:0 0 8px 1px var(--red-soft); animation:rpulse 2.4s ease-in-out infinite; flex:none; }
   @keyframes rpulse{ 0%,100%{ opacity:1 } 50%{ opacity:0.35 } }
-  /* live badge — cornice a parentesi (alto-dx) */
-  #livebadge{ position:absolute; top:5.6vh; right:3.8vw; text-align:right; padding:0.55em 1.1em; }
-  #livebadge .lv{ display:flex; align-items:center; justify-content:flex-end; gap:0.5em; font-size:clamp(13px,1.6vw,31px); letter-spacing:0.22em; color:var(--red); }
-  #livebadge .meta{ margin-top:0.5em; font-size:clamp(10px,1.35vw,26px); letter-spacing:0.24em; color:var(--lbl); line-height:1.45; }
-  #livebadge::before,#livebadge::after{ content:''; position:absolute; width:20px; height:20px; border:1.5px solid var(--line2); }
-  #livebadge::before{ top:0; right:0; border-left:0; border-bottom:0; } #livebadge::after{ bottom:0; left:0; border-right:0; border-top:0; }
   /* panels */
   .rpanel{ position:absolute; bottom:12vh; width:clamp(260px,28vw,540px); border:1px solid var(--line); border-radius:16px;
     padding:1em 1.2em; background:rgba(8,7,14,0.52); backdrop-filter:blur(6px);
@@ -149,6 +143,7 @@
   .rpanel .eta{ margin-top:0.6em; font-size:clamp(13px,1.65vw,32px); letter-spacing:0.1em; color:var(--red); font-variant-numeric:tabular-nums; }
   .rpanel .eta .k{ color:var(--lbl); letter-spacing:0.22em; font-size:0.78em; margin-right:0.5em; }
   #nextpanel .dots{ height:5px; margin-top:1em; background:repeating-linear-gradient(to right,var(--red-soft) 0 2px,transparent 2px 10px); opacity:0.5; border-radius:2px; }
+  #nextpanel .arcnext{ margin-top:0.9em; font-size:clamp(11px,1.15vw,20px); letter-spacing:0.2em; color:var(--red); display:none; animation:rpulse 2.4s ease-in-out infinite; }
   /* caption centrale pulita (niente parentesi) */
   #t-log{ position:absolute; left:50%; bottom:17vh; transform:translateX(-50%); max-width:34vw; text-align:center;   /* sta nel varco tra i pannelli → non sborda */
     font-style:italic; font-weight:400; font-size:clamp(16px,1.9vw,37px); line-height:1.45; color:#f7f7ff; opacity:0; transition:opacity 1.2s ease;
@@ -165,7 +160,6 @@
   #credit2{ position:absolute; right:3.8vw; bottom:1.4vh; z-index:5; color:rgba(232,233,242,0.3); font-family:var(--hmono); font-size:clamp(9px,0.95vw,14px); letter-spacing:0.05em; max-width:46vw; text-align:right; pointer-events:none; }   /* attribuzione ESO: decifrabile (obbligo CC) ma sussurrata */
   @media (orientation:portrait){
     #brand .t{ font-size:8.5vw; } #brand .s{ font-size:2.6vw; letter-spacing:0.4em; } #brand .onair{ font-size:2.3vw; }
-    #livebadge .lv{ font-size:2.6vw; } #livebadge .meta{ font-size:2vw; }
     .rpanel{ width:44vw; bottom:11vh; padding:0.8em 0.9em; } .rpanel .big{ font-size:4.8vw; } .rpanel .sml{ font-size:2.5vw; } .rpanel .lbl{ font-size:2.1vw; letter-spacing:0.2em; } .rpanel .eta{ font-size:2.8vw; }
     #t-log{ max-width:84vw; bottom:25vh; font-size:3.2vw; }
     #chatbar{ font-size:2.4vw; gap:0.6em; padding:0.5em 0.8em; letter-spacing:0.06em; } #chatbar .chips{ gap:0.3em; } #chatbar .chips span{ padding:0 0.3em; }
@@ -188,8 +182,6 @@
     <canvas id="mwave" width="540" height="72"></canvas>
   </div>
 
-  <div id="livebadge"><span class="lv"><span class="rdot"></span>LIVE</span><span class="meta">24/7<br>DOCUMENTARY</span></div>
-
   <div id="nowpanel" class="rpanel">
     <div class="lbl">NOW TRANSMITTING</div>
     <div class="big" id="now-title">ETERNAL FALL</div>
@@ -202,6 +194,7 @@
     <div class="big" id="next-title">Scanning…</div>
     <div class="eta" id="next-eta">SCANNING SIGNAL</div>
     <div class="dots"></div>
+    <div class="arcnext" id="arc-next"></div>
   </div>
 
   <div id="t-log"></div>
@@ -459,6 +452,150 @@ class Director{
 }
 const director=new Director();
 
+/* ================= ARC CONDUCTOR — "L'Onda Sacra" =================
+   Una sola onda di tensione (0..1) sopra la regia. Il 90% del tempo dorme in CALM (tension~0.06 → tutte le uscite
+   ai valori di riposo → show IDENTICO a oggi). Rari CREST, sempre preparati: CALM→GATHER→SURGE→CREST→RELEASE→CALM.
+   Non sovrascrive MAI una leva multi-writer: la spinge sempre come max/additivo. Arc.on=false → show di oggi al 100%.
+   Questo è il CUORE (crescendo visivo + freno + luce-eroe + countdown HUD). I PAYLOAD del picco (tuffo/showpiece/
+   pianeta/montaggio) si agganciano dopo, via kind. */
+const Arc={
+  on:true, phase:'CALM', t:0, dur:0,
+  tension:0.06, sat:1.0, brace:0.0, crest:0.0,
+  satPeak:1.38, budgetT:90+Math.random()*90,   // primo beat dopo ~1.5-3min (poi a regime 18-25min via EF.arc); i test usano cadutaArc('go')
+  kind:null, label:'', nextBeatT:0, _lastKind:null, _armed:false, _mbOn:false, _mbT:0, _mbEvery:0.78, _mbN:0, _mbTotal:6, _white:0,
+  _ease(x){ x=x<0?0:x>1?1:x; return x*x*(3-2*x); },
+  _label(k){ return k==='zoom'?'GALACTIC DIVE':k==='showpiece'?'DEEP SIGNAL':k==='montage'?'TRANSMISSION BURST':'CLOSE APPROACH'; },
+  _pickKind(){ const s=(typeof EF!=='undefined'&&EF.arc&&EF.arc.crestType)||null; if(s) return s;
+    const pool=['planet','showpiece','zoom','montage']; let k; do{ k=pool[Math.random()*pool.length|0]; }while(k===this._lastKind); this._lastKind=k; return k; },
+  // --- PAYLOAD del CREST: eseguiti UNA volta all'ingresso CREST (arm), puliti al RELEASE (disarm). Tutto guardato/try-catch. ---
+  arm(kind){ if(this._armed) return; this._armed=true; const sp=(typeof EF!=='undefined'&&EF.arc)||{};
+    if(kind==='zoom'){ if(!this._armZoom(sp)) this._armMontage(sp); }       // zoom fallisce il gate idle → ripiega su montaggio (non fallisce mai)
+    else if(kind==='showpiece'){ this._armShowpiece(sp); }
+    else if(kind==='montage'){ this._armMontage(sp); }
+    else this._armPlanet(sp); },
+  disarm(){ this._armed=false;
+    if(this._mbOn){ this._white=Math.max(this._white,0.9); this._mbOn=false; }   // flash finale lungo maschera il rientro alla caduta
+    try{ if(typeof solarEclipse!=='undefined'&&solarEclipse) solarEclipse._neon=false; }catch(_){} },
+  // RAFFICA-MONTAGGIO (kind='montage', stile reel V1): 5-7 stacchi a tempo mascherati da dip-to-white, poi rientro morbido
+  _armMontage(sp){ try{ this._mbOn=true; this._mbT=0; this._mbN=0; this._mbTotal=5+(Math.random()*3|0); this._mbEvery=0.70+Math.random()*0.16; this._white=0.85; this._montageCut(0); }catch(_){ this._mbOn=false; } return true; },
+  _montageTick(dt){ this._mbT+=dt;
+    while(this._mbT>=this._mbEvery && this._mbN<this._mbTotal){ this._mbT-=this._mbEvery; this._mbN++; this._white=Math.max(this._white,0.85); this._montageCut(this._mbN); }
+    if(this._mbN>=this._mbTotal) this._mbOn=false; },
+  _montageCut(n){ try{ const slot=n%5;
+    if(slot===0){ camMoveAzT=(Math.random()*2-1)*0.9; camMoveAz=camMoveAzT; camMoveDsT=(Math.random()*2-1)*3; camMoveDs=camMoveDsT; if(typeof manArmBack!=='undefined') manArmBack.value=1; }   // camera-cut secco + posa eroe
+    else if(slot===1){ if(typeof supernova!=='undefined'&&supernova&&supernova.flash) supernova.flash(); }
+    else if(slot===2){ this._armPlanet((typeof EF!=='undefined'&&EF.arc)||{}); }
+    else if(slot===3){ camMoveElT=(Math.random()*2-1)*0.6; camMoveEl=camMoveElT; camMoveAzT=(Math.random()*2-1)*0.9; camMoveAz=camMoveAzT; }   // camera-cut angolato
+    else { if(typeof blackhole!=='undefined'&&blackhole&&!blackhole.active&&!(typeof wormhole!=='undefined'&&wormhole&&wormhole.active)) blackhole.spawn(); else if(typeof wormhole!=='undefined'&&wormhole&&!wormhole.active) wormhole.spawn(); }
+  }catch(_){} },
+  _armZoom(sp){ try{ if(typeof zoomState==='undefined'||zoomState!=='idle') return false;
+      const U=(typeof ULTRA!=='undefined'&&ULTRA), dur=(sp&&sp.zoomDur)||(U?220:150), world=(sp&&sp.zoomWorld)||2.5;
+      window.cadutaZoom({mode:'once',dur,world}); return (typeof zoomState!=='undefined'&&zoomState!=='idle'); }catch(_){ return false; } },
+  _armPlanet(sp){ try{ if(typeof planets==='undefined') return; const fp=planets.find(p=>!p.active)||planets[0]; if(!fp) return;
+      fp.spawn(false,null,false); fp.mesh.position.set(38+(Math.random()*8-4),6,-240);
+      const g=(sp&&sp.planetScale)||(4+Math.random()*3); fp.mesh.scale.multiplyScalar(g); if(fp.glow) fp.glow.scale.multiplyScalar(g); }catch(_){} },
+  _armShowpiece(sp){ try{ const pick=(sp&&sp.showpiece)||['eclipse','supernova','blackhole','wormhole'][Math.random()*4|0];
+      if(pick==='eclipse'){ if(typeof solarEclipse!=='undefined'&&solarEclipse&&!solarEclipse.active) solarEclipse.spawn(); }
+      else if(pick==='supernova'){ if(typeof supernova!=='undefined'&&supernova&&supernova.flash) supernova.flash(); }
+      else if(pick==='blackhole'){ if(typeof blackhole!=='undefined'&&blackhole&&!blackhole.active&&!(typeof wormhole!=='undefined'&&wormhole&&wormhole.active)) blackhole.spawn(); }
+      else { if(typeof wormhole!=='undefined'&&wormhole&&!wormhole.active&&!(typeof blackhole!=='undefined'&&blackhole&&blackhole.active)) wormhole.spawn(); } }catch(_){} },
+  _enter(ph){ this.phase=ph; this.t=0;
+    if(ph==='GATHER'){ this.dur=26+Math.random()*18; this.kind=this._pickKind(); this.label=this._label(this.kind);
+      this.satPeak=(typeof EF!=='undefined'&&EF.arc&&EF.arc.satPeak)||1.38; }
+    else if(ph==='SURGE'){ this.dur=10+Math.random()*8; }
+    else if(ph==='CREST'){ this.dur=12+Math.random()*18; if(!this.kind){ this.kind=this._pickKind(); this.label=this._label(this.kind); } this._armed=false; try{ this.arm(this.kind); }catch(_){} }
+    else if(ph==='RELEASE'){ this.dur=12+Math.random()*8; try{ this.disarm(); }catch(_){} }
+    else { this.phase='CALM'; this.dur=0; this.kind=null; this.label='';
+      this.budgetT=(typeof EF!=='undefined'&&EF.arc&&EF.arc.crestEvery)||(1080+Math.random()*420); } },
+  ready(){ return this.budgetT<=0 && !(typeof EF!=='undefined'&&EF.ready===false)
+      && (typeof zoomState==='undefined'||zoomState==='idle')
+      && !(typeof introActive!=='undefined'&&introActive); },
+  update(dt){
+    if(!this.on || !(dt>0)) return;
+    this.t+=dt;
+    let ten=0.06;
+    if(this.phase==='CALM'){ this.budgetT-=dt; if(this.ready()) this._enter('GATHER'); }
+    else if(this.phase==='GATHER'){ const p=this.t/this.dur; ten=0.06+0.34*this._ease(p); if(p>=1) this._enter('SURGE'); }
+    else if(this.phase==='SURGE'){ const p=this.t/this.dur; ten=0.40+0.40*this._ease(p); if(p>=1) this._enter('CREST'); }
+    else if(this.phase==='CREST'){ const p=this.t/this.dur; ten=0.80+0.20*this._ease(Math.min(1,p*3)); if(p>=1) this._enter('RELEASE'); }
+    else if(this.phase==='RELEASE'){ const p=this.t/this.dur; ten=0.06+0.94*(1-this._ease(p)); if(p>=1) this._enter('CALM'); }
+    this.tension=ten;
+    this.sat=1.0+this._ease((ten-0.45)/0.55)*(this.satPeak-1.0);
+    this.brace=this._ease((ten-0.20)/0.80);
+    this.crest=this._ease((ten-0.80)/0.20);
+    // OUTPUT — sempre max/additivo, mai overwrite. In CALM tutto torna a riposo → nessuna regressione.
+    if(typeof cinePass!=='undefined'&&cinePass) cinePass.uniforms.uSat.value=this.sat;
+    if(typeof director!=='undefined') director.surge=Math.max(director.surge, this._ease((this.tension-0.10)/0.90));
+    if(this.crest>0.001 && typeof keyLight!=='undefined'&&keyLight && !(typeof introActive!=='undefined'&&introActive))
+      keyLight.intensity += this.crest*1.15*(1-Math.min(1,director.cur.skyBright));   // riflettore-eroe al picco (mutex con l'intro)
+    if(this.phase==='GATHER') this.nextBeatT=(this.dur-this.t)+14;        // countdown al CREST (+stima SURGE)
+    else if(this.phase==='SURGE') this.nextBeatT=(this.dur-this.t);
+    else this.nextBeatT=0;
+    if(this._white>0) this._white=Math.max(0,this._white-dt/0.16);       // decadimento flash montaggio (~160ms)
+    if(this._mbOn && this.phase==='CREST'){ try{ this._montageTick(dt); }catch(_){} }
+    if(typeof cinePass!=='undefined'&&cinePass) cinePass.uniforms.uWhite.value=this._white;
+    this._hud();
+  },
+  _hud(){
+    const el=(typeof $t!=='undefined'&&$t)?$t.arcNext:null; if(!el) return;
+    if((this.phase==='GATHER'||this.phase==='SURGE') && this.nextBeatT>0){
+      const s=Math.max(0,this.nextBeatT|0), mm=(s/60)|0, ss=s%60;
+      el.textContent='NEXT EVENT · '+this.label+' · '+mm+':'+(ss<10?'0'+ss:ss); el.style.display='block';
+    } else el.style.display='none';
+  }
+};
+/* ================= REGION CONDUCTOR — "regioni attraversate" =================
+   Gemello di Arc. Ogni ~1.5-2.5 min impone un PROFILO DI DENSITÀ estremo (vuoto/nube/cintura/vivaio/corrente) come
+   MOLTIPLICATORE mai-overwrite sulle leve (neb/dust/aster/speed). La transizione è vissuta come un ARRIVO (surge +
+   nebBoost). Cura la monotonia: l'universo CAMBIA carattere di continuo. Regions.on=false → tutti i mul=1 → show di oggi. */
+const Regions={
+  on:true, name:'campo', t:0, dur:0, hold:45, fade:6, _tBoost:0, _r:null,
+  mul:{neb:1,dust:1,aster:0,star:1,planet:1,speed:1},
+  _from:{neb:1,dust:1,aster:0,star:1,planet:1,speed:1},
+  _to:{neb:1,dust:1,aster:0,star:1,planet:1,speed:1},
+  ARCH:{
+    campo:   {neb:1.0, dust:1.0, aster:0.0, star:1.0, planet:1.0, speed:1.0 },   // neutro (=oggi)
+    vuoto:   {neb:0.18,dust:0.35,aster:0.0, star:1.6, planet:0.9, speed:0.92},   // il grande silenzio: solo stelle
+    nube:    {neb:1.9, dust:1.35,aster:0.0, star:0.55,planet:1.0, speed:0.85},   // dentro la nebulosa: il gas inghiotte la luce
+    cintura: {neb:0.4, dust:1.5, aster:1.0, star:0.5, planet:1.0, speed:1.28},   // campo di detriti: materia che sfreccia
+    vivaio:  {neb:0.95,dust:1.0, aster:0.15,star:1.4, planet:1.2, speed:1.0 },   // vivaio stellare: nuovi soli
+    corrente:{neb:0.6, dust:0.8, aster:0.05,star:1.2, planet:1.0, speed:0.72}    // corrente profonda: tutto va alla deriva
+  },
+  _ease(x){ x=x<0?0:x>1?1:x; return x*x*(3-2*x); },
+  _rnd(){ try{ if(!this._r && typeof EF!=='undefined'&&EF.rng) this._r=EF.rng('region'); if(this._r) return this._r(); }catch(_){} return Math.random(); },
+  _pick(){ const ks=['vuoto','nube','cintura','vivaio','corrente']; let k; do{ k=ks[this._rnd()*ks.length|0]; }while(k===this.name); return k; },
+  arm(name){ try{
+    this.name=name; const a=this.ARCH[name]||this.ARCH.campo;
+    for(const key in this._to){ this._from[key]=this.mul[key]; this._to[key]=a[key]; }
+    this.t=0; this.dur=this.fade;
+    const hm=(typeof EF!=='undefined'&&EF.tempo)?EF.tempo.holdMul:1;
+    this.hold=(96+this._rnd()*70)*hm;                                    // regione dura ~96-166s × ritmo capitolo
+    try{ if(typeof director!=='undefined'){ director.surgePhase=1; director._st=0; director._surgeDur=6; } }catch(_){}   // TRANSIZIONE = ARRIVO (whoosh)
+    if(a.neb>1.2){ try{ nebBoost=Math.max(nebBoost,0.9); }catch(_){} }   // entrando in NUBE arma il gas
+    this._tBoost=1.4;                                                    // boost polvere-veloce in ingresso
+  }catch(_){} },
+  update(dt){ if(!this.on || !(dt>0)) return;
+    try{ this.t+=dt;
+      if(this.t<this.dur){ const e=this._ease(this.t/this.dur); for(const k in this.mul) this.mul[k]=this._from[k]+(this._to[k]-this._from[k])*e; }
+      else { for(const k in this.mul) this.mul[k]=this._to[k]; this.hold-=dt; if(this.hold<=0) this.arm(this._pick()); }
+      if(this._tBoost>0) this._tBoost=Math.max(0,this._tBoost-dt);
+    }catch(_){} }
+};
+window.cadutaZona=(n)=>{   // NB: 'cadutaRegion' è già preso (jump-preset dev). Questo pilota il REGION CONDUCTOR.
+  if(n===false){ Regions.on=false; for(const k in Regions.mul) Regions.mul[k]=Regions.ARCH.campo[k]; return 'REGIONI OFF (densità uniforme come oggi)'; }
+  if(n===true){ Regions.on=true; return 'REGIONI ON'; }
+  try{ Regions.on=true; if(n) Regions.arm(n); else Regions.arm(Regions._pick()); return { zona:Regions.name, mul:Regions.mul, hold:Math.round(Regions.hold) }; }catch(e){ return 'err '+e; }
+};
+window.cadutaZonaInfo=()=>({ on:Regions.on, name:Regions.name, mul:Regions.mul, t:+Regions.t.toFixed(1), dur:Regions.dur, hold:Math.round(Regions.hold) });
+window.cadutaArc=(a,k)=>{
+  if(a===false){ Arc.on=false; if(typeof cinePass!=='undefined'&&cinePass) cinePass.uniforms.uSat.value=1; if(typeof $t!=='undefined'&&$t&&$t.arcNext)$t.arcNext.style.display='none'; return 'ArcConductor OFF (show identico a oggi)'; }
+  if(a===true){ Arc.on=true; return 'ArcConductor ON'; }
+  if(a==='go'||a==='gather'){ Arc.on=true; Arc.budgetT=0; Arc.kind=k||null; if(k)Arc.label=Arc._label(k); if(Arc.phase==='CALM') Arc._enter('GATHER'); return 'ARC → GATHER ('+Arc.label+')'; }
+  if(a==='crest'){ Arc.on=true; Arc.kind=k||null; if(k) Arc.label=Arc._label(k); Arc._enter('CREST'); return 'ARC → CREST'+(Arc.kind?' ('+Arc.kind+')':''); }
+  if(a==='calm'||a==='reset'){ Arc._enter('CALM'); return 'ARC → CALM'; }
+  return { on:Arc.on, phase:Arc.phase, tension:+Arc.tension.toFixed(3), sat:+Arc.sat.toFixed(3), brace:+Arc.brace.toFixed(3), crest:+Arc.crest.toFixed(3), kind:Arc.kind, budgetT:Math.round(Arc.budgetT), nextBeatT:Math.round(Arc.nextBeatT), efArc:(typeof EF!=='undefined'&&EF.arc)||null, zoom:(typeof zoomState!=='undefined')?zoomState:null, mb:{on:Arc._mbOn,n:Arc._mbN,white:+Arc._white.toFixed(2)} };
+};
+
 /* ================= ALMANAC — regia "episodi a tema" seminata dall'orologio reale =================
    Problema risolto: prima TUTTO era Math.random() ri-seminato ad ogni caricamento → ogni ora era
    statisticamente identica e una registrazione era indistinguibile dalla diretta.
@@ -583,6 +720,11 @@ const EF={
     this.starMul=0.8+r()*0.55; this.starTint=(r()*2-1)*0.5; this.starWarm=0.42+r()*0.42;   // densità/tinta/classe stelle
     this.nebSig=0.7+r()*0.6; this.nebSheetsN=7+((r()*7)|0); this.nebHue=r();                // nebulosa: densità/n.lastre/hue
     this.cam={ regimeBias:r(), dollyGain:0.6+r()*0.8, rollGain:0.4+r()*1.2, reframeMul:0.7+r()*0.7, orbitFreq:0.6+r()*0.8 };   // carattere camera
+    // FIRMA ARC per-capitolo (stream indipendente, ordine-safe): ogni episodio ha un climax firmato e riproducibile
+    try{ const ra=this.rng('arc'), _ck=['planet','showpiece','zoom','montage'];
+      this.arc={ crestType:_ck[(ra()*_ck.length)|0], crestEvery:1080+ra()*420, satPeak:((typeof ULTRA!=='undefined'&&ULTRA)?1.48:1.36)+ra()*0.12,
+        zoomDur:((typeof ULTRA!=='undefined'&&ULTRA)?200:140)+ra()*40, zoomWorld:2.2+ra()*0.8, planetScale:4+ra()*3,
+        showpiece:['eclipse','supernova','blackhole','wormhole'][(ra()*4)|0] }; }catch(_){ this.arc=null; }
     this._skyBag=null; this._skyBagCh=null;       // sky bag ricostruito lazy (SKY_FILES non ancora definito all'init)
   },
   skyBag(){ if(this._skyBag && this._skyBagCh===this.chapterNum) return this._skyBag;   // playlist cieli seminata per capitolo (lazy: al runtime SKY_FILES esiste)
@@ -827,10 +969,10 @@ let skyIdx=0, skyT=0, skyEvery=2, skyFade=0, skyFading=false, skyPendIdx=0, skyL
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
 // LIVE: l'auto-scaler è OFF (PIX fisso a 2). bloomDiv=2 anche in live (era 4): il bloom nasce a 1/2 (~1280×720 a 1440p, 1080p a 4K nativo) invece di 1/4 (640×360) → aloni MOLTO più fini, niente "macchie soffuse" stirate ×6. Il costo fill-rate è di frazioni di ms a queste dimensioni.
 let starLayers=[], fastDust=null, nebSheets=[], bloomDiv=(ULTRA?1:2);   // ULTRA: bloom a RISOLUZIONE PIENA (aloni perfetti a 4K). Altrimenti 1/2. (l'auto-scaler off-ULTRA può riportarlo a 4 sotto carico)
-const STAR_MUL=(ULTRA?1.6:1), DUST_MUL=(ULTRA?3:1);   // ULTRA: campo stellare + polvere più densi (punti = economici)
+const STAR_MUL=(ULTRA?2.7:1.2), DUST_MUL=(ULTRA?6:1.5);   // "VIAGGIO INCREDIBILE": campo stellare + polvere MOLTO più densi (punti = economici; la 5090 straborda). Base alzata anche fuori ULTRA.
 const planets=[], nearStars=[], wisps=[];
 let asteroids, astData=[];
-const DUST_N=Math.round(300*DUST_MUL),DZN=240,DZF=-260,DSP=130, AST_N=Math.round(90*(ULTRA?2.2:1));   // ULTRA: polvere e cintura più dense (300→900, 90→198)
+const DUST_N=Math.round(300*DUST_MUL),DZN=240,DZF=-260,DSP=98, AST_N=Math.round(90*(ULTRA?4:1.4));   // DSP 130→98: stessi grani più fitti/vicini = fiume di polvere, non pulviscolo rado   // polvere (1800 in ULTRA) + cintura asteroidi (360 in ULTRA) MOLTO più dense → senso di viaggio e materia attraversata
 let lensflare, mystery, parallel, supernova, blackhole, lensPass, smaaPass;
 let nebulaField, comet, cluster, derelict, cometTail;
 let pulsar, redgiant, binary, remnant;
@@ -964,7 +1106,7 @@ function build(){
   // CAMPO STELLARE VOLUMETRICO a 3 strati di profondità → parallasse (senso di 3D con camera ferma)
   const _sm=n=>Math.round(n*STAR_MUL*(EF&&EF.starMul||1));   // conteggio stelle × ULTRA × firma-capitolo (EF.starMul settato per capitolo, default 1)
   starLayers=[
-    makeStarLayer(_sm(1000),-900, -120, 360, 0.8, 1.0, 0.0, 430, 260, 1.0),    // vicine: poche, veloci (parallasse forte)
+    makeStarLayer(_sm(1000),-900, -120, 360, 0.8, 1.32, 0.0, 430, 260, 1.0),    // vicine: poche, veloci (parallasse forte 1.0→1.32: le stelle frontali sfrecciano di più = viaggio)
     makeStarLayer(_sm(3800),-2600,-700, 1400,0.8, 0.5, 0.35,360, 520, 1.0),    // medie
     makeStarLayer(_sm(12000),-6500,-2400,4000,0.5, 0.18,0.7, 300, 1200,1.0),   // lontane (SFONDO): microstelle fitte
     makeStarLayer(_sm(11000),-11000,-6200,7000,0.42,0.09,0.85,260,2200,0.95),  // abissali: fondale fittissimo
@@ -973,7 +1115,7 @@ function build(){
   ];
   // lastre di nebulosa a profondità sfalsate: strati di foschia che scorrono → volume attraversato
   nebSheets=[];
-  const NEB_SHEETS=Math.round(((typeof EF!=='undefined'&&EF.nebSheetsN)||(IS_MOBILE?9:11))*(ULTRA?1.45:1));   // n. lastre nebulosa: firma per-capitolo (7-13) × ULTRA (→ ~10-19)
+  const NEB_SHEETS=Math.round(((typeof EF!=='undefined'&&EF.nebSheetsN)||(IS_MOBILE?9:11))*(ULTRA?2.0:1.15));   // n. lastre nebulosa: firma per-capitolo (7-13) × ULTRA (→ ~14-26): più STRUTTURA/profondità di gas (non foschia piatta), l'opacità per-lastra resta bassa
   for(let i=0;i<NEB_SHEETS;i++){
     const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
       uniforms:{uTime:{value:Math.random()*100},uColor:{value:new THREE.Color(0x4a5a8c).offsetHSL((typeof EF!=='undefined'&&EF.nebHue!=null?EF.nebHue*0.5:0),0,0)},uSeed:{value:Math.random()*10},uOp:{value:0}},   // hue nebulosa ruotato per-capitolo
@@ -1229,7 +1371,7 @@ function build(){
       gl_FragColor=vec4(c,a*vF*tw*uAmt*0.42*vary);}`});
   dust=new THREE.Points(dustGeo,dustMat); dust.frustumCulled=false; dust.userData.re=dre; scene.add(dust);
 
-  for(let i=0;i<(IS_MOBILE?16:30);i++) planets.push(new Planet());   // pool AMPIO: guscio ≥20 + hero multipli + permanenti → universo MOLTO pieno (17→30; la VARIETÀ viene dai tipi PMETA, non dal conteggio → 30 tiene i 60fps)
+  for(let i=0;i<(IS_MOBILE?16:(ULTRA?48:34));i++) planets.push(new Planet());   // pool AMPIO: guscio + hero multipli + permanenti → universo PIENISSIMO da ogni angolo (30→48 in ULTRA sulla 5090; la VARIETÀ viene dai tipi PMETA)
   // pre-popola: 2 hero in corsia + il resto mondi lontani SPARSI sul guscio a raggi diversi (mai il vuoto all'avvio né orbitando)
   const _n0=Math.min(IS_MOBILE?10:18,planets.length);
   for(let i=0;i<_n0;i++){ const _d=i>=2; planets[i].spawn(false,null,_d);
@@ -1400,7 +1542,7 @@ function build(){
   ['log'].forEach(k=>$t[k]=document.getElementById('t-'+k));   // UI Space Radio: solo la caption centrale resta come #t-log
   if($t.log) $t.log.style.display='none';   // MESSAGGI IN SOVRIMPRESSIONE SPENTI (scelta utente 2026-07-02): niente testi al centro della live (sottotitoli voce, frasi eventi, diario di bordo). La voce continua a parlare; cadutaMessages(true) riaccende i testi.
   window.cadutaMessages=(on)=>{ if(!$t.log) return 'elemento assente'; $t.log.style.display=(on===undefined||on)?'':'none'; return 'messaggi in sovrimpressione: '+((on===undefined||on)?'ATTIVI':'spenti'); };
-  $t.nowTitle=document.getElementById('now-title'); $t.nowTag=document.getElementById('now-tag'); $t.nextTitle=document.getElementById('next-title'); $t.nextEta=document.getElementById('next-eta');
+  $t.nowTitle=document.getElementById('now-title'); $t.nowTag=document.getElementById('now-tag'); $t.nextTitle=document.getElementById('next-title'); $t.nextEta=document.getElementById('next-eta'); $t.arcNext=document.getElementById('arc-next');
   onResize();
   if(R4K){ _recH=Math.round(R4K_H*SS); _recW=Math.round(_recH*16/9/2)*2; _live4k=true; _ef4kForce();   // 4K NATIVO permanente (× SS supersample) a PIX=1 — starLayers già creati, quindi uPix coerente
     console.log('[r4k] render 4K NATIVO forzato: '+_recW+'×'+_recH+' (PIX=1). È la causa #1 della sfocatura: VERIFICA gli fps sulla VM. Disattiva togliendo &r4k dall\'URL.'); }
@@ -1416,7 +1558,7 @@ function build(){
 
 /* ---------------- pianeti (avvicinamento lungo, niente pop-in) ---------------- */
 const SPAWN_Z=-2900;
-let WPASS_HERO=2.3, WPASS_DISTANT=0.85, WPASS_SUN=1.2;   // SORPASSO dei mondi: velocità extra (in multipli di `speed`) perché l'astronauta li superi SEMPRE — mai pianeti che "cadono con lui" (transito hero ~25-55s, lontani ~90s). Taratura live: cadutaPlanetPass(h,d,s)
+let WPASS_HERO=2.3, WPASS_DISTANT=1.05, WPASS_SUN=1.2;   // WPASS_DISTANT 0.85→1.05: i mondi di sfondo si avvicinano più decisi = più "viaggio" (hero invariati)   // SORPASSO dei mondi: velocità extra (in multipli di `speed`) perché l'astronauta li superi SEMPRE — mai pianeti che "cadono con lui" (transito hero ~25-55s, lontani ~90s). Taratura live: cadutaPlanetPass(h,d,s)
 // --- MONDI LONTANI = GUSCIO SFERICO attorno all'astronauta (non più un muro piatto!): direzione su
 // una banda equatoriale larga (dove la camera orbita di più), deriva RADIALE verso il centro, riciclo
 // sul guscio esterno. Così ORBITANDO la camera a 360° si vedono SEMPRE mondi lontani, mai il vuoto. ---
@@ -2405,9 +2547,9 @@ function currentShower(){ if(window._forceShower) return window._forceShower; co
 
 /* ---------------- passata cinematografica ---------------- */
 const CineShader={
-  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.020},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeHi:{value:new THREE.Color(0xfff1de)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.7},uHalation:{value:0.4},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)},uSharp:{value:0.30},uPix:{value:1.0},uRocket:{value:0}},
+  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.020},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeHi:{value:new THREE.Color(0xfff1de)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.7},uHalation:{value:0.4},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)},uSharp:{value:0.30},uPix:{value:1.0},uSat:{value:1.0},uWhite:{value:0},uRocket:{value:0}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,1.0);}`,
-  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uHalation,uContrast,uGW,uSharp,uPix,uRocket;uniform vec2 uRes,uGWDir;uniform vec3 uGrade,uGradeHi;varying vec2 vUv;
+  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uHalation,uContrast,uGW,uSharp,uPix,uRocket,uSat,uWhite;uniform vec2 uRes,uGWDir;uniform vec3 uGrade,uGradeHi;varying vec2 vUv;
     float rnd(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
     void main(){ vec2 uv=vUv;
       if(uGW>0.0){ float ph=dot(uv,uGWDir)*42.0 - uTime*6.0; uv += uGWDir*sin(ph)*uGW; }   // onda gravitazionale: increspa tutto il campo
@@ -2447,7 +2589,7 @@ const CineShader={
       col*=mix(vec3(1.0),hiT,hiM*0.14*ga);                             // highlight verso la key del preset
       float L=dot(col,vec3(0.2126,0.7152,0.0722));
       float satHi=1.0-smoothstep(0.6,1.4,L)*0.4;                       // alte luci desaturate (i core bloomati restano luce)
-      col=mix(vec3(L),col,mix(1.0,1.14,ga)*satHi);                     // saturazione contenuta
+      col=mix(vec3(L),col,mix(1.0,1.14,ga)*satHi*uSat);                // saturazione contenuta (×uSat: leva-master pilotata dall'ArcConductor, 1.0 a riposo)
       // HALATION da pellicola: alone caldo d'emulsione attorno ai core (prima della spalla → mai clipping)
       if(uHalation>0.001){ vec2 hx=(1.0/uRes)*7.0;
         vec3 hs=max(texture2D(tDiffuse,uv+hx).rgb-0.6,vec3(0.0))
@@ -2460,6 +2602,7 @@ const CineShader={
       col=mix(col,contr,shoulder);                                    // contrasto solo dove non sono highlight
       col*=0.945;                                                      // deep-space: appena meno acceso (era 0.94)
       col=max(col,0.0);
+      if(uWhite>0.0001) col=mix(col,vec3(1.0,0.965,0.92),uWhite);      // DIP-TO-WHITE caldo (raffica-montaggio): 0 a riposo = identico
       // STREAK ANAMORFICA vera: 6 tap orizzontali thresholded a distanza quadratica (±5/±20/±45px), peso 1/i², dither anti-banding.
       // La luce dei core (soli, supernove, pulsar) si allunga in una lama orizzontale blu-fredda — linguaggio "space movie", sobrio.
       if(uStreak>0.001){ vec2 sx=vec2(1.0/uRes.x,0.0);
@@ -2492,6 +2635,8 @@ function applyDirector(){
     const _warmth=THREE.MathUtils.clamp((director.key.r-director.key.b)*1.5+0.5,0,1);
     cinePass.uniforms.uHalation.value=_warmth*0.7; }                                         // halation piena nei mood caldi, micro-presenza nei freddi
 }
+// leva-master saturazione: 1.0 = look di oggi (nessuna regressione); ~1.3-1.45 = picco "space-edit". La pilota l'ArcConductor al CREST; da console per A/B.
+window.cadutaSat=(v)=>{ if(!cinePass) return 'cinePass non pronto'; cinePass.uniforms.uSat.value=(v==null?1:Math.max(0,+v||0)); return 'uSat='+cinePass.uniforms.uSat.value; };
 // SFONDI: crossfade verso una nebulosa diversa ogni ~5-9 min (lazy-load + dispose → 1-2 texture in VRAM)
 // loader sfondi ADATTIVO: decode+resize in createImageBitmap (off-thread, come i livelli zoom).
 // Gli sfondi v14 sono 16384px su disco; l'upload però è CAPPATO a 12800 anche in 4K (M≈0.87,
@@ -3270,7 +3415,7 @@ let shaderTime=0; const SWRAP=100000;
 let camPhase=0,camDist=10,started=false,camOrbit=0,manSpin=0;
 let camMoveAz=0,camMoveEl=0,camMoveDs=0,camMoveAzT=0,camMoveElT=0,camMoveDsT=0,camMoveNext=20,camMoveScale=1;   // RIFRAME lenti: la camera plana verso nuove inquadrature e vi indugia (richiesta utente: "più cambi di inquadratura")
 let camOrbitP=1,camOrbitDir=1,camOrbitNext=6,camOrbitType=0,camOrbitDur=22,camOrbitLive=0;   // FIGURE: giro 360° completo attorno all'astronauta (dominante) + arco verticale; P=progresso 0..1
-let camOrbitOn=false;   // GIRI DI CAMERA disattivati (richiesta utente): la camera resta ferma a inquadrare la scena frontale ricca. Riattivabili da console con cadutaCamOrbit(true)
+let camOrbitOn=true;    // GIRI DI CAMERA ATTIVI: dolly orizzontale continuo + figure 360° attorno all'astronauta → mostra tutto l'universo (meno monotonia). cadutaCamOrbit(false) li rispegne.
 let camDriftAng=0,camDriftRate=0.05,camDriftRateT=0.05,camDriftRetarget=20,camDriftEase=1;    // DOLLY CIRCOLARE PERPETUO (azimut): rivoluzione lenta SEMPRE attiva attorno all'astronauta (rad/s, ~2-3.5 min/giro) — la camera non è mai ferma; nel dive rientra a 0 in rampa (lo zoom deve restare in asse)
 let camDriftVAng=0,camDriftVRateT=0,camDriftVRetarget=26;                                     // QUOTA VERTICALE: ondulazione LIMITATA (±~20°, camDriftVRateT = angolo bersaglio) — la camera resta principalmente sulla BANDA centrale (richiesta utente: i poli si attraversano SOLO nei giri verticali completi, mai parcheggiati)
 let camRegimeT=30,camRegH=1,camRegV=0.15;                                                     // REGIME DI ROTAZIONE: la danza CAMBIA CARATTERE ogni ~45-100s — solo orizzontale a cerchio, solo verticale, o combinata (mai lo stesso moto fisso)
@@ -3285,7 +3430,7 @@ let signalTimer=32,sporeTimer=45,magnetarTimer=36,dysonTimer=55,auroraTimer=14,d
 let lastDay=Math.floor((Date.now()-TEL.launch)/86400000), persistT=0, dilLogged=false;
 const tmpLook=new THREE.Vector3(), planetFocus=new THREE.Vector3(), _bhProj=new THREE.Vector3();
 let _pvT=1.5; const _pv=new THREE.Vector3();   // garanzia "universo mai vuoto": timer + scratch di proiezione (zero alloc per-frame)
-const SHELL_MIN=IS_MOBILE?11:20, SHELL_CAP=IS_MOBILE?13:25;   // guscio garantito (min) e CAP mondi lontani: dimensionati sul pool (mobile 16 / desktop 30) → restano SEMPRE ~5 slot liberi per hero multipli/graze/soli/flyby. BUGFIX: senza cap i mondi lontani (immortali: riciclano, mai active=false) saturavano il pool e spegnevano il ramo probabilistico riga sotto (unica fonte di graze/soli); su mobile il target>pool lo rendeva pure irraggiungibile.
+const SHELL_MIN=IS_MOBILE?11:(ULTRA?36:24), SHELL_CAP=IS_MOBILE?13:(ULTRA?42:29);   // guscio mondi lontani MOLTO più popolato (20/25→36/42 in ULTRA): mai il vuoto, mondi da OGNI direzione. Pool 48 → restano ~6 slot per hero/graze/soli.   // guscio garantito (min) e CAP mondi lontani: dimensionati sul pool (mobile 16 / desktop 30) → restano SEMPRE ~5 slot liberi per hero multipli/graze/soli/flyby. BUGFIX: senza cap i mondi lontani (immortali: riciclano, mai active=false) saturavano il pool e spegnevano il ramo probabilistico riga sotto (unica fonte di graze/soli); su mobile il target>pool lo rendeva pure irraggiungibile.
 
 // auto-scaler
 let fpsAcc=0,fpsN=0,fpsTimer=0,tier=0,tierCooldown=0;
@@ -3369,6 +3514,8 @@ function animate(){
   shaderTime=(shaderTime+dt)%SWRAP;
   director.step(dt); applyDirector();
   try{ EF.step(dt); }catch(_){}   // ALMANAC: fenomeno-guida dell'ora + showpiece rari programmati + rollover capitolo/tema (housekeeping ogni ~5s)
+  try{ Arc.update(dt); }catch(_){}   // ARC CONDUCTOR: onda di tensione (CALM→GATHER→SURGE→CREST→RELEASE); a riposo no-op (identico a oggi)
+  try{ Regions.update(dt); }catch(_){}   // REGION CONDUCTOR: profilo densità della regione attraversata (a riposo mul=1 → identico a oggi)
   try{ updateIntro(dt); }catch(_){}   // INTRO di capitolo (envelope: avvicinamento, cenno, title-card)
   // DILATAZIONE TEMPORALE vicino ai buchi neri: il mondo rallenta, l'orologio "sfasa"
   // (il GIORNO resta ancorato al tempo reale → perennità intatta; è un effetto narrativo/visivo).
@@ -3391,7 +3538,7 @@ function animate(){
     if(fallPhaseT<=0){ fallFast=!fallFast; fallTarget=fallFast?(20+Math.random()*12):1; fallPhaseT=45+Math.random()*60;   // veloce ancora più spinto (20-32×); fasi più corte (~45-105s)
       if($t.log){ $t.log.textContent=fallFast?'— acceleration. the fall quickens.':'— drifting. the fall slows.'; $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),9000); } } }
   fallMul += (fallTarget-fallMul)*Math.min(1,dt*0.08);                  // rampa graduale (~25-30s) verso il target — fasi più corte ma transizioni morbide
-  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul*zoomWorldMul*((typeof EF!=='undefined'&&EF.ready&&EF.fallSig)||1.45);   // ×EF.fallSig (per-capitolo ~1.15-1.75): un episodio contemplativo cade più lento, uno drammatico più veloce (la musica segue via playbackRate)
+  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul*zoomWorldMul*((typeof EF!=='undefined'&&EF.ready&&EF.fallSig)||1.45)*1.14*(typeof Regions!=='undefined'?Regions.mul.speed:1);   // ×1.14 momentum globale (viaggio) × Regions.mul.speed (regione: CINTURA accelera, CORRENTE rallenta); ×EF.fallSig per-capitolo
   const rocketE=THREE.MathUtils.clamp((fallMul-1)/9,0,1);               // 0..1: i cue "RAZZO" crescono (gradualmente) con la velocità di caduta
   if(audio.music && audio.music.setSpeedMul) audio.music.setSpeedMul(1+rocketE*0.6);   // la musica accelera nelle fasi veloci
 
@@ -3431,19 +3578,19 @@ function animate(){
   // lastre di nebulosa profonde che scorrono e riciclano
   for(const s of nebSheets){ s.mat.uniforms.uTime.value=shaderTime; s.m.lookAt(camera.position);   // GUSCIO: billboard verso la camera, posizione FISSA sulla sfera → foschia colorata da ogni angolo (il moto lo dà l'orbita della camera + il churn fbm interno)
     s.mat.uniforms.uColor.value.copy(director.grade).offsetHSL(s.hue,0,0).lerp(_white,0.18);   // offsetHSL: ogni lastra una tonalità vicina → banda di colori, non monocromo
-    s.mat.uniforms.uOp.value=(0.22+director.cur.neb*0.25)*zoomEnvMul*((typeof EF!=='undefined'&&EF.nebSig)||1);   // opacità col mood × firma densità nebulosa del capitolo; ×zoomEnvMul: DEEP ZOOM pulisce }
+    s.mat.uniforms.uOp.value=(0.13+director.cur.neb*0.20*(typeof Regions!=='undefined'?Regions.mul.neb:1))*zoomEnvMul*((typeof EF!=='undefined'&&EF.nebSig)||1);   // ×Regions.mul.neb (regione): NUBE inspessisce, VUOTO pulisce; moltiplica solo il termine neb, NON la base 0.13 (o torna il "latte") }
   }
 
   // polvere (+ stiramento in raffica)
-  dustMat.uniforms.uTime.value=shaderTime; dustMat.uniforms.uAmt.value=director.cur.dust*0.5*zoomEnvMul*zoomWorldDimN;   // ×zoomWorldDimN: nel DEEP ZOOM la polvere si spegne DEL TUTTO (lo stretch "warp" faceva strisce orizzontali sopra la bella immagine)
-  dustMat.uniforms.uStretch.value=1+THREE.MathUtils.clamp(speed/40,0,1)*0.45+director.surge*1.6+slingE*3.2+rocketE*2.5;   // + scie lunghe "warp" quando si precipita come un razzo
+  dustMat.uniforms.uTime.value=shaderTime; dustMat.uniforms.uAmt.value=director.cur.dust*0.5*(typeof Regions!=='undefined'?Regions.mul.dust:1)*zoomEnvMul*zoomWorldDimN;   // ×Regions.mul.dust (regione); ×zoomWorldDimN: nel DEEP ZOOM la polvere si spegne DEL TUTTO
+  dustMat.uniforms.uStretch.value=1.18+THREE.MathUtils.clamp(speed/40,0,1)*0.45+director.surge*1.6+slingE*3.2+rocketE*2.5;   // base 1→1.18: scie corte SEMPRE presenti (senso di moto), NON è il warp (surge/sling/rocket restano gli extra)
   dustMat.uniforms.uColor.value.copy(director.grade).lerp(_white,0.6);
-  const dz=speed*dt*1.6;
+  const dz=speed*dt*2.0;   // polvere lontana scorre più decisa (1.6→2.0): più senso di attraversamento
   for(let i=0;i<DUST_N;i++){ dustPos[i*3+2]+=dz; if(dustPos[i*3+2]>DZN) dust.userData.re(i,DZF); }
   dustGeo.attributes.position.needsUpdate=true;
   // polvere ravvicinata veloce (parallasse forte davanti all'uomo)
   { const u=fastDust.userData; fastDust.material.uniforms.uColor.value.copy(director.grade).lerp(_white,0.6);
-    fastDust.material.uniforms.uAmt.value=(0.4+director.cur.dust*0.6)*zoomEnvMul*zoomWorldDimN; const dzf=speed*dt*2.4;   // ×zoomWorldDimN: DEEP ZOOM spegne la polvere veloce (niente scie/strisce sopra l'immagine zoom)
+    fastDust.material.uniforms.uAmt.value=(0.4+director.cur.dust*0.6)*(typeof Regions!=='undefined'?Regions.mul.dust:1)*(1+((typeof Regions!=='undefined'&&Regions._tBoost>0)?0.4:0))*zoomEnvMul*zoomWorldDimN; const dzf=speed*dt*3.0;   // ×Regions.mul.dust + boost d'ingresso regione; dzf 2.4→3.0 (grani più veloci); ×zoomWorldDimN: DEEP ZOOM spegne
     for(let i=0;i<u.N;i++){ u.pos[i*3+2]+=dzf; if(u.pos[i*3+2]>60) u.re(i,-60); }
     fastDust.geometry.attributes.position.needsUpdate=true; }
 
@@ -3505,9 +3652,10 @@ function animate(){
   if(shower && shower!==shownShowerLog){ shownShowerLog=shower; $t.log.textContent='— meteor shower: the '+shower+'. The sky is on fire.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),13000); }
   if(!shower) shownShowerLog='';
   // asteroidi / meteore (+ conteggio sfiorati)
-  asteroids.visible=director.cur.aster>0.15 || !!shower;
+  const _astN=Math.max(1, !!shower?AST_N:Math.round(AST_N*(0.10+Math.max(director.cur.aster,(typeof Regions!=='undefined'?Regions.mul.aster:0))*0.90)));   // floor ~10% di sassi radi SEMPRE (mai "vuoto in movimento"); pieno campo in CINTURA (Regions.mul.aster=1)
+  asteroids.visible=true; asteroids.count=_astN;
   if(asteroids.visible){ const adz=speed*dt*(shower?2.4:1.2);
-    for(let i=0;i<AST_N;i++){ const a=astData[i]; const pz=a.z; a.z+=adz; a.rx+=a.vrx*dt; a.ry+=a.vry*dt; a.rz+=a.vrz*dt;
+    for(let i=0;i<_astN;i++){ const a=astData[i]; const pz=a.z; a.z+=adz; a.rx+=a.vrx*dt; a.ry+=a.vry*dt; a.rz+=a.vrz*dt;
       if(pz<0&&a.z>=0){ const _hd=Math.hypot(a.x,a.y);
         if(_hd<10) TEL.meteors++;                                   // conteggio sfiorati invariato
         // PASSAGGIO RAVVICINATO GENUINO (mai una rotta scriptata): reazione sobria one-shot
@@ -3540,7 +3688,7 @@ function animate(){
   // nebulosa volumetrica (attraversamento) + nuovi corpi + strutture
   if(nebBoost>0) nebBoost=Math.max(0,nebBoost-dt*0.12);
   _nebCol.copy(director.grade).lerp(_white,0.14);
-  nebulaField.update(dt,speed,Math.max(director.cur.neb*0.85,nebBoost),_nebCol);   // density feed 0.6→0.85 → più attraversamenti e più densi
+  nebulaField.update(dt,speed,Math.max(director.cur.neb*0.85*(typeof Regions!=='undefined'?Regions.mul.neb:1),nebBoost)*zoomEnvMul,_nebCol);   // ×Regions.mul.neb: NUBE = più nuvole ravvicinate; ×zoomEnvMul: DEEP ZOOM pulisce
   updateGalaxies(dt,speed);
   cometTimer-=dt; if(cometTimer<=0 && !comet.active){ cometTimer=6+Math.random()*12; comet.spawn(); } comet.update(dt);   // cometa quasi sempre in scena (vita 16-28s, gap 6-18s)
   clusterTimer-=dt; if(clusterTimer<=0 && !cluster.active){ clusterTimer=66+Math.random()*88; cluster.spawn(); } cluster.update(dt,speed);
@@ -3605,7 +3753,7 @@ function animate(){
   const _zIdle=(typeof zoomState==='undefined'||zoomState==='idle');
   // REGIA EVENTI: eclissi in totalità o buco nero vicino all'astronauta → le camere SI FERMANO
   // (in ~2s) per riprendere la scena; alla fine dell'evento il moto riparte da solo
-  camEvHold+=(((eclipseDim>0.04||bhNear>0.18)?1:0)-camEvHold)*Math.min(1,dt*0.5);   // soglia buco nero anticipata (0.18): il freno arriva PRIMA del passaggio ravvicinato
+  camEvHold+=((Math.max((eclipseDim>0.04||bhNear>0.18)?1:0,(typeof Arc!=='undefined'?Arc.brace:0))-camEvHold))*Math.min(1,dt*0.5);   // freno camera: eventi (eclissi/BH, soglia 0.18) O ArcConductor (brace del CREST); il max non riaccende nulla a riposo
   const _evGo=1-0.92*camEvHold;                                                // 0.08 residuo: respiro minimo, mai fermo-immagine assoluto
   if(camOrbitP>=1){ if(_zIdle && camOrbitOn){ camOrbitNext-=dt; if(camOrbitNext<=0 && camEvHold<0.4){
     camOrbitP=0;
@@ -3756,9 +3904,9 @@ function animate(){
   eclipseDim=Math.max(0,eclipseDim-dt*0.8);                                           // decadimento morbido (l'eclissi lo ricarica finché è in totalità)
   cinePass.uniforms.uVignette.value=1.0+rocketE*0.22+director.surge*0.08+eclipseDim;  // tunnel in warp + iris-down alla totalità dell'eclissi
   cinePass.uniforms.uGrain.value=Math.min(0.026, 0.020*(1.0+director.surge*0.30))*(0.1+0.9*zoomWorldDimN);    // la camera "sente" la caduta; nero pulito per l'encoder. Nel DEEP ZOOM la grana quasi sparisce: sul nero delle fasi profonde leggeva come un campo di finte stelline ("lo sfondo sotto")
-  bloomPass.strength=Math.min(0.85, (0.36+director.cur.aB*0.30+director.surge*0.20)*((typeof EF!=='undefined'&&EF.bloomBias)||1))*(introActive?(1-0.6*introApproach):1);   // × firma bloom del capitolo (un episodio più "sognante"/alonato, un altro più asciutto); durante il saluto scende (astronauta leggibile)
-  bloomPass.threshold=Math.max(0.86, 0.92-director.cur.neb*0.05-director.surge*0.02); // firma per-mood, pavimento alzato 0.82→0.86: meno 'macchie' luminose sui pianeti (bloom più chirurgico)
-  bloomPass.radius=Math.min(0.62, 0.42+director.cur.aB*0.24+director.surge*0.10+rocketE*0.08);   // cap ridotto 0.85→0.62: col bloom ora a 1/2 risoluzione l'alone è già più fine e definito; raggio più stretto = glow che non vela il dettaglio attorno
+  bloomPass.strength=Math.min(ULTRA?1.25:0.85, (0.36+director.cur.aB*0.30+director.surge*(ULTRA?0.42:0.20))*((typeof EF!=='undefined'&&EF.bloomBias)||1))*(introActive?(1-0.6*introApproach):1);   // ULTRA: al picco (surge) aloni molto più intensi; CALM identica (surge=0)
+  bloomPass.threshold=Math.max(0.86, 0.92-director.cur.neb*0.05-director.surge*(ULTRA?0.12:0.02)); // ULTRA: al picco più sorgenti entrano nel bloom
+  bloomPass.radius=Math.min(ULTRA?0.85:0.62, 0.42+director.cur.aB*0.24+director.surge*(ULTRA?0.26:0.10)+rocketE*0.08);   // ULTRA: al picco alone più ampio (la 5090 regge il fill)
 
   composer.render();
   telUpdate(dt); updateAccent(dt); updateSky(dt);   // accento UI + crossfade sfondi col mood
@@ -4330,6 +4478,7 @@ function zoomLoadCfg(){ if(zoomCfgP) return zoomCfgP;
     fetch('assets/zoom/levels.json',{signal:AbortSignal.timeout(20000)}).then(r=>{ if(!r.ok) throw new Error('levels.json http '+r.status); return r.json(); }),   // timeout: mai 'arm' appeso per sempre
     fetch('assets/zoom/sky-gc.json',{signal:AbortSignal.timeout(20000)}).then(r=>{ if(!r.ok) throw new Error('sky-gc.json http '+r.status); return r.json(); })
   ]).then(([lv,gc])=>{
+    if(typeof ULTRA!=='undefined'&&ULTRA&&lv&&lv._disattivati&&Array.isArray(lv._disattivati.levels)) lv.levels=(lv.levels||[]).concat(lv._disattivati.levels);   // ULTRA: HAWK-I L5/L6 (40MB, coriandoli IR ok su 5090) → tuffo fino al nucleo galattico
     const out=zParseLevels((lv&&lv.levels)||lv);
     if(!out.length) throw new Error('levels.json vuoto/invalido');
     const fams=[{name:'gc', levels:out}];                          // famiglia 0 = GC: l'UNICA ancorata al cielo (ingresso del dive)
