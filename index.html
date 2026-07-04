@@ -1004,7 +1004,7 @@ let signal, spores, magnetar, dyson, aurora, duststorm;
 let shower=null, showerT=0, shownShowerLog='';
 let nebBoost=0, galaxies, godray, starburst=null, sbOp=0, _sbSun=null;   // starburst: croce di diffrazione sui soli hero (accento, il flare resta protagonista)
 // NUOVI CORPI (varietà): istanze + timer individuali
-let lavaWorld, shattered, whitedwarf, variablestar, ringarc, station, lightEcho, bolide, gwRipple, whalePod;
+let lavaWorld, shattered, whitedwarf, variablestar, ringarc, station, lightEcho, bolide, gwRipple, whalePod, starTunnel;
 let lavaTimer=55, shatteredTimer=72, whitedwarfTimer=30, variablestarTimer=27, ringarcTimer=60, stationTimer=48, lightEchoTimer=72, bolideTimer=12, gwTimer=95, whalePodTimer=54;
 // VISITATORI (nuovi elementi casuali): stelle cadenti, navicella, razzo, UFO
 let shootingStars=[], shootTimer=7;
@@ -1053,6 +1053,7 @@ let sling=0, bhClose=false, flythruCD=0;    // fionda gravitazionale (buco nero)
 let flythruWarp=0; const flythruWarpPos=new THREE.Vector3();   // WARP tipo buco nero quando l'astronauta SFONDA un pianeta (lensing transitorio)
 let bigPlanetNear=0, slowMo=1;                                 // SLOW-MOTION vicino ai giganti (momento "low motion")
 let cam360Timer=70+Math.random()*70, cam360Ang=0, cam360On=false, cam360Dir=1;   // SCENE a 360°: la camera fa un giro completo attorno all'astronauta ogni tanto
+let tunnelCamRoll=0, tunnelFovK=0, tunnelTimer=150+Math.random()*150;   // TUNNEL DI STELLE: roll+fov guidati dal tunnel, timer auto
 let fallMul=1, fallTarget=1, fallPhaseT=90, fallAuto=false, fallFast=false;   // CADUTA LENTA di default (niente fasi warp): drift calmo da documentario. cadutaFall('auto') riattiva i cicli veloci, cadutaFall(x) override manuale
 // --- REAZIONE SOBRIA al colpo/sfioramento (solo passaggi NATURALI ravvicinati) ---
 let hitFlash=0, hitTremor=0, hitTumble=0;          // scalari decadenti del colpo meteora (one-shot)
@@ -1543,7 +1544,7 @@ function build(){
   nebulaField=new NebulaField(13); comet=new Comet(); cluster=new GlobularCluster(); derelict=new Derelict();
   pulsar=new Pulsar(); redgiant=new RedGiant(); binary=new Binary(); remnant=new Remnant();
   signal=new TheSignal(); spores=new SporeBloom(); magnetar=new Magnetar(); dyson=new DysonSwarm(); aurora=new AuroraCurtain(); duststorm=new DustStorm();
-  lavaWorld=new LavaWorld(); shattered=new ShatteredWorld(ag,astMat); whitedwarf=new WhiteDwarf(); variablestar=new VariableStar(); ringarc=new RingArc(); station=new StationTumble(); lightEcho=new LightEcho(); bolide=new BolideSplit(); gwRipple=new GWRipple(); whalePod=new WhalePod();
+  lavaWorld=new LavaWorld(); shattered=new ShatteredWorld(ag,astMat); whitedwarf=new WhiteDwarf(); variablestar=new VariableStar(); ringarc=new RingArc(); station=new StationTumble(); lightEcho=new LightEcho(); bolide=new BolideSplit(); gwRipple=new GWRipple(); whalePod=new WhalePod(); starTunnel=new StarTunnel();
   solarEclipse=new SolarEclipse(); lunarEclipse=new LunarEclipse();
   for(let i=0;i<9;i++) shootingStars.push(new ShootingStar());   // pool: nelle piogge ne sfrecciano anche 5-9 insieme (3→5→9 per densità)
   starship=new Starship(); rocketShip=new RocketShip(); ufo=new UFO();
@@ -1898,6 +1899,7 @@ window.cadutaFlashback=(n)=>{ try{ if(typeof Flashback==='undefined') return 'no
 window.efPlanetDiag=(sec)=>{ window.__pdiag=(sec||30); window.__pdiagHits={}; return 'planet-diag '+(sec||30)+'s → EFPLANETDIAG a fine'; };   // DIAGNOSTICA quadrati neri: cerca cause JS-side sui pianeti (texture non pronta / uSunDir guasto / opacità NaN)
 window.caduta360=()=>{ try{ cam360On=true; cam360Ang=0; cam360Dir=Math.random()<0.5?1:-1; return '360 go'; }catch(e){ return ''+e; } };   // test: giro camera a 360°
 window.cadutaSlowmo=(s)=>{ try{ bigPlanetNear=(s==null?1:+s); return 'bigPlanetNear='+bigPlanetNear; }catch(e){ return ''+e; } };   // test: forza slow-mo showcase
+window.cadutaTunnel=(dur)=>{ try{ return (starTunnel&&starTunnel.start(+dur||26))?('TUNNEL go ('+(+dur||26)+'s)'):'tunnel non pronto/attivo'; }catch(e){ return ''+e; } };   // test: tunnel di stelle → black hole all'uscita
 window.cadutaDebugHit=(n)=>{ hitFlipTarget+=6.28318*(n||4); hitFlash=Math.max(hitFlash,0.6); return 'BURST x'+(n||4); };  // test: capriole verticali da impatto (console)
   window.cadutaFall=(m)=>{ if(m===undefined||m==='auto'){ fallAuto=true; return 'fase di caduta: AUTO (cicli 2-5 min)'; } fallAuto=false; fallTarget=fallMul=(+m||1); return 'velocità di caduta ×'+fallMul+' (manuale; cadutaFall("auto") per riattivare le fasi)'; };
   // taratura del SORPASSO dei mondi (si applica ai prossimi spawn; quelli in volo mantengono il loro)
@@ -2064,6 +2066,47 @@ function updateLens(){
   lensPass.uniforms.uStrength.value=0.0; lensPass.uniforms.uBH.value.set(-1,-1); lensPass.enabled=false;   // salta la passata se non c'è sorgente in scena
 }
 
+/* ═══════════ TUNNEL DI STELLE (richiesta utente) ═══════════
+   L'astronauta ci sfreccia dentro velocissimo ~20-30s (cilindro di stelle che rush + rotazione + FOV-warp),
+   e ALL'USCITA compare un BLACK HOLE davanti. Attivo: cadutaTunnel() o timer auto. */
+class StarTunnel{
+  constructor(){
+    this.N=2800; const pos=new Float32Array(this.N*3), sz=new Float32Array(this.N);
+    for(let i=0;i<this.N;i++) this._place(pos,sz,i,true);
+    this.geo=new THREE.BufferGeometry();
+    this.geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    this.geo.setAttribute('aSize',new THREE.BufferAttribute(sz,1));
+    this.mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending,
+      uniforms:{uOp:{value:0},uPix:{value:PIX}},
+      vertexShader:`attribute float aSize;uniform float uPix;varying float vB;
+        void main(){ vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+          float near=clamp((position.z+700.0)/720.0,0.0,1.0); vB=near;                 // più vicino alla camera → più grande e brillante (streak del tunnel)
+          gl_PointSize=max(1.0, aSize*uPix*(0.4+3.4*near*near)*(72.0/max(-mv.z,1.0))); }`,
+      fragmentShader:`uniform float uOp;varying float vB;
+        void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d); float a=smoothstep(0.5,0.0,r);
+          vec3 c=mix(vec3(0.55,0.72,1.0),vec3(1.0,0.98,0.9),vB);
+          gl_FragColor=vec4(c*(0.3+2.1*vB), a*uOp*(0.35+0.65*vB)); }`});
+    this.pts=new THREE.Points(this.geo,this.mat); this.pts.frustumCulled=false; this.pts.renderOrder=7; this.pts.visible=false; scene.add(this.pts);
+    this.active=false; this.t=0; this.dur=0; this._pos=pos; this._sz=sz; this._bhFired=false;
+  }
+  _place(pos,sz,i,anyZ){ const a=Math.random()*6.28318, rr=5+Math.random()*74;      // CILINDRO attorno all'asse di caduta
+    pos[i*3]=Math.cos(a)*rr; pos[i*3+1]=Math.sin(a)*rr; pos[i*3+2]=anyZ?(-720+Math.random()*740):(-720-Math.random()*40);
+    sz[i]=0.6+Math.random()*2.4; }
+  start(dur){ if(this.active) return false; this.active=true; this.t=0; this.dur=Math.max(14,dur||26); this._bhFired=false; this.pts.rotation.z=0; this.pts.visible=true;
+    try{ if($t&&$t.log){ $t.log.textContent='— the star tunnel. Hold on.'; $t.log.classList.add('on'); setTimeout(()=>{try{$t.log.classList.remove('on');}catch(_){}},9000);} }catch(_){} return true; }
+  update(dt){ if(!this.active){ tunnelFovK=Math.max(0,tunnelFovK-dt*2.0); return; } this.t+=dt;
+    const spd=1350, p=this._pos;
+    for(let i=0;i<this.N;i++){ p[i*3+2]+=spd*dt; if(p[i*3+2]>30) this._place(p,this._sz,i,false); }   // rush verso la camera; riciclo dietro
+    this.geo.attributes.position.needsUpdate=true;
+    this.pts.rotation.z+=dt*1.9;                                                     // il tunnel RUOTA (spirale)
+    const fin=THREE.MathUtils.clamp(this.t/1.6,0,1), fout=THREE.MathUtils.clamp((this.dur-this.t)/2.4,0,1), k=Math.min(fin,fout);
+    this.mat.uniforms.uOp.value=k; this.mat.uniforms.uPix.value=PIX;
+    tunnelFovK+=(k-tunnelFovK)*Math.min(1,dt*2.2);                                   // FOV-warp guidato dal tunnel (ease pulito, niente accumulo)
+    if(!this._bhFired && this.t>this.dur-3.4){ this._bhFired=true;                   // ★ ALL'USCITA: un BLACK HOLE davanti
+      try{ if(typeof blackhole!=='undefined'&&blackhole&&!blackhole.active){ blackhole.spawn(); blackhole._dir.set(0,0.02,-1).normalize(); blackhole._R0=1000; blackhole._rad=1000; blackhole._slow=0.5; blackhole.group.scale.setScalar(54); blackhole.group.position.copy(blackhole._dir).multiplyScalar(1000); } }catch(_){} }
+    if(this.t>=this.dur){ this.active=false; this.pts.visible=false; this.mat.uniforms.uOp.value=0; }
+  }
+}
 /* ---------------- NEBULA FIELD: attraversamento volumetrico (immersione) ---------------- */
 class NebulaField{
   constructor(n){
@@ -3903,6 +3946,8 @@ function animate(){
   bolideTimer-=dt; if(bolideTimer<=0 && !bolide.active){ bolideTimer=18+Math.random()*26; bolide.spawn(); } bolide.update(dt,speed);   // airburst frammentato ricorrente (gap ~30s medi)
   gwTimer-=dt; if(gwTimer<=0 && !gwRipple.active){ gwTimer=200+Math.random()*230; gwRipple.spawn(); } gwRipple.update(dt);
   whalePodTimer-=dt; if(whalePodTimer<=0 && !whalePod.active){ whalePodTimer=108+Math.random()*120; whalePod.spawn(); } whalePod.update(dt,speed);
+  starTunnel.update(dt);   // TUNNEL DI STELLE
+  tunnelTimer-=dt; if(tunnelTimer<=0 && !starTunnel.active && (typeof zoomState==='undefined'||zoomState==='idle') && !(typeof introActive!=='undefined'&&introActive) && !blackhole.active){ tunnelTimer=200+Math.random()*180; starTunnel.start(22+Math.random()*8); }   // auto ~ogni 3-6min (raro/speciale)
   // VISITATORI: stelle cadenti (frequenti nelle piogge), navicella, razzo, UFO
   shootTimer-=dt*(shower?7:1); if(shootTimer<=0){ shootTimer=4+Math.random()*7; const fs=shootingStars.find(s=>!s.active); if(fs) fs.spawn(); }   // stelle cadenti QUASI CONTINUE (base ~4-11s, mean ~7.5s)
   for(const s of shootingStars) s.update(dt,speed);
@@ -4072,7 +4117,7 @@ function animate(){
   camLookY += (ly2-camLookY)*Math.min(1,dt*2.2);
   tmpLook.set(camLookX,camLookY,0); camera.lookAt(tmpLook);
   if(!camOrbitOn && _zIdle) camSceneRoll=(camSceneRoll+camSceneRollSpd*dt)%6.283185307;   // ROLL CONTINUO: la scena gira attorno all'astronauta centrato (camera su se stessa → "rotola verso la meta"); SOLO in scena ESO (nel dive lo zoom ruota da sé)
-  camera.rotation.z+=Math.sin(camPhase*0.03)*0.010+camRollAng+camSceneRoll*camDriftEase;   // ×camDriftEase: nel dive il roll di scena sfuma a 0 (camera ferma, ruota solo l'immagine zoom)
+  camera.rotation.z+=Math.sin(camPhase*0.03)*0.010+camRollAng+camSceneRoll*camDriftEase+Math.sin(camPhase*0.55)*0.10*tunnelFovK;   // ×camDriftEase: dive→roll di scena a 0; +sway durante il TUNNEL DI STELLE (scalato da tunnelFovK → ease pulito, niente accumulo)
   if(introActive && introApproach>0.001){                                       // INTRO: il personaggio si gira VERSO la camera, che si avvicina (primo piano del saluto), poi si rigira e riparte
     const k=introApproach;
     manRig.rotation.y=_lerpAng(manRig.rotation.y, _az+Math.PI, k);              // faccia verso camera (greet yaw = azimut+π)
@@ -4087,7 +4132,7 @@ function animate(){
   // ZOOM CONTINUO (scena ESO): il FOV si stringe/allarga dolcemente (±~4°, ~20s) → accenno di ZOOM mentre
   // la scena si muove e ruota, così sembra una caduta che "entra" nell'universo. Nel dive lo spegne (camDriftEase→0).
   const _esoZoom=(camOrbitOn?1:camDriftEase)*(Math.sin(camPhase*0.05)*2.2 - (1-Math.cos(camPhase*0.032))*2.0);   // componente lenta che spinge IN (coseno rialzato: più tempo "dentro" lo zoom)
-  camera.fov=baseFov + _esoZoom + slingE*3.0 + rocketE*7.0 + zoomFovKick; camera.updateProjectionMatrix();   // + micro-kick DEEP ZOOM (0 a riposo)
+  camera.fov=baseFov + _esoZoom + slingE*3.0 + rocketE*7.0 + zoomFovKick + tunnelFovK*15.0; camera.updateProjectionMatrix();   // + FOV-warp del TUNNEL DI STELLE (0 a riposo)
   deepZoomUpdate(dt);   // DEEP ZOOM (zoom infinito): no-op totale se spento
 
   cinePass.uniforms.uTime.value=shaderTime; cinePass.uniforms.uRocket.value=rocketE;
