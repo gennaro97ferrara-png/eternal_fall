@@ -854,12 +854,18 @@ const PMETA=[
   {f:'4k_sun',hue:0.08,sun:true,bump:0},
 ];
 { const _texByFile={}; ASSETS.pt=PMETA.map(m=>{ if(_texByFile[m.f]) return _texByFile[m.f]; const t=tex('assets/'+m.f+'.jpg'); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO; return _texByFile[m.f]=t; }); }   // DE-DUP: una sola THREE.Texture per file (le voci PMETA ri-tinte condividono la texture, hue/bump via uniform) → niente 2ª texture per URL già in cache (causava shader 'uvundefined' → crash)
-// WARM-UP texture pianeti: upload GPU di TUTTE le texture (una volta, quando l'immagine è pronta) → il primo bind non è mai NERO.
-// "quadrati neri" causa C (sfratto/first-bind) + niente pop-in su un VIDEO precaricato. Riprova finché tutte sono residenti.
+// WARM-UP di TUTTE le texture della scena: upload GPU (una volta, quando l'immagine è pronta) → il primo bind non è mai NERO.
+// "quadrati neri" = causa C: un oggetto resta NERO per 1-2 frame mentre una texture sale in GPU durante il gioco (raffica montaggio,
+// impatto/detriti, prima flashback). Su un VIDEO precarichiamo TUTTO al boot dietro il "Loading" → niente stall texImage2D in scena.
+// Copre: texture pianeti (pt), tutti gli ASSETS.* (rock, ring, clouds, flare…), le still flashback, e ogni map/alphaMap/emissiveMap
+// già nella scena. Riprova (le immagini arrivano async) finché tutto è residente.
 function warmPlanetTex(tries){ tries=tries||0; if(typeof renderer==='undefined'||!renderer) return; let pending=0; const seen=new Set();
-  try{ for(const t of (ASSETS.pt||[])){ if(!t||seen.has(t)) continue; seen.add(t);
-    if(t.image&&(t.image.width||t.image.complete)){ try{ renderer.initTexture(t); }catch(_){} } else pending++; } }catch(_){ }
-  if(pending>0 && tries<50) setTimeout(()=>warmPlanetTex(tries+1),400); }
+  const up=(t)=>{ if(!t||!t.isTexture||seen.has(t)) return; seen.add(t); if(t.image&&(t.image.width||t.image.complete)){ try{ renderer.initTexture(t); }catch(_){} } else pending++; };
+  try{ for(const t of (ASSETS.pt||[])) up(t); }catch(_){}
+  try{ for(const k in ASSETS){ up(ASSETS[k]); } }catch(_){}
+  try{ if(typeof Flashback!=='undefined'&&Flashback.tex) for(const t of Flashback.tex) up(t); }catch(_){}
+  try{ if(typeof scene!=='undefined'&&scene) scene.traverse(o=>{ const m=o.material; if(!m) return; const ms=Array.isArray(m)?m:[m]; for(const mm of ms){ up(mm.map); up(mm.alphaMap); up(mm.emissiveMap); } }); }catch(_){}
+  if(pending>0 && tries<60) setTimeout(()=>warmPlanetTex(tries+1),350); }
 const SUN_IDX=PMETA.findIndex(m=>m.sun), MOON_IDX=PMETA.findIndex(m=>m.gray);
 ASSETS.clouds=tex('assets/4k_earth_clouds.jpg'); ASSETS.clouds.colorSpace=THREE.SRGBColorSpace; ASSETS.clouds.anisotropy=MAXANISO;
 ASSETS.ring=tex('assets/2k_saturn_ring_alpha.png'); ASSETS.ring.colorSpace=THREE.SRGBColorSpace;
