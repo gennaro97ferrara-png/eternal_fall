@@ -1051,6 +1051,8 @@ let spinRateCur=0.03, spinRateTarget=0.03, spinRetargetT=22, manSpinT=0;   // ma
 let manTumble=0, tumbleRateCur=0.04, tumbleRateTarget=0.04, tumbleRetargetT=16, manTumbleT=0;   // manTumbleT = piccolo angolo bersaglio di beccheggio (capovolta continua RIMOSSA: caduta stabile in una direzione)
 let sling=0, bhClose=false, flythruCD=0;    // fionda gravitazionale (buco nero); flythruCD: cooldown attraversamento pianeti
 let flythruWarp=0; const flythruWarpPos=new THREE.Vector3();   // WARP tipo buco nero quando l'astronauta SFONDA un pianeta (lensing transitorio)
+let bigPlanetNear=0, slowMo=1;                                 // SLOW-MOTION vicino ai giganti (momento "low motion")
+let cam360Timer=70+Math.random()*70, cam360Ang=0, cam360On=false, cam360Dir=1;   // SCENE a 360°: la camera fa un giro completo attorno all'astronauta ogni tanto
 let fallMul=1, fallTarget=1, fallPhaseT=90, fallAuto=false, fallFast=false;   // CADUTA LENTA di default (niente fasi warp): drift calmo da documentario. cadutaFall('auto') riattiva i cicli veloci, cadutaFall(x) override manuale
 // --- REAZIONE SOBRIA al colpo/sfioramento (solo passaggi NATURALI ravvicinati) ---
 let hitFlash=0, hitTremor=0, hitTumble=0;          // scalari decadenti del colpo meteora (one-shot)
@@ -1894,6 +1896,8 @@ function destroyOnFlythrough(p){ try{
 window.cadutaImpact=()=>{ try{ Arc._armImpact((typeof EF!=='undefined'&&EF.arc)||{}); return 'IMPACT armed'; }catch(e){ return ''+e; } };   // test console: astronauta distrugge un pianeta
 window.cadutaFlashback=(n)=>{ try{ if(typeof Flashback==='undefined') return 'no Flashback'; Flashback.cool=0; return Flashback.start('manual',n)?('FLASHBACK go ('+Flashback.shots.length+' still)'):('non pronto: loaded='+Flashback._loaded+' tex='+Flashback.tex.length+' active='+Flashback.active); }catch(e){ return ''+e; } };   // test console: lancia una cutscene di still
 window.efPlanetDiag=(sec)=>{ window.__pdiag=(sec||30); window.__pdiagHits={}; return 'planet-diag '+(sec||30)+'s → EFPLANETDIAG a fine'; };   // DIAGNOSTICA quadrati neri: cerca cause JS-side sui pianeti (texture non pronta / uSunDir guasto / opacità NaN)
+window.caduta360=()=>{ try{ cam360On=true; cam360Ang=0; cam360Dir=Math.random()<0.5?1:-1; return '360 go'; }catch(e){ return ''+e; } };   // test: giro camera a 360°
+window.cadutaSlowmo=(s)=>{ try{ bigPlanetNear=(s==null?1:+s); return 'bigPlanetNear='+bigPlanetNear; }catch(e){ return ''+e; } };   // test: forza slow-mo showcase
 window.cadutaDebugHit=(n)=>{ hitFlipTarget+=6.28318*(n||4); hitFlash=Math.max(hitFlash,0.6); return 'BURST x'+(n||4); };  // test: capriole verticali da impatto (console)
   window.cadutaFall=(m)=>{ if(m===undefined||m==='auto'){ fallAuto=true; return 'fase di caduta: AUTO (cicli 2-5 min)'; } fallAuto=false; fallTarget=fallMul=(+m||1); return 'velocità di caduta ×'+fallMul+' (manuale; cadutaFall("auto") per riattivare le fasi)'; };
   // taratura del SORPASSO dei mondi (si applica ai prossimi spawn; quelli in volo mantengono il loro)
@@ -3689,6 +3693,14 @@ function animate(){
     if(bhNear>0.35){ if($t.clk) $t.clk.classList.add('dilate'); if(!dilLogged){ dilLogged=true; $t.log.textContent='— TIME DILATION. The clocks no longer agree.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); if(typeof audio!=='undefined'&&audio.enqueueVoice) audio.enqueueVoice('blackhole'); } }
     else { if($t.clk) $t.clk.classList.remove('dilate'); dilLogged=false; }
   } else { if($t.clk) $t.clk.classList.remove('dilate'); dilLogged=false; }
+  // ★ SLOW-MOTION vicino ai GIGANTI (momento "low motion") + durante le scene 360°: rallenta l'intera scena (caduta+animazioni via timeScale)
+  const _slowTgt=(1-0.52*THREE.MathUtils.clamp((bigPlanetNear-0.85)/0.6,0,1))*(cam360On?0.72:1);
+  slowMo+=(_slowTgt-slowMo)*Math.min(1,dt*1.4); timeScale*=slowMo;
+  // ★ SCENE a 360°: ogni tanto la camera fa un GIRO COMPLETO attorno all'astronauta (giro ~9s), poi torna ferma
+  cam360Timer-=dt;
+  if(cam360Timer<=0 && !cam360On && (typeof zoomState==='undefined'||zoomState==='idle') && !(typeof introActive!=='undefined'&&introActive)){
+    cam360On=true; cam360Ang=0; cam360Dir=Math.random()<0.5?1:-1; cam360Timer=150+Math.random()*150; }
+  if(cam360On){ cam360Ang+=cam360Dir*dt*(6.283185307/9.0); if(Math.abs(cam360Ang)>=6.283185307){ cam360On=false; cam360Ang=0; } }
   // FIONDA GRAVITAZIONALE: eravamo vicini al buco nero e ora ne siamo sfuggiti → spinta di ~5s
   if(bhClose && bhNear<0.18){ bhClose=false; sling=5.0;
     $t.log.textContent='— slingshot. The hole flings us into the deep.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),10000);
@@ -3783,6 +3795,7 @@ function animate(){
   for(const p of planets){ p.update(dt,speed); if(!p.active) continue; const z=p.mesh.position.z;
     if(p.isSun){ if(z>-1400&&z<90){ const k=p.mesh.scale.x/Math.max(70,-z+160); if(k>nearSunK){nearSunK=k;nearSun=p;} } }
     else if(z>-900&&z<60){ const sc=p.mesh.scale.x/Math.max(40,-z+120); if(sc>nearScore){nearScore=sc;nearestPlanet=p;} } }
+  bigPlanetNear=(nearestPlanet&&nearestPlanet.mesh.scale.x>110)?nearScore:0;   // per lo slow-mo/showcase: 1 quando un GIGANTE riempie il quadro (usato il frame dopo)
   // luce/ombre in base alla scena: il rim segue il colore della regione; se un Sole è vicino illumina l'uomo da lì
   rimLight.color.copy(director.grade).lerp(_white,0.7);
   if(nearSun){ const k=Math.min(nearSunK*1.5,1);
@@ -3971,7 +3984,9 @@ function animate(){
   camDriftAng=(camDriftAng+(camOrbitOn?camDriftRate*camDriftEase*_evGo:0)*dt)%TAU;   // giri OFF → l'azimut del dolly non avanza (camera ferma sulla scena frontale)
   camRollAng+=((camOrbitOn?camRollRateT:0)-camRollAng)*Math.min(1,dt*0.6);      // giri OFF → l'inclinazione rientra a 0 (assetto dritto, camera ferma)
   // GIRI OFF → l'astronauta resta AL CENTRO (nessuno spostamento); la scena ruota via ROLL continuo (sotto).
-  const _az=Math.sin(camPhase*0.05)*0.05 + (camOrbitOn ? (camMoveAz*camMoveScale + camDriftAng + _orb) : 0);
+  // ★ camera cinematica: giro 360° (cam360Ang) + arco "showcase" quando un GIGANTE riempie il quadro (sway ±~0.6rad → sembra che l'astronauta gli giri intorno, camera che lo riprende)
+  const _camArc=Math.sin(camPhase*0.06)*0.6*THREE.MathUtils.clamp((bigPlanetNear-0.8)/0.5,0,1);
+  const _az=Math.sin(camPhase*0.05)*0.05 + cam360Ang + _camArc + (camOrbitOn ? (camMoveAz*camMoveScale + camDriftAng + _orb) : 0);
 
   // --- UOMO: ruota su se stesso + tumble ampio di caduta libera (visore scuro = nessun volto) ---
   const mt=shaderTime; manFloatTime.value=mt; if(manMixer) manMixer.update(dt*timeScale);
