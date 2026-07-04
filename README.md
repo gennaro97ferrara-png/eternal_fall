@@ -6,6 +6,67 @@ fotorealismo: la Via Lattea vera come sfondo e come mappa di riflessi, pianeti c
 NASA/CC, modello d'astronauta retroilluminato come silhouette solenne. Nessun video, nessun
 loop, nessuno stacco: il cosmo è procedurale e non si ripete mai. Costo di generazione **zero**.
 
+---
+
+## ⭐ Aggiornamento 2026-07-04 — Almanac, Episodi, ULTRA, registrazione 4K
+
+Grande evoluzione. Riassunto (dettagli tecnici nel codice, marcati con commenti):
+
+### 1. Almanac — non è più mai uguale, ora per ora e giorno per giorno
+Prima **tutto** era `Math.random()` ri-seminato ad ogni caricamento → ogni ora statisticamente
+identica (una registrazione era indistinguibile dalla diretta). Ora un **PRNG deterministico
+seminato da DATA+ORA reali** (`EF`, l'oggetto Almanac subito dopo `Director`) dà una
+**macro-struttura**: 28 **temi** con nome, un **fenomeno-guida** per ogni ora, **showpiece rari**
+programmati (annunciati "SPECIAL SIGNAL"), **date speciali** di calendario (Capodanno, solstizi…).
+Le micro-casualità restano vive: la scena non si congela, ma oggi-alle-14 ≠ domani-alle-14.
+
+### 2. Episodi / Capitoli + Intro
+Non più solo live 24/7: lo show è organizzato in **CAPITOLI da ~1h**, uno per episodio, tutti
+diversi. UI cambiata: via i "CHAT SIGNALS", il titolo è **"CHAPTER N · NOME TEMA"**. Ogni
+capitolo apre con un'**INTRO**: canzone rock + l'astronauta che si gira verso la camera e
+**saluta** + title-card + **voce ElevenLabs** (`assets/voice/intro.mp3`).
+Ogni episodio è **diverso anche visivamente e musicalmente** (palette, cieli, densità, velocità
+di caduta, setlist, pillole vocali — tutto seminato da `EF.chapSeed` = numero episodio + tema),
+in modo **deterministico** (ri-registrare l'episodio N dà lo stesso risultato; N ≠ N+1).
+
+### 3. Modalità ULTRA (`?ultra=1`) — grafica al massimo per macchine potenti
+Per una macchina da registrazione (es. RTX 5090): **4K nativo** (anche senza `&live`),
+anisotropia 16, **bloom a piena risoluzione**, auto-scaler **spento** (qualità bloccata),
+campo stellare/polvere/nebulosa più densi, bitrate MediaRecorder 120Mbps.
+`&ss=1.5` (o `2`) = **supersample** (render 5760×3240 → downscale a 4K = anti-alias perfetto).
+> ⚠️ ULTRA è pesante: **solo per GPU potenti** (su un Mac normale può crashare il tab).
+> Per l'anteprima locale della varietà basta `?ep=1` **senza** ultra.
+
+### 4. Comandi console (F12) nuovi
+```js
+cadutaAlmanac()            // stato: tema, capitolo, fenomeno, showpiece del giorno
+cadutaAlmanac(28)          // ANTEPRIMA di com'è tra +28 ore
+cadutaEpisode(7,'Ember Reach')  // imposta episodio 7 + tema + intro + riepilogo firme
+cadutaChapter(N)           // numero episodio    ·    cadutaTheme('nome'|N|'auto')
+cadutaIntro()              // rigioca l'intro     ·    cadutaShowpiece('mother'|'wormhole'|…)
+cadutaDbg()                // audioCtx, risoluzione, stato intro/personaggio
+```
+Flag URL: `?ultra=1` `?ep=N` `?theme=Nome` `&ss=1.5` `&r4k=1` `&noaa=1`. Per registrare uno
+specifico episodio da headless: `?ultra=1&ep=42` (imposta capitolo/tema **prima** della build).
+
+### 5. Registrazione & streaming 4K su GPU cloud (Vast.ai RTX 5090)
+Ricetta provata (`ssh` sulla VM). Display 4K reale su NVIDIA headless via **CustomEDID**
+(`/etc/X11/xorg-4k.conf` + `edid4k.bin`, avviato da `/root/startx4k.sh`). Tutto
+**supervisionato** (`/root/efboot.sh` → `sup-server.sh`/`sup-chrome.sh`/`sup-stream.sh`,
+auto-restart in 2s → il server non può restare morto). Chrome kiosk 4K
+(`/root/efchrome.sh`, `--use-gl=angle --use-angle=gl --autoplay-policy=no-user-gesture-required`).
+- **Registra un episodio**: `bash /root/rec.sh <N> [durata_sec]` → `/root/episodes/epN_*.mp4`
+  (x11grab 4K60 + audio pulse → **NVENC** h264). Poi `scp` sul Mac.
+- **Streaming YouTube**: `bash /root/sup-stream.sh` (key in `/root/.streamkey`; RTMP CBR 45Mbps,
+  GOP 2s). NVENC sulla GPU → nessun carico CPU di encoding.
+- ★Trappola: `pkill -f Xorg`/`-f "node server.js"` inline via SSH **matcha la propria shell** →
+  usa `pkill -x <nome>` o uno script-file.
+
+**Hardware**: per il massimo basta **1 sola** GPU potente (una pagina WebGL usa **una** GPU —
+più GPU non aiutano) + **CPU ad alto clock** (il collo storico era il single-thread, non la GPU).
+
+---
+
 ## Come avviarla
 
 I moduli ES e gli asset locali non si caricano da `file://` (blocco CORS): serve il bridge

@@ -113,8 +113,19 @@
   #brand .t{ font-family:var(--disp); font-weight:200; font-size:clamp(24px,4.7vw,72px); line-height:0.96; letter-spacing:0.13em; text-transform:uppercase; color:#f6f6fc; text-shadow:0 2px 16px rgba(0,0,0,0.85),0 0 34px rgba(0,0,0,0.5); }   /* titolo -12% */
   #brand .s{ font-family:var(--disp); font-weight:400; font-size:clamp(13px,1.55vw,30px); letter-spacing:0.5em; text-transform:uppercase;
     color:rgba(241,242,251,0.84); margin-top:0.7em; border-top:1px solid var(--line2); padding-top:0.6em; display:inline-block; text-shadow:0 1px 8px rgba(0,0,0,0.92); }
-  #brand .onair{ display:flex; align-items:center; gap:0.7em; margin-top:1.1em; font-size:clamp(12px,1.45vw,28px); letter-spacing:0.3em; color:rgba(241,242,251,0.9); text-shadow:0 1px 8px rgba(0,0,0,0.92); }
-  #brand #mwave{ display:block; width:clamp(150px,15vw,270px); height:clamp(18px,2.9vh,36px); margin-top:1em; opacity:0.85; }   /* barra MUSICA (effetto radio) */
+  #brand .onair{ display:flex; align-items:center; gap:0.7em; margin-top:1.0em; font-size:clamp(11px,1.25vw,24px); letter-spacing:0.28em; color:rgba(241,242,251,0.82); text-shadow:0 1px 8px rgba(0,0,0,0.92); text-transform:uppercase; }
+  /* TITOLO CAPITOLO: "CHAPTER N" + nome tema (accento). Sostituisce ETERNAL FALL statico. */
+  #brand .chapnum{ font-family:var(--disp); font-weight:200; font-size:clamp(22px,4.3vw,64px); line-height:0.98; letter-spacing:0.14em; text-transform:uppercase; color:#f6f6fc; text-shadow:0 2px 16px rgba(0,0,0,0.85),0 0 34px rgba(0,0,0,0.5); }
+  #brand .chapname{ font-family:var(--disp); font-weight:500; font-size:clamp(15px,2.15vw,38px); letter-spacing:0.16em; text-transform:uppercase; color:var(--red); margin-top:0.18em; text-shadow:0 1px 10px rgba(0,0,0,0.9); transition:color 1.2s ease; }
+  #brand .chapname.flash{ animation:chapFlash 3.4s ease-out; }
+  @keyframes chapFlash{ 0%{ opacity:0.1; letter-spacing:0.42em; } 22%{ opacity:1; } 100%{ opacity:1; letter-spacing:0.16em; } }
+  #brand .brule{ width:clamp(120px,15vw,240px); height:1px; background:var(--line2); margin:0.85em 0 0; }
+  #brand #mwave{ display:block; width:clamp(150px,15vw,270px); height:clamp(18px,2.9vh,36px); margin-top:0.9em; opacity:0.85; }   /* barra MUSICA (effetto radio) */
+  /* TITLE CARD intro: al centro, "NEW CHAPTER" + numero + nome, fade in/out guidato dal JS (opacity via #introcard.style) */
+  #introcard{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding-bottom:16vh; text-align:center; z-index:7; opacity:0; pointer-events:none; }   /* padding-bottom → contenuto un filo più in alto: l'astronauta che saluta si intravede sotto */
+  #introcard .ic-tag{ font-family:var(--hmono,var(--disp)); font-size:clamp(11px,1.4vw,26px); letter-spacing:0.55em; text-transform:uppercase; color:var(--red); margin-bottom:0.9em; text-shadow:0 2px 18px rgba(0,0,0,0.95); }
+  #introcard .ic-k{ font-family:var(--disp); font-weight:200; font-size:clamp(34px,8.5vw,148px); line-height:0.98; letter-spacing:0.12em; text-transform:uppercase; color:#fbfbff; text-shadow:0 3px 40px rgba(0,0,0,0.9),0 0 60px rgba(0,0,0,0.5); }
+  #introcard .ic-n{ font-family:var(--disp); font-weight:400; font-size:clamp(18px,3.6vw,64px); letter-spacing:0.2em; text-transform:uppercase; color:var(--red); margin-top:0.35em; text-shadow:0 2px 22px rgba(0,0,0,0.92); }
   .rdot{ width:0.62em; height:0.62em; border-radius:50%; background:var(--red); box-shadow:0 0 8px 1px var(--red-soft); animation:rpulse 2.4s ease-in-out infinite; flex:none; }
   @keyframes rpulse{ 0%,100%{ opacity:1 } 50%{ opacity:0.35 } }
   /* live badge — cornice a parentesi (alto-dx) */
@@ -170,9 +181,10 @@
 
 <div id="hud-ui">
   <div id="brand">
-    <div class="t">ETERNAL FALL</div>
-    <div class="s">SPACE RADIO</div>
-    <div class="onair"><span class="rdot"></span>ON AIR</div>
+    <div class="chapnum" id="chap-num">CHAPTER 1</div>
+    <div class="chapname" id="chap-name">Eternal Fall</div>
+    <div class="brule"></div>
+    <div class="onair"><span class="rdot"></span>SPACE RADIO · DOCUMENTARY</div>
     <canvas id="mwave" width="540" height="72"></canvas>
   </div>
 
@@ -194,9 +206,10 @@
 
   <div id="t-log"></div>
 
-  <div id="chatbar">
-    <div class="cs"><svg viewBox="0 0 24 24" width="1.15em" height="1.15em" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H9l-4 3v-3H4z"/></svg>CHAT SIGNALS</div>
-    <div class="chips"><span>!comet</span><span>!blackhole</span><span>!nebula</span><span>!aurora</span><span>!star</span><span>!message</span></div>
+  <div id="introcard">
+    <div class="ic-tag">— NEW CHAPTER —</div>
+    <div class="ic-k" id="ic-num">CHAPTER 1</div>
+    <div class="ic-n" id="ic-name">Eternal Fall</div>
   </div>
 
   <div id="credit2">Milky Way © ESO/S. Brunier · Astronaut © Poly/Google · planets © Solar System Scope (CC BY)</div>
@@ -248,19 +261,29 @@ float fbm(vec3 p){ float a=0.5,s=0.0; for(int k=0;k<5;k++){ s+=a*vnoise(p); p*=2
 /* ---------------- renderer / scene / camera ---------------- */
 const container=document.getElementById('app');
 let renderer;
-try { renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'}); }
+try { renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'}); }   // antialias:false: con la catena post-processing (composer) la scena va in una RT senza MSAA -> il backbuffer MSAA a 4K non antialiasa nulla, solo costo. Nessuna perdita.
 catch(e){ showError('WebGL not available.<br>A GPU-capable browser is required.'); throw e; }
 if(window.obsstudio || /[?&]live=1/.test(location.search)) document.documentElement.classList.add('nocursor');   // LIVE/cattura: nascondi il cursore del mouse
 const IS_MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'') || (window.matchMedia && matchMedia('(pointer:coarse)').matches && !matchMedia('(pointer:fine)').matches);
+// ULTRA: macchina potente da REGISTRAZIONE (es. RTX 4090). Massima qualità, NESSUN downgrade (auto-scaler off), 4K nativo implicito. &ss=1.5/2 = supersample (render oltre il 4K → downscale = SSAA).
+const ULTRA = /[?&]ultra=1/.test(location.search);
+const SS = ULTRA ? (parseFloat((/[?&]ss=(1\.5|2)/.exec(location.search)||[])[1]||'1')||1) : 1;
 const PIX_HI = IS_MOBILE?1.75:2.0;   // mobile: niente 2x (la GPU regge e l'auto-scaler non deve crollare a 1.0 = sfocato)
 let PIX=Math.min(window.devicePixelRatio||1,PIX_HI);
 renderer.setPixelRatio(PIX);
-const MAXANISO=renderer.capabilities.getMaxAnisotropy();
+const MAXANISO=Math.min(renderer.capabilities.getMaxAnisotropy(), ULTRA?16:4);   // ULTRA: aniso 16 (texel radenti di cielo/pianeti nitidi in un master 4K locale). Non-ULTRA: 4 (GPU-bound + indistinguibile dopo l'encode).
 let WIDTH=window.innerWidth,HEIGHT=window.innerHeight;
 renderer.setSize(WIDTH,HEIGHT);
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.0;
 const IS_LIVE = !!(window.obsstudio || /[?&]live=1/.test(location.search));   // live/cattura: l'encode YouTube scurisce (RGB pieno→YUV) → alziamo la luminosità del render per compensare (mobile compreso)
+const AA_ON = !/[?&]noaa=1/.test(location.search);   // SMAA finale attivo di default (disattiva con &noaa=1 per un A/B di fps)
+// R4K: render a 4K NATIVO per la live (causa #1 della sfocatura = oggi il browser rende ~1440p e viene stirato ×1.5). Attiva con &r4k=1 (opz. &r4k=1800 per 3200×1800 di ripiego).
+// Forza il backbuffer a 3840×2160 (o l'altezza scelta) a PIX=1, come il path ?rec=1 ma PERMANENTE + resize-safe. Da verificare a 60fps sulla VM.
+const _r4kMatch = /[?&]r4k=(\d+)?/.exec(location.search);
+const R4K = (IS_LIVE||ULTRA) && (!!_r4kMatch || ULTRA);   // ULTRA forza il 4K NATIVO anche senza &live (registrazione locale con ?ultra=1)
+const R4K_H = R4K ? (parseInt((_r4kMatch&&_r4kMatch[1])||'2160',10)||2160) : 0;   // altezza target base (× SS in build); larghezza = 16:9
+let _live4k=false;   // attivato dopo la build (vedi begin/onbuild): tiene la risoluzione 4K forzata
 container.appendChild(renderer.domElement);
 
 // --- resilienza 24/7: recupero perdita del contesto WebGL + stato di visibilità ---
@@ -402,11 +425,22 @@ class Director{
     this.grade=new THREE.Color(this.cur.grade); this.key=new THREE.Color(this.cur.key);
     this._a=new THREE.Color(); this._b=new THREE.Color();
     this.surge=0; this.surgeT=20+Math.random()*30; }
-  _pick(){ let n; do{n=PRESETS[(Math.random()*PRESETS.length)|0];}while(n.name===this.to.name);
-    const j=Object.assign({},n),r=()=>0.85+Math.random()*0.3; j.neb*=r(); j.skyBright*=(0.9+Math.random()*0.2); j.speed*=(0.9+Math.random()*0.25); return j; }
+  _pick(){ let idx=-1;
+    const W=(typeof EF!=='undefined'&&EF.ready&&EF.presetW&&EF.presetW.length===PRESETS.length)?EF.presetW:null;
+    if(W){ let tot=0; for(let i=0;i<W.length;i++) tot+=W[i]; let g=0;   // ALMANAC: preset pescato coi pesi del capitolo dell'ora (la palette del giorno domina, ma tutto resta possibile)
+      do{ let x=Math.random()*tot, i=0; for(; i<W.length-1; i++){ x-=W[i]; if(x<=0) break; } idx=i; g++; }while(PRESETS[idx].name===this.to.name&&g<8); }
+    else { do{ idx=(Math.random()*PRESETS.length)|0; }while(PRESETS[idx].name===this.to.name); }
+    const n=PRESETS[idx];
+    const j=Object.assign({},n),r=()=>0.85+Math.random()*0.3; j.neb*=r(); j.skyBright*=(0.9+Math.random()*0.2); j.speed*=(0.9+Math.random()*0.25);
+    if(typeof EF!=='undefined'&&EF.ready){   // FIRMA COLORE del capitolo: deriva tinta + saturazione grade + bias esposizione → ogni episodio ha un'aria diversa
+      try{ const c=new THREE.Color(j.grade).offsetHSL(EF.hueShift||0,0,0), h={}; c.getHSL(h); c.setHSL(h.h,Math.min(1,h.s*(EF.gradeSat||1)),h.l); j.grade=c.getHex(); }catch(_){}
+      if(EF.exBias) j.exposure*=EF.exBias; }
+    return j; }
   step(dt){
     this.t+=dt;
-    if(this.t>=this.dur+this.hold){ this.from=Object.assign({},this.to); this.to=this._pick(); this.t=0; this.dur=18+Math.random()*14; this.hold=34+Math.random()*90; }
+    if(this.t>=this.dur+this.hold){ this.from=Object.assign({},this.to); this.to=this._pick(); this.t=0;
+      const hm=(typeof EF!=='undefined'&&EF.ready&&EF.tempo)?EF.tempo.holdMul:1;   // ritmo del capitolo: notte = tenute lunghe/lente, mezzogiorno = più mosso
+      this.dur=18+Math.random()*14; this.hold=(34+Math.random()*90)*hm; }
     const x=Math.min(this.t/this.dur,1),e=x*x*(3-2*x),L=(a,b)=>a+(b-a)*e,c=this.cur,f=this.from,t=this.to;
     for(const k of ['skyBright','exposure','neb','dust','planet','aster','star','speed','kInt','aB','aD']) c[k]=L(f[k],t[k]);
     this.grade.copy(this._a.set(f.grade)).lerp(this._b.set(t.grade),e);
@@ -424,6 +458,216 @@ class Director{
   }
 }
 const director=new Director();
+
+/* ================= ALMANAC — regia "episodi a tema" seminata dall'orologio reale =================
+   Problema risolto: prima TUTTO era Math.random() ri-seminato ad ogni caricamento → ogni ora era
+   statisticamente identica e una registrazione era indistinguibile dalla diretta.
+   Qui un PRNG DETERMINISTICO (mulberry32) seminato da DATA+ORA locali dà, senza congelare le micro-casualità:
+     · un TEMA DEL GIORNO (nome, famiglia di palette, deriva di tinta, lean di narrazione, showpiece rari programmati)
+     · un CAPITOLO DELL'ORA (fenomeno-guida, pesi dei preset, ritmo, sotto-palette)
+   Così oggi alle 14 ≠ domani alle 14, con capitoli coerenti di ~1h. Le micro-scelte restano Math.random (vivo, non un loop).
+   Tutto è reload-safe (nessuno stato necessario) e degrada a comportamento attuale se qualcosa manca. */
+function _hash32(str){ let h=1779033703^str.length; for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=(h<<13)|(h>>>19); } h=Math.imul(h^(h>>>16),2246822507); h=Math.imul(h^(h>>>13),3266489909); return (h^=h>>>16)>>>0; }
+function _mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function _roman(n){ const M=[[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']]; let s=''; for(const p of M){ while(n>=p[0]){ s+=p[1]; n-=p[0]; } } return s||'I'; }
+const PRESET_IX={}; PRESETS.forEach((p,i)=>PRESET_IX[p.name]=i);
+// TEMI: n=nome mostrato, f=preset favoriti (palette del giorno), narr=categorie voce preferite, sig=fenomeni-guida candidati, show=showpiece rari ammessi
+const THEMES=[
+ {n:'The Silence Between Stars', f:['vuoto','abisso','zaffiro'],  narr:['philosophy','cosmos'],           sig:['signal','station'],   show:['wormhole','mother']},
+ {n:'Ember Reach',               f:['brace','fornace','oro'],     narr:['physics','deep_past'],           sig:['redgiant','magnetar'],show:['supernova','eclipse']},
+ {n:'The Nebula Gardens',        f:['nebulosa','rosa','smeraldo'],narr:['living_planet','frontiers'],     sig:['spores','aurora'],    show:['aurorafest']},
+ {n:'Cathedral of Ice',          f:['glaciale','gelo'],           narr:['physics','places'],              sig:['whitedwarf','aurora'],show:['aurorafest','meteorstorm']},
+ {n:'The Deep Current',          f:['zaffiro','vuoto'],           narr:['cosmos','deep_past'],            sig:['whales','signal'],    show:['wormhole']},
+ {n:'Furnace of Creation',       f:['fornace','oro','lampo'],     narr:['physics','cosmos'],              sig:['pulsar','magnetar'],  show:['supernova']},
+ {n:'The Wandering Worlds',      f:['pianeta','cintura'],         narr:['living_planet','frontiers'],     sig:['station','rings'],    show:['mother','meteorstorm']},
+ {n:'Aurora Dominion',           f:['aurora','smeraldo'],         narr:['restless_earth','living_planet'],sig:['aurora','spores'],    show:['aurorafest']},
+ {n:'The Amethyst Hours',        f:['ametista','rosa'],           narr:['philosophy','human_body'],       sig:['jellies','spores'],   show:['aurorafest']},
+ {n:'Blackglass',                f:['abisso','vuoto'],            narr:['physics','philosophy'],          sig:['signal','pulsar'],    show:['blackhole','wormhole']},
+ {n:'The Golden Nursery',        f:['oro','nebulosa'],            narr:['cosmos','deep_past'],            sig:['cluster','redgiant'], show:['supernova']},
+ {n:'Sapphire Depths',           f:['zaffiro','gelo'],            narr:['cosmos','places'],               sig:['signal','pulsar'],    show:['wormhole']},
+ {n:'The Restless Belt',         f:['cintura','brace'],           narr:['restless_earth','physics'],      sig:['bolide','rings'],     show:['meteorstorm']},
+ {n:'Heart of the Galaxy',       f:['cuore','galassia'],          narr:['cosmos','frontiers'],            sig:['cluster','redgiant'], show:['supernova','mother']},
+ {n:'The Last Light',            f:['brace','lampo'],             narr:['deep_past','philosophy'],        sig:['redgiant','magnetar'],show:['supernova']},
+ {n:'Whispers in the Dust',      f:['vuoto','cintura'],           narr:['philosophy','human_body'],       sig:['station','bolide'],   show:['mother']},
+ {n:'The Emerald Expanse',       f:['smeraldo','aurora'],         narr:['living_planet','frontiers'],     sig:['aurora','spores'],    show:['aurorafest']},
+ {n:'Rose of the Void',          f:['rosa','ametista'],           narr:['human_body','philosophy'],       sig:['jellies','spores'],   show:['aurorafest']},
+ {n:"Titan's Passage",           f:['pianeta','oro'],             narr:['frontiers','places'],            sig:['rings','station'],    show:['mother']},
+ {n:'The Magnetar Fields',       f:['brace','lampo','fornace'],   narr:['physics','cosmos'],              sig:['magnetar','pulsar'],  show:['supernova']},
+ {n:'Glacier Drift',             f:['glaciale','zaffiro'],        narr:['places','deep_past'],            sig:['whitedwarf','aurora'],show:['meteorstorm']},
+ {n:'The Dreaming Deep',         f:['abisso','zaffiro'],          narr:['philosophy','human_body'],       sig:['whales','jellies'],   show:['wormhole']},
+ {n:'Solar Requiem',             f:['fornace','oro'],             narr:['cosmos','physics'],              sig:['redgiant','pulsar'],  show:['eclipse','supernova']},
+ {n:'The Shattered Reaches',     f:['cintura','vuoto'],           narr:['restless_earth','frontiers'],    sig:['bolide','station'],   show:['meteorstorm']},
+ {n:'Veil of Roses',             f:['rosa','ametista','nebulosa'],narr:['human_body','living_planet'],    sig:['spores','aurora'],    show:['aurorafest']},
+ {n:'The Signal Hours',          f:['vuoto','zaffiro'],           narr:['frontiers','physics'],           sig:['signal','station'],   show:['wormhole','mother']},
+ {n:'Crown of Embers',           f:['brace','fornace','lampo'],   narr:['deep_past','physics'],           sig:['magnetar','redgiant'],show:['supernova']},
+ {n:'The Quiet Between',         f:['vuoto','gelo'],              narr:['philosophy','cosmos'],           sig:['signal','whales'],    show:['wormhole']},
+];
+// CALENDARIO: date speciali → nome del giorno forzato + showpiece garantito a un'ora prime-time (chiave "mese-giorno", mese 1-based)
+const CAL={ '1-1':{n:"New Year's Supernova",sp:'supernova'}, '12-31':{n:"New Year's Eve Vigil",sp:'aurorafest'},
+  '6-21':{n:'Solstice of Fire',sp:'supernova'}, '12-21':{n:'The Long Solstice',sp:'aurorafest'},
+  '3-20':{n:'Equinox Drift',sp:'aurorafest'}, '9-22':{n:'Equinox Drift',sp:'aurorafest'},
+  '10-31':{n:'The Haunted Deep',sp:'wormhole'}, '12-25':{n:'Starlight Vigil',sp:'aurorafest'} };
+// FENOMENI-GUIDA dell'ora: go()=spawn (usa i corpi globali, valutato solo a runtime nell'animate), t=[base,spread] cadenza EXTRA (in aggiunta ai timer normali), tag=bias voce
+const HDL={
+  comet:     {go:()=>comet&&!comet.active&&comet.spawn(),           t:[10,10], tag:'comet',    lab:'COMET DRIFT'},
+  aurora:    {go:()=>aurora&&!aurora.active&&aurora.spawn(),         t:[26,18], tag:'aurora',   lab:'AURORA VEILS'},
+  pulsar:    {go:()=>pulsar&&!pulsar.active&&pulsar.spawn(),         t:[30,20], tag:'magnetar', lab:'PULSAR BEACON'},
+  magnetar:  {go:()=>magnetar&&!magnetar.active&&magnetar.spawn(),   t:[34,22], tag:'magnetar', lab:'MAGNETAR STORM'},
+  whitedwarf:{go:()=>whitedwarf&&!whitedwarf.active&&whitedwarf.spawn(),t:[34,22],tag:'',       lab:'WHITE DWARF'},
+  redgiant:  {go:()=>redgiant&&!redgiant.active&&redgiant.spawn(),   t:[46,26], tag:'',         lab:'RED GIANT'},
+  spores:    {go:()=>spores&&!spores.active&&spores.spawn(),         t:[40,24], tag:'nebula',   lab:'SPORE BLOOM'},
+  dyson:     {go:()=>dyson&&!dyson.active&&dyson.spawn(),            t:[48,28], tag:'',         lab:'DYSON SWARM'},
+  signal:    {go:()=>signal&&!signal.active&&signal.spawn(),         t:[40,24], tag:'',         lab:'THE SIGNAL'},
+  whales:    {go:()=>whalePod&&!whalePod.active&&whalePod.spawn(),   t:[46,26], tag:'',         lab:'WHALE SONG'},
+  station:   {go:()=>station&&!station.active&&station.spawn(),      t:[52,30], tag:'',         lab:'DERELICT STATION'},
+  cluster:   {go:()=>cluster&&!cluster.active&&cluster.spawn(),      t:[44,26], tag:'',         lab:'STAR CLUSTER'},
+  jellies:   {go:()=>jellyPod&&!jellyPod.active&&jellyPod.spawn(),   t:[46,26], tag:'',         lab:'JELLY DRIFT'},
+  bolide:    {go:()=>bolide&&!bolide.active&&bolide.spawn(),         t:[22,16], tag:'',         lab:'BOLIDE RAIN'},
+  rings:     {go:()=>ringarc&&!ringarc.active&&ringarc.spawn(),      t:[52,30], tag:'',         lab:'RING ARCS'},
+};
+const HDL_KEYS=Object.keys(HDL);
+// SHOWPIECE rari (2-4 al giorno, a ore programmate): momenti spettacolari annunciati come "SPECIAL SIGNAL", ricompensa per chi guarda a lungo / torna ogni giorno
+const SHOWPIECE={
+  wormhole:   {go:()=>{ if(wormhole&&!wormhole.active&&!(blackhole&&blackhole.active)) wormhole.spawn(); }, lab:'WORMHOLE PASSAGE',  tag:'blackhole'},
+  mother:     {go:()=>{ if(motherStation&&!motherStation.active) motherStation.spawn(); },                  lab:'THE MOTHER STATION',tag:''},
+  eclipse:    {go:()=>{ if(solarEclipse&&!solarEclipse.active) solarEclipse.spawn(); },                     lab:'TOTAL ECLIPSE',     tag:'eclipse'},
+  supernova:  {go:()=>{ if(supernova&&!supernova.active) supernova.flash('— a star gives up its light'); }, lab:'SUPERNOVA',         tag:'supernova'},
+  meteorstorm:{go:()=>{ try{ window._forceShower='Cosmic Rain'; shower='Cosmic Rain'; setTimeout(()=>{ if(window._forceShower==='Cosmic Rain') window._forceShower=null; }, 120000); }catch(_){} }, lab:'METEOR STORM', tag:''},
+  blackhole:  {go:()=>{ if(blackhole&&!blackhole.active&&!(wormhole&&wormhole.active)) blackhole.spawn(); }, lab:'EVENT HORIZON',     tag:'blackhole'},
+  aurorafest: {go:()=>{ if(aurora&&!aurora.active) aurora.spawn(); try{ nebBoost=Math.max(nebBoost,0.9); }catch(_){} },                lab:'AURORA FESTIVAL',   tag:'aurora'},
+};
+function _dkStr(d){ return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function _computeDay(now){
+  const dk=_dkStr(now), prev=new Date(now.getTime()-86400000), dkPrev=_dkStr(prev);
+  let idx=_hash32('EFtheme'+dk)%THEMES.length;
+  if(idx===(_hash32('EFtheme'+dkPrev)%THEMES.length)) idx=(idx+1)%THEMES.length;   // niente tema ripetuto due giorni di fila
+  let th=THEMES[idx]; const cal=CAL[(now.getMonth()+1)+'-'+now.getDate()];
+  const r=_mulberry32(_hash32('EFday'+dk));
+  const hue=(r()*2-1)*0.06;                                                        // deriva di tinta del giorno (±0.06 hue): stesso tema, giorni diversi = sfumatura diversa
+  // showpiece: 2-4 a ore distinte (1..22), minuto casuale
+  const nShow=2+((r()*3)|0), elig=(th.show&&th.show.length)?th.show:['aurorafest'], sched=[], used={};
+  for(let i=0;i<nShow;i++){ let h, g=0; do{ h=1+((r()*22)|0); g++; }while(used[h]&&g<24); used[h]=1;
+    sched.push({h, min:2+((r()*54)|0), sp:elig[(r()*elig.length)|0]||'aurorafest'}); }
+  if(cal){ th=Object.assign({},th,{n:cal.n}); sched.push({h:20,min:5,sp:cal.sp||'aurorafest',special:true}); }   // data speciale: showpiece garantito prime-time
+  return {dk, idx, th, hue, sched, special:!!cal};
+}
+function _computeHour(day, now){
+  const hr=now.getHours(), th=day.th, r=_mulberry32(_hash32('EFhour'+day.dk+'-'+hr));
+  const sigs=(th.sig&&th.sig.length)?th.sig:HDL_KEYS;
+  const headline=(r()<0.72?sigs[(r()*sigs.length)|0]:HDL_KEYS[(r()*HDL_KEYS.length)|0]);
+  const w=new Array(PRESETS.length).fill(1);                                       // baseline 1 ovunque → niente preset impossibile (sorpresa preservata)
+  for(const nm of th.f){ const i=PRESET_IX[nm]; if(i!=null) w[i]+=5; }             // famiglia del tema dominante
+  const ex=th.f[(r()*th.f.length)|0], ei=PRESET_IX[ex]; if(ei!=null) w[ei]+=3;      // un preset del tema spinto extra quest'ora
+  if(r()<0.4){ w[(r()*PRESETS.length)|0]+=2.5; }                                    // jolly: ogni tanto un preset a sorpresa quest'ora
+  const night=(hr<6||hr>=22), holdMul=night?1.32:((hr>=10&&hr<18)?0.85:1.05);      // ritmo: notte lenta/contemplativa, mezzogiorno più mosso
+  return {hr, headline, w, holdMul, narr:th.narr.slice()};
+}
+const EF={
+  ready:false, hueShift:0, presetW:null, tempo:{holdMul:1}, narrLean:[], narrP:0.55,
+  theme:'', chapterNum:1, headline:'', headlineLab:'', dayNum:1, special:false,
+  _forceTheme:null, _forceChapter:null,   // override manuale per registrare un capitolo/tema scelto
+  _dk:null, _hr:null, _day:null, _hour:null, _hT:8, _acc:0, _simOff:0, _spFired:{}, _lastChapKey:null,
+  _now(){ return new Date(Date.now()+(this._simOff||0)); },
+  presetWeights(){ return this.presetW; },
+  _chapKey(){ return (this._forceTheme!=null?'T'+this._forceTheme:this._dk)+'#'+(this._forceChapter!=null?this._forceChapter:''); },
+  rng(tag){ return _mulberry32(_hash32(String(tag)+'#'+(this.chapSeed||0))); },   // stream deterministico INDIPENDENTE per sottosistema (cielo/musica/pillole): niente fragilità d'ordine tra consumatori
+  cpick(a){ const rf=this.crand||Math.random; return a&&a.length?a[(rf()*a.length)|0]:undefined; },
+  _computeChapSig(){   // FIRME PER-CAPITOLO (seed = numero episodio + tema): identiche ad ogni ripresa di N, diverse per N vs N+1
+    this.chapSeed=_hash32('EFchap#'+this.chapterNum+'#'+(this._forceTheme!=null?this._forceTheme:(this._day?this._day.idx:0)));
+    this.chapRng=_mulberry32(this.chapSeed); this.crand=()=>this.chapRng();   // stream misc per-capitolo
+    const s=_mulberry32(_hash32('sig#'+this.chapSeed)), r=()=>s();   // firme in ORDINE FISSO → deterministiche
+    this.hueShift=(r()*2-1)*0.16;                 // deriva tinta AMPIA (era ±0.06/giorno)
+    this.gradeSat=0.82+r()*0.36; this.exBias=0.94+r()*0.13;        // saturazione grade + bias esposizione
+    this.bloomBias=0.82+r()*0.40; this.bloomThr=r()*0.08;          // firma bloom del capitolo
+    this.fallSig=1.15+r()*0.60;                   // velocità di caduta (tempo del mondo)
+    this.starMul=0.8+r()*0.55; this.starTint=(r()*2-1)*0.5; this.starWarm=0.42+r()*0.42;   // densità/tinta/classe stelle
+    this.nebSig=0.7+r()*0.6; this.nebSheetsN=7+((r()*7)|0); this.nebHue=r();                // nebulosa: densità/n.lastre/hue
+    this.cam={ regimeBias:r(), dollyGain:0.6+r()*0.8, rollGain:0.4+r()*1.2, reframeMul:0.7+r()*0.7, orbitFreq:0.6+r()*0.8 };   // carattere camera
+    this._skyBag=null; this._skyBagCh=null;       // sky bag ricostruito lazy (SKY_FILES non ancora definito all'init)
+  },
+  skyBag(){ if(this._skyBag && this._skyBagCh===this.chapterNum) return this._skyBag;   // playlist cieli seminata per capitolo (lazy: al runtime SKY_FILES esiste)
+    try{ if(typeof SKY_FILES==='undefined') return null; const lo=(typeof SKY_ROT_MIN!=='undefined'?SKY_ROT_MIN:1), a=[]; for(let i=lo;i<SKY_FILES.length;i++) a.push(i);
+      const rr=this.rng('sky'); for(let i=a.length-1;i>0;i--){ const j=(rr()*(i+1))|0; const t=a[i]; a[i]=a[j]; a[j]=t; }
+      this._skyBag=a; this._skyBagCh=this.chapterNum; return a; }catch(_){ return null; } },
+  _refresh(){ const now=this._now(), dk=_dkStr(now), hr=now.getHours();
+    if(dk!==this._dk || this._forceTheme!=null){ this._dk=dk; this._day=_computeDay(now);
+      if(this._forceTheme!=null && THEMES[this._forceTheme]){ this._day.th=Object.assign({},THEMES[this._forceTheme]); }   // tema forzato per la registrazione
+      this.theme=this._day.th.n; this.hueShift=this._day.hue; this.special=this._day.special;
+      this.dayNum=Math.max(1,Math.floor((Date.now()-((typeof TEL!=='undefined'&&TEL.launch)||Date.now()))/86400000)+1);
+      this.chapterNum=(this._forceChapter!=null?this._forceChapter:this.dayNum); this._hr=null;
+      this._computeChapSig();   // FIRME PER-CAPITOLO: ogni episodio (N + tema) è visivamente/musicalmente distinto e riproducibile
+      this._spFired={}; try{ if(typeof localStorage!=='undefined'){ for(const k of Object.keys(localStorage)){ if(k.indexOf('ce_sp_')===0 && k.indexOf('ce_sp_'+dk+'#')!==0) localStorage.removeItem(k); } } }catch(_){} }   // rollover giorno: niente accumulo di guard showpiece
+    if(hr!==this._hr){ this._hr=hr; this._hour=_computeHour(this._day,now);   // l'ORA dà solo la variazione INTERNA (fenomeno-guida, ritmo, enfasi palette) — il TEMA resta stabile per tutto il capitolo
+      this.presetW=this._hour.w; this.tempo={holdMul:this._hour.holdMul}; this.narrLean=this._hour.narr;
+      this.headline=this._hour.headline; this.headlineLab=(HDL[this.headline]||{}).lab||'';
+      this._hT=Math.min(this._hT,6); this._updateHUD(); }
+    this.ready=true;
+  },
+  _checkShow(){ if(!this._day) return; const now=this._now(), hr=now.getHours(), mn=now.getMinutes();
+    for(let i=0;i<this._day.sched.length;i++){ const s=this._day.sched[i]; if(hr!==s.h||mn<s.min) continue;
+      const key=this._dk+'#'+i; if(this._spFired[key]) continue;
+      try{ if(typeof localStorage!=='undefined'){ if(localStorage.getItem('ce_sp_'+key)) { this._spFired[key]=1; continue; } localStorage.setItem('ce_sp_'+key,'1'); } }catch(_){}
+      this._spFired[key]=1; const sp=SHOWPIECE[s.sp]||SHOWPIECE.aurorafest;
+      try{ sp.go(); }catch(_){}
+      try{ if(typeof audio!=='undefined'&&audio&&audio.enqueueVoice){ if(sp.tag) audio.enqueueVoice(sp.tag); } }catch(_){}
+      this._announce('SPECIAL SIGNAL · '+(sp.lab||'')); }
+  },
+  _announce(txt){ try{ const a=document.getElementById('chap-name'); if(!a) return;   // annuncio showpiece: lampeggia sul nome-capitolo (in alto a sx), NIENTE testo al centro (scelta utente: #t-log spento)
+    a.textContent=txt; a.classList.remove('flash'); void a.offsetWidth; a.classList.add('flash');
+    clearTimeout(this._annT); this._annT=setTimeout(()=>{ this._updateHUD(); },11000);   // dopo ~11s torna al nome del tema
+  }catch(_){} },
+  _updateHUD(){ try{ const num='CHAPTER '+this.chapterNum;
+    const n=document.getElementById('chap-num'); if(n) n.textContent=num;
+    const a=document.getElementById('chap-name'); if(a){ a.textContent=this.theme; a.classList.remove('flash'); void a.offsetWidth; a.classList.add('flash'); }
+    const ik=document.getElementById('ic-num'); if(ik) ik.textContent=num;         // sincronizza anche la title-card intro
+    const ino=document.getElementById('ic-name'); if(ino) ino.textContent=this.theme;
+  }catch(_){} },
+  step(dt){ if(!this.ready){ try{ this._refresh(); }catch(_){} return; }
+    this._hT-=dt;
+    if(this._hT<=0){ const h=HDL[this.headline]; try{ if(h) h.go(); }catch(_){}
+      if(h&&h.tag&&Math.random()<0.25){ try{ if(typeof audio!=='undefined'&&audio&&audio.enqueueVoice) audio.enqueueVoice(h.tag); }catch(_){} }
+      const b=h?h.t[0]:34, s=h?h.t[1]:20; this._hT=(b+Math.random()*s)*(this.tempo?this.tempo.holdMul:1); }
+    this._acc+=dt; if(this._acc>=5){ this._acc=0; try{ this._refresh();
+      const ck=this._chapKey(); if(this._lastChapKey!=null && ck!==this._lastChapKey && typeof startIntro==='function') startIntro();   // nuovo capitolo (rollover giorno o tema forzato) → intro
+      this._lastChapKey=ck; this._checkShow(); }catch(_){} }
+  },
+  simulate(hoursOffset){ this._simOff=(+hoursOffset||0)*3600000; this._dk=null; this._hr=null; this._hT=2; this._refresh(); this._lastChapKey=this._chapKey(); return this.state(); },
+  setTheme(idx){ this._forceTheme=idx; this._dk=null; this._refresh(); this._lastChapKey=this._chapKey(); },
+  setChapter(n){ this._forceChapter=n; this._dk=null; this._refresh(); this._lastChapKey=this._chapKey(); },
+  state(){ const now=this._now(); return {ora:now.getHours()+':'+String(now.getMinutes()).padStart(2,'0'), giorno:_dkStr(now), capitolo:'CHAPTER '+this.chapterNum, tema:this.theme, fenomeno:this.headline+' ('+this.headlineLab+')', ritmo:this.tempo.holdMul, narrazione:this.narrLean, special:this.special, showpiece:(this._day&&this._day.sched)||[]}; }
+};
+// EPISODIO da URL: ?ep=N e/o ?theme=Nome|idx forzano capitolo/tema PRIMA della build → densità/nebulosa/cielo/velocità del capitolo giusto già dal primo frame (registrazioni scriptate)
+try{ const _ep=/[?&]ep=(\d+)/.exec(location.search); if(_ep) EF._forceChapter=parseInt(_ep[1],10);
+  const _th=/[?&]theme=([^&]+)/.exec(location.search); if(_th){ const q=decodeURIComponent(_th[1]).toLowerCase(); let i=(/^\d+$/.test(q))?parseInt(q,10):THEMES.findIndex(t=>t.n.toLowerCase()===q||t.n.toLowerCase().indexOf(q)>=0); if(i>=0&&THEMES[i]) EF._forceTheme=i; } }catch(_){}
+EF._refresh();   // primo calcolo subito (prima ancora della build): director._pick userà i pesi del tema; le firme per-capitolo sono già pronte per il build
+window.cadutaAlmanac=(hoursOffset)=>{ if(hoursOffset!==undefined) return EF.simulate(hoursOffset); return EF.state(); };   // stato attuale; con arg = simula +N ore (test)
+window.cadutaShowpiece=(name)=>{ const sp=SHOWPIECE[name]; if(!sp) return 'showpiece disponibili: '+Object.keys(SHOWPIECE).join(', ');   // ANTEPRIMA/test: fa scattare ORA uno showpiece + il suo annuncio
+  try{ sp.go(); }catch(e){ return 'err go: '+e.message; } try{ if(sp.tag&&typeof audio!=='undefined'&&audio&&audio.enqueueVoice) audio.enqueueVoice(sp.tag); }catch(_){}
+  EF._announce('SPECIAL SIGNAL · '+(sp.lab||name)); return 'showpiece → '+(sp.lab||name); };
+window.cadutaChapter=(n)=>{ if(n===undefined) return 'CHAPTER '+EF.chapterNum+(EF._forceChapter!=null?' (forzato)':' (auto=giorni dal lancio)'); EF.setChapter((+n)|0); if(typeof startIntro==='function') startIntro(); return 'capitolo → CHAPTER '+EF.chapterNum; };   // imposta il numero episodio + intro
+window.cadutaTheme=(name)=>{ if(name===undefined){ return {corrente:EF.theme, forzato:EF._forceTheme!=null, disponibili:THEMES.map((t,i)=>i+':'+t.n)}; }
+  if(name===null||name==='auto'){ EF.setTheme(null); if(typeof startIntro==='function') startIntro(); return 'tema → AUTO (seminato dal giorno)'; }
+  let i=(typeof name==='number')?name:THEMES.findIndex(t=>t.n.toLowerCase()===String(name).toLowerCase()||t.n.toLowerCase().includes(String(name).toLowerCase()));
+  if(i<0||!THEMES[i]) return 'tema non trovato. Disponibili: '+THEMES.map((t,k)=>k+':'+t.n).join(' · ');
+  EF.setTheme(i); if(typeof startIntro==='function') startIntro(); return 'tema → '+THEMES[i].n+' (CHAPTER '+EF.chapterNum+')'; };   // forza un tema specifico (per registrare) + intro
+window.cadutaIntro=()=>{ if(typeof startIntro==='function'){ startIntro(); return 'intro avviata'; } return 'intro non pronta'; };   // rigioca l'intro adesso (utile prima di registrare)
+// REGISTRAZIONE: imposta episodio (numero + tema), fa partire l'intro e stampa un riepilogo per controllare che l'episodio sia quello giusto e diverso dagli altri
+window.cadutaEpisode=(n,theme)=>{ try{
+  if(theme!==undefined&&theme!==null){ let i=(typeof theme==='number')?theme:THEMES.findIndex(t=>t.n.toLowerCase().indexOf(String(theme).toLowerCase())>=0); if(i>=0) EF.setTheme(i); }
+  if(n!==undefined&&n!==null) EF.setChapter((+n)|0);
+  if(typeof startIntro==='function') startIntro();
+  const sky=(EF.skyBag&&EF.skyBag())||[];
+  const bag=(typeof audio!=='undefined'&&audio&&audio.music&&audio.music.bag)?audio.music.bag.slice(0,6).map(t=>t&&t.title):[];
+  return { capitolo:'CHAPTER '+EF.chapterNum, tema:EF.theme, ULTRA:(typeof ULTRA!=='undefined'&&ULTRA), risoluzione:(renderer&&renderer.domElement)?renderer.domElement.width+'×'+renderer.domElement.height:'?',
+    chapSeed:EF.chapSeed, velocitaCaduta:+(EF.fallSig||0).toFixed(2), hue:+(EF.hueShift||0).toFixed(2), bloom:+(EF.bloomBias||0).toFixed(2), nebLastre:EF.nebSheetsN, stelleMul:+(EF.starMul||0).toFixed(2),
+    cieliPrimi:sky.slice(0,5), setlistPrimi:bag };
+}catch(e){ return 'err '+e.message; } };
+window.cadutaDbg=()=>{ try{ const v=new THREE.Vector3(); manRig.getWorldPosition(v); const ndc=v.clone().project(camera);
+  return { audioCtx:(typeof audio!=='undefined'&&audio&&audio.ctx?audio.ctx.state:'no-ctx'), musicTrack:(typeof audio!=='undefined'&&audio&&audio.music&&audio.music.decks&&audio.music.active>=0&&audio.music.decks[audio.music.active].track?audio.music.decks[audio.music.active].track.title:'—'),
+    introActive:(typeof introActive!=='undefined'?introActive:'?'), approach:(typeof introApproach!=='undefined'?+introApproach.toFixed(2):'?'),
+    manVisible:(man&&man.visible), char:(charRoster[charIdx]&&charRoster[charIdx].def.name),
+    manWorld:[+v.x.toFixed(2),+v.y.toFixed(2),+v.z.toFixed(2)], camPos:camera.position.toArray().map(n=>+n.toFixed(2)), camDist:+camDist.toFixed(2),
+    screenNDC:[+ndc.x.toFixed(2),+ndc.y.toFixed(2),+ndc.z.toFixed(2)], onScreen:(Math.abs(ndc.x)<1&&Math.abs(ndc.y)<1&&ndc.z<1) }; }catch(e){ return 'ERR '+e.message; } };   // diagnostica intro/personaggio
 
 /* ---------------- asset loading ---------------- */
 const ASSETS={};
@@ -471,7 +715,7 @@ mgr.onProgress=(u,d,t)=>{ if(!built) enterBtn.textContent='Loading… '+Math.rou
 mgr.onError=(u)=>console.warn('asset KO (riprovo in background):',u);   // NON bloccante
 function tryBuild(){ if(built || !mwReady || !glbReady) return; build(); enterBtn.disabled=false; enterBtn.textContent='Enter';
   // avvio automatico per la live: dentro OBS (window.obsstudio) o con ?live=1 → niente click su "Enter"
-  if(window.obsstudio || /[?&]live=1/.test(location.search)) setTimeout(()=>{ try{ begin(); }catch(_){} }, 200); }
+  if(window.obsstudio || /[?&]live=1/.test(location.search) || ULTRA) setTimeout(()=>{ try{ begin(); }catch(_){} }, 200); }   // auto-start anche in ULTRA (registrazione headless: niente click su Enter)
 
 /* ---------------- canvas textures (glow, etichette) ---------------- */
 function glowTexture(){
@@ -579,13 +823,14 @@ const SKY_FILES=['milkyway_8k.jpg'].concat(Array.from({length:50},(_,i)=>'skies/
 const SKY_QV='?v=15';       // cache-buster degli sfondi: BUMPA a ogni rigenerazione (v15 = 16384 da base IBRIDA milkyway_16k + POLI LUMINOSI: fondo = stessa immagine non compressa a 0.85, mai più "2 cerchi neri" nei giri verticali)
 const SKY_PXW=16384;        // larghezza NATIVA dei gen su disco (il loader non chiede mai resize oltre: niente upscale in decodifica) — bumpare INSIEME a SKY_QV a ogni rigenerazione
 const SKY_ROT_MIN=1;        // la rotazione pesca SOLO dai gen_ belli (indici 1..50), mai la Via Lattea grezza scura (0)
-let skyIdx=0, skyT=0, skyEvery=2, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false;   // primo gen bello ~2s dopo l'avvio, poi rotazione 3-5.5 min
+let skyIdx=0, skyT=0, skyEvery=2, skyFade=0, skyFading=false, skyPendIdx=0, skyLoading=false, skyBagCur=-1;   // primo gen bello ~2s dopo l'avvio, poi rotazione 3-5.5 min. skyBagCur: cursore playlist cieli per-capitolo (parte da -1 → primo pick = bag[0])
 let dust,dustGeo,dustPos,dustMat,starGlow,twinkle,twinkleMat;
-// LIVE: l'auto-scaler è OFF (PIX fisso a 2) → base bloom più nitida (1440p anziché 1080p → upscale a 4K 1.5× invece di 2×). Non-live resta a 1/2.
-let starLayers=[], fastDust=null, nebSheets=[], bloomDiv=(/[?&]live=1/.test(location.search)?1.5:2);
+// LIVE: l'auto-scaler è OFF (PIX fisso a 2). bloomDiv=2 anche in live (era 4): il bloom nasce a 1/2 (~1280×720 a 1440p, 1080p a 4K nativo) invece di 1/4 (640×360) → aloni MOLTO più fini, niente "macchie soffuse" stirate ×6. Il costo fill-rate è di frazioni di ms a queste dimensioni.
+let starLayers=[], fastDust=null, nebSheets=[], bloomDiv=(ULTRA?1:2);   // ULTRA: bloom a RISOLUZIONE PIENA (aloni perfetti a 4K). Altrimenti 1/2. (l'auto-scaler off-ULTRA può riportarlo a 4 sotto carico)
+const STAR_MUL=(ULTRA?1.6:1), DUST_MUL=(ULTRA?3:1);   // ULTRA: campo stellare + polvere più densi (punti = economici)
 const planets=[], nearStars=[], wisps=[];
 let asteroids, astData=[];
-const DUST_N=300,DZN=240,DZF=-260,DSP=130, AST_N=90;   // polvere ancora ridotta (1200→300) → poche palline soffuse
+const DUST_N=Math.round(300*DUST_MUL),DZN=240,DZF=-260,DSP=130, AST_N=Math.round(90*(ULTRA?2.2:1));   // ULTRA: polvere e cintura più dense (300→900, 90→198)
 let lensflare, mystery, parallel, supernova, blackhole, lensPass, smaaPass;
 let nebulaField, comet, cluster, derelict, cometTail;
 let pulsar, redgiant, binary, remnant;
@@ -669,8 +914,8 @@ function makeStarLayer(count,zN,zF,half,sizeScale,scrollMul,tint,K,fade,twAmt,sp
   g.setAttribute('aSize',new THREE.BufferAttribute(asz,1)); g.setAttribute('aColor',new THREE.BufferAttribute(ac,3));
   g.setAttribute('aTwSpd',new THREE.BufferAttribute(ats,1)); g.setAttribute('aTwAmt',new THREE.BufferAttribute(ata,1));
   const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
-    uniforms:{uTime:{value:0},uPix:{value:PIX},uTint:{value:tint},uK:{value:K},uZN:{value:zN},uZF:{value:zF},uFade:{value:fade},uTw:{value:2.0/(1.0+scrollMul)},uTwA:{value:twAmt},uGDim:{value:1}},
-    vertexShader:`attribute float aPhase;attribute float aSize;attribute vec3 aColor;attribute float aTwSpd;attribute float aTwAmt;uniform float uTime,uPix,uK,uZN,uZF,uFade,uTw,uTwA;varying float vTw;varying vec3 vC;varying float vF;varying float vAComp;
+    uniforms:{uTime:{value:0},uPix:{value:PIX},uTint:{value:Math.max(0,Math.min(1,tint+((typeof EF!=='undefined'&&EF.starTint)||0)))},uK:{value:K},uZN:{value:zN},uZF:{value:zF},uFade:{value:fade},uTw:{value:2.0/(1.0+scrollMul)},uTwA:{value:twAmt},uScroll:{value:0},uGDim:{value:1}},
+    vertexShader:`attribute float aPhase;attribute float aSize;attribute vec3 aColor;attribute float aTwSpd;attribute float aTwAmt;uniform float uTime,uPix,uK,uZN,uZF,uFade,uTw,uTwA,uScroll;varying float vTw;varying vec3 vC;varying float vF;varying float vAComp;
       void main(){ vC=aColor;
       float a1=uTime*uTw*aTwSpd;                                          // clock PER-STELLA (uTime = shaderTime wrappato → 24/7 ok)
       float w=0.5+0.35*sin(a1+aPhase)+0.15*sin(a1*1.7+aPhase*2.1);        // 0..1 IRREGOLARE e per-stella (fase+velocità casuali → desincronizzate)
@@ -680,8 +925,9 @@ function makeStarLayer(count,zN,zF,half,sizeScale,scrollMul,tint,K,fade,twAmt,sp
       float hi=1.0+0.45*amt;                                             // accesa (brillante, sfora >1 → fiorisce nel bloom = luminosa)
       vTw=mix(lo,hi,onoff);                                              // tante lucine che si accendono/spengono, ognuna a tempo suo (non tutte insieme)
       vTw=clamp(vTw,0.04,2.2);
-      vF=smoothstep(uZN,uZN+uFade,position.z)*smoothstep(uZF,uZF-uFade,position.z);   // dissolvenza ai bordi della banda → ricicla senza pop
-      vec4 mv=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mv;
+      float zc=position.z+uScroll; if(zc>uZF) zc-=(uZF-uZN);   // SCROLL nel vertex shader (era loop CPU su 27.800 punti/frame): wrap nella banda [uZN,uZF]
+      vF=smoothstep(uZN,uZN+uFade,zc)*smoothstep(uZF,uZF-uFade,zc);   // dissolvenza ai bordi della banda → ricicla senza pop
+      vec4 mv=modelViewMatrix*vec4(position.xy,zc,1.0); gl_Position=projectionMatrix*mv;
       float psGeom=aSize*uPix*(0.48+0.36*vTw)*(uK/max(-mv.z,1.0));         // taglia geometrica: il twinkle pesa MENO sulla size → niente throbbing
       float psFloor=1.5*uPix;                                            // PAVIMENTO in pixel fisici: a 4K mai sub-pixel → stelle definite, non aliasate
       float ps=max(psGeom,psFloor);
@@ -716,20 +962,21 @@ function build(){
   sky2.renderOrder=-9; sky2.visible=false; scene.add(sky2);
 
   // CAMPO STELLARE VOLUMETRICO a 3 strati di profondità → parallasse (senso di 3D con camera ferma)
+  const _sm=n=>Math.round(n*STAR_MUL*(EF&&EF.starMul||1));   // conteggio stelle × ULTRA × firma-capitolo (EF.starMul settato per capitolo, default 1)
   starLayers=[
-    makeStarLayer(1000,-900, -120, 360, 0.8, 1.0, 0.0, 430, 260, 1.0),    // vicine: poche, veloci (parallasse forte)
-    makeStarLayer(3800,-2600,-700, 1400,0.8, 0.5, 0.35,360, 520, 1.0),    // medie
-    makeStarLayer(12000,-6500,-2400,4000,0.5, 0.18,0.7, 300, 1200,1.0),   // lontane (SFONDO): TANTISSIME microstelle fitte → sfondo definito e luminoso (8500→12000)
-    makeStarLayer(11000,-11000,-6200,7000,0.42,0.09,0.85,260,2200,0.95),  // abissali: fondale fittissimo di micro-stelle luminose (7000→11000)
-    makeStarLayer(38000,-5900,5900,5400,0.9,0,0.40,2800,300,0.95,true),   // CIELO SFERICO vicino: stelle GROSSE e LUMINOSE su tutta la sfera → riempie ogni angolo (34k→38k)
-    makeStarLayer(34000,-8400,8400,7800,0.7,0,0.60,3200,300,0.9,true),    // CIELO SFERICO profondo: microstelle fitte dietro → fondale denso da OGNI direzione (30k→34k)
+    makeStarLayer(_sm(1000),-900, -120, 360, 0.8, 1.0, 0.0, 430, 260, 1.0),    // vicine: poche, veloci (parallasse forte)
+    makeStarLayer(_sm(3800),-2600,-700, 1400,0.8, 0.5, 0.35,360, 520, 1.0),    // medie
+    makeStarLayer(_sm(12000),-6500,-2400,4000,0.5, 0.18,0.7, 300, 1200,1.0),   // lontane (SFONDO): microstelle fitte
+    makeStarLayer(_sm(11000),-11000,-6200,7000,0.42,0.09,0.85,260,2200,0.95),  // abissali: fondale fittissimo
+    makeStarLayer(_sm(38000),-5900,5900,5400,0.9,0,0.40,2800,300,0.95,true),   // CIELO SFERICO vicino: stelle GROSSE su tutta la sfera
+    makeStarLayer(_sm(34000),-8400,8400,7800,0.7,0,0.60,3200,300,0.9,true),    // CIELO SFERICO profondo: microstelle fitte dietro
   ];
   // lastre di nebulosa a profondità sfalsate: strati di foschia che scorrono → volume attraversato
   nebSheets=[];
-  const NEB_SHEETS=IS_MOBILE?9:11;   // GUSCIO SFERICO di nebulose: più lastre = cielo più denso (9→11; limato da 13 per fill-rate, sono billboard additivi enormi)
+  const NEB_SHEETS=Math.round(((typeof EF!=='undefined'&&EF.nebSheetsN)||(IS_MOBILE?9:11))*(ULTRA?1.45:1));   // n. lastre nebulosa: firma per-capitolo (7-13) × ULTRA (→ ~10-19)
   for(let i=0;i<NEB_SHEETS;i++){
     const mat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
-      uniforms:{uTime:{value:Math.random()*100},uColor:{value:new THREE.Color(0x4a5a8c)},uSeed:{value:Math.random()*10},uOp:{value:0}},
+      uniforms:{uTime:{value:Math.random()*100},uColor:{value:new THREE.Color(0x4a5a8c).offsetHSL((typeof EF!=='undefined'&&EF.nebHue!=null?EF.nebHue*0.5:0),0,0)},uSeed:{value:Math.random()*10},uOp:{value:0}},   // hue nebulosa ruotato per-capitolo
       vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:NOISE_GLSL+`varying vec2 vUv;uniform float uTime,uSeed,uOp;uniform vec3 uColor;
         void main(){ vec2 p=vUv-0.5; float r=length(p);
@@ -742,7 +989,7 @@ function build(){
     scene.add(m); nebSheets.push({m,mat,seed:mat.uniforms.uSeed.value,hue:(Math.random()*2-1)*0.10});   // hue: sfasamento per-lastra → cielo multi-tonale, non monocromo
   }
   // polvere ravvicinata VELOCE: pochi grani grandi che sfrecciano davanti (parallasse forte)
-  { const N=22, fp=new Float32Array(N*3), fs=new Float32Array(N);   // MENO grani (palline bianche fluttuanti ridotte: 90→22)
+  { const N=Math.round(22*(ULTRA?2.7:1)), fp=new Float32Array(N*3), fs=new Float32Array(N);   // grani fluttuanti (ULTRA: 22→60)
     const fre=(i,z)=>{ fp[i*3]=(Math.random()*2-1)*42; fp[i*3+1]=(Math.random()*2-1)*42; fp[i*3+2]=z; fs[i]=0.8+Math.random()*1.4; };
     for(let i=0;i<N;i++) fre(i,-60+Math.random()*120);
     const fg=new THREE.BufferGeometry(); fg.setAttribute('position',new THREE.BufferAttribute(fp,3)); fg.setAttribute('aSize',new THREE.BufferAttribute(fs,1));
@@ -1145,13 +1392,18 @@ function build(){
   composer.addPass(bloomPass);
   cinePass=new ShaderPass(CineShader); composer.addPass(cinePass);
   composer.addPass(new OutputPass());
-  // SMAA rimosso: l'MSAA del renderer (antialias:true) copre già i bordi; passata risparmiata
+  // ANTI-ALIAS: la scena renderizza in una RT offscreen (composer) → il flag antialias del renderer è bypassato e NON fa nulla.
+  // Senza una passata AB i bordi di pianeti/geometrie sfarfallano e lo stiramento a 4K li trasforma in "peluria". SMAAPass (già importato)
+  // gira come ULTIMA passata sull'immagine sRGB finale (edge-detection ideale lì), ~1-2ms a 1440p. Disattivabile con &noaa=1; saltata in R4K (il 4K nativo antialiasa da sé).
+  if(AA_ON && !(R4K&&SS>1) && !(R4K&&!ULTRA)){ smaaPass=new SMAAPass(Math.floor(WIDTH*PIX),Math.floor(HEIGHT*PIX)); composer.addPass(smaaPass); }   // SMAA: ON di default e in ULTRA a SS=1; saltato quando si fa SUPERSAMPLE (il downscale È l'anti-alias) o in R4K-live (il 4K nativo basta)
 
   ['log'].forEach(k=>$t[k]=document.getElementById('t-'+k));   // UI Space Radio: solo la caption centrale resta come #t-log
   if($t.log) $t.log.style.display='none';   // MESSAGGI IN SOVRIMPRESSIONE SPENTI (scelta utente 2026-07-02): niente testi al centro della live (sottotitoli voce, frasi eventi, diario di bordo). La voce continua a parlare; cadutaMessages(true) riaccende i testi.
   window.cadutaMessages=(on)=>{ if(!$t.log) return 'elemento assente'; $t.log.style.display=(on===undefined||on)?'':'none'; return 'messaggi in sovrimpressione: '+((on===undefined||on)?'ATTIVI':'spenti'); };
   $t.nowTitle=document.getElementById('now-title'); $t.nowTag=document.getElementById('now-tag'); $t.nextTitle=document.getElementById('next-title'); $t.nextEta=document.getElementById('next-eta');
   onResize();
+  if(R4K){ _recH=Math.round(R4K_H*SS); _recW=Math.round(_recH*16/9/2)*2; _live4k=true; _ef4kForce();   // 4K NATIVO permanente (× SS supersample) a PIX=1 — starLayers già creati, quindi uPix coerente
+    console.log('[r4k] render 4K NATIVO forzato: '+_recW+'×'+_recH+' (PIX=1). È la causa #1 della sfocatura: VERIFICA gli fps sulla VM. Disattiva togliendo &r4k dall\'URL.'); }
   // stelle "default" del pubblico (sostituite dal vero catalogo in Fase B)
   seedCompanions();
   // pre-popola il flusso di stelle: vive da subito + il contatore ✦ si muove presto
@@ -1300,7 +1552,7 @@ class Planet{
   }
   spawn(forceSun,forceIdx,distant){
     this.active=true; this.counted=false;
-    let idx; if(forceIdx!=null) idx=forceIdx; else if(forceSun) idx=SUN_IDX; else if(Math.random()<0.08) idx=SUN_IDX; else { do{ idx=(Math.random()*PMETA.length)|0; }while(idx===SUN_IDX); }
+    let idx; if(forceIdx!=null) idx=forceIdx; else if(forceSun) idx=SUN_IDX; else if(!window.__intro && Math.random()<0.08) idx=SUN_IDX; else { do{ idx=(Math.random()*PMETA.length)|0; }while(idx===SUN_IDX); }   // niente SOLE durante l'intro (scena saluto pulita)
     const meta=PMETA[idx]; this.isSun=!!meta.sun;
     const _distant=!!distant && !this.isSun;                          // MONDO LONTANO: piccolo, defilato, spoglio (economico) → riempie il cielo senza affollare il centro
     const _szR=Math.random(); const _giant=!this.isSun&&!_distant&&_szR<0.3; const _szMul=this.isSun?1.6:(_distant?1.0:(_giant?4.0+Math.random()*3.0:(_szR<0.42?0.28+Math.random()*0.45:(_szR<0.62?0.75+Math.random()*0.5:1.4+Math.random()*1.9))));   // ~30% GIGANTI (4-7×), ~12% nani (0.28-0.73×), ~20% piccoli (0.75-1.25×), resto medi (1.4-3.3×) → 4 classi di taglia
@@ -1324,7 +1576,7 @@ class Planet{
     this.mesh.rotation.set(Math.random()*0.5-0.25,Math.random()*Math.PI*2,Math.random()*0.3-0.15);
     this.spin=(Math.random()*2-1)*0.007;
     this.mat.map=this.mat.emissiveMap=ASSETS.pt[idx];   // stessa texture; emissiveMap già presente → nessun recompile
-    this.mat.emissiveIntensity=this.isSun?1.6:0;        // il Sole emette (× emissiveMap); gli altri no
+    this.mat.emissiveIntensity=this.isSun?1.2:0;        // il Sole emette (× emissiveMap); 1.6→1.2: meno abbagliante, non lava via l'astronauta quando passa vicino
     const pu=this.pUni;
     pu.uIsEarth.value=meta.earth?1:0; pu.uIsSun.value=this.isSun?1:0; pu.uAirless.value=meta.gray?1:0;
     pu.uHasAtmo.value=(this.isSun||meta.gray)?0:1; pu.uBump.value=this.isSun?0:(meta.bump!=null?meta.bump:3.0);
@@ -2172,7 +2424,7 @@ const CineShader={
       vec2 off=d*r2*r2*0.020*uAberr;                                   // aberrazione cromatica concentrata ai bordi
       vec3 col=vec3(texture2D(tDiffuse,uv+off).r,c0.g,texture2D(tDiffuse,uv-off).b);
       // DOF a basso costo: ammorbidisce SOLO i bordi (centro nitido). Raggio in pixel via uRes → indip. dalla risoluzione
-      float dofK=smoothstep(0.34,1.05,r2*2.3)*uDof;
+      float dofK=smoothstep(0.50,1.10,r2*2.3)*uDof;   // onset spinto verso l'esterno (0.34→0.50): il centro-nitido è più ampio, si ammorbidiscono solo gli angoli estremi → periferia meno "molle" a 4K
       if(dofK>0.001){ vec2 px=(1.0/uRes)*(1.2+1.6*dofK);              // ~1-3 px ai bordi estremi
         vec3 b=texture2D(tDiffuse,uv+vec2(px.x,px.y)).rgb+texture2D(tDiffuse,uv+vec2(-px.x,px.y)).rgb
               +texture2D(tDiffuse,uv+vec2(px.x,-px.y)).rgb+texture2D(tDiffuse,uv+vec2(-px.x,-px.y)).rgb;
@@ -2249,7 +2501,7 @@ function applyDirector(){
 let skyLoadGen=0;   // guard di generazione: un cadutaSky durante un load in volo scarta il resolve stantio (niente texture orfane né skyIdx sbagliato)
 function skyLoadTex(url, ok, err){
   const _cw=(renderer&&renderer.domElement)?renderer.domElement.width:1920;
-  const _tw=Math.max(4096, Math.min(SKY_PXW, Math.min(12800, Math.ceil(_cw*4.3/256)*256)));
+  const _tw=Math.max(4096, Math.min(SKY_PXW, Math.min(12800, Math.ceil(_cw*4.3/256)*256)));   // cap 12800 SEMPRE (anche ULTRA): l'upload del 16k pieno (~680MB) su ANGLE poteva glitchare (cielo a colore piatto / quadrati neri al cambio-cielo). A 4K la differenza 12800 vs 16384 è invisibile.
   const gen=++skyLoadGen;
   fetch(url,{signal:AbortSignal.timeout(30000)}).then(r=>{ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })   // timeout: una connessione appesa NON lascia skyLoading=true per sempre
     .then(b=>{ const o={imageOrientation:'flipY',premultiplyAlpha:'none',colorSpaceConversion:'none'};   // flipY nel decoder: per gli ImageBitmap il flipY WebGL è ignorato (stessa convenzione di zLoadLevel)
@@ -2263,7 +2515,11 @@ function skyLoadTex(url, ok, err){
     .catch(e=>{ err&&err(e); });
 }
 function cycleSky(target){ if(skyFading||skyLoading||!sky2) return; let n=(typeof target==='number')?((target%SKY_FILES.length)+SKY_FILES.length)%SKY_FILES.length:skyIdx;
-  if(typeof target!=='number' && SKY_FILES.length>SKY_ROT_MIN+1){ do{ n=SKY_ROT_MIN+((Math.random()*(SKY_FILES.length-SKY_ROT_MIN))|0); }while(n===skyIdx); } if(n===skyIdx) return; skyPendIdx=n; skyLoading=true;   // auto: ruota SOLO tra i gen_ belli (come gen_25), mai la Via Lattea grezza scura
+  if(typeof target!=='number' && SKY_FILES.length>SKY_ROT_MIN+1){
+    const bag=(typeof EF!=='undefined'&&EF.skyBag)?EF.skyBag():null;   // playlist cieli seminata per capitolo → ogni episodio apre su un cielo diverso e li attraversa in ordine diverso
+    if(bag&&bag.length){ let g=0; do{ skyBagCur=(skyBagCur+1)%bag.length; n=bag[skyBagCur]; g++; }while(n===skyIdx&&g<bag.length); }
+    else { do{ n=SKY_ROT_MIN+((Math.random()*(SKY_FILES.length-SKY_ROT_MIN))|0); }while(n===skyIdx); }
+  } if(n===skyIdx) return; skyPendIdx=n; skyLoading=true;   // auto: ruota SOLO tra i gen_ belli, mai la Via Lattea grezza scura
   skyLoadTex('assets/'+SKY_FILES[n]+SKY_QV, t=>{   // +SKY_QV = cache-buster (carica sempre il gen fresco)
     sky2.material.map=t; sky2.material.needsUpdate=true; sky2.material.opacity=0; sky2.visible=true; skyFade=0; skyFading=true; skyLoading=false;
   }, ()=>{ skyLoading=false; });   // errore di rete → annulla, riprova al prossimo giro (niente crash)
@@ -3035,6 +3291,7 @@ const SHELL_MIN=IS_MOBILE?11:20, SHELL_CAP=IS_MOBILE?13:25;   // guscio garantit
 let fpsAcc=0,fpsN=0,fpsTimer=0,tier=0,tierCooldown=0;
 function autoscale(dt,fps){
   if(typeof _rec4k!=='undefined' && _rec4k) return;                    // REC 4K in corso → non toccare la risoluzione
+  if(ULTRA) return;   // ULTRA (registrazione): qualità BLOCCATA al massimo per tutto l'episodio, mai declassare
   if(window.obsstudio || /[?&]live=1/.test(location.search)) return;   // LIVE/cloud: GPU dedicata → qualità sempre al massimo, mai downscale (l'fps in cattura è fuorviante)
   fpsTimer+=dt; if(fpsTimer<2) return; fpsTimer=0;
   if(tierCooldown>0){ tierCooldown-=2; return; }                 // dopo un cambio aspetta ~8s → niente flip-flop (i micro-hitch venivano dalla realloc dei target ad ogni cambio)
@@ -3052,8 +3309,52 @@ function applyTier(){
   if(spores) spores.mat.uniforms.uPix.value=PIX; if(cluster) cluster.mat.uniforms.uPix.value=PIX;   // dimensione punti coerente col pixelRatio
   if(manSparks) manSparks.material.uniforms.uPix.value=PIX;
   if(zoomStarsMat) zoomStarsMat.uniforms.uPix.value=PIX;   // stelle procedurali DEEP ZOOM allineate al pixelRatio
-  bloomDiv = tier>=2 ? 4 : 2;   // sotto carico il bloom scende a 1/4 di risoluzione
+  if(!ULTRA) bloomDiv = tier>=2 ? 4 : 2;   // sotto carico il bloom scende a 1/4 (mai in ULTRA: resta a piena risoluzione)
   onResize();
+}
+
+/* ================= INTRO DI CAPITOLO =================
+   All'avvio, al cambio capitolo (rollover giorno) e su cadutaIntro(): parte la canzone ROCK, il
+   personaggio si gira verso la camera, si avvicina, fa un cenno, poi si rigira e riparte la caduta.
+   Voce ElevenLabs (assets/voice/intro.mp3) + title-card "CHAPTER N · TEMA". Universale (astronauta e animali). */
+let introActive=false, introT=0, introApproach=0, introNodK=0, introTitleK=0, _introVoiceT=0;
+const INTRO_DUR=15.5, INTRO_DIST=5.2;   // durata e distanza camera ravvicinata durante il saluto
+function _ss(a,b,x){ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); }   // smoothstep
+function _calmForIntro(){   // intro "scena standard pulita": spegne i grandi corpi luminosi attivi (niente sole gigante che fa da photobomb sul saluto) e ne rimanda i timer oltre l'intro
+  const big=[typeof redgiant!=='undefined'&&redgiant, typeof whitedwarf!=='undefined'&&whitedwarf, typeof variablestar!=='undefined'&&variablestar, typeof magnetar!=='undefined'&&magnetar, typeof pulsar!=='undefined'&&pulsar, typeof dyson!=='undefined'&&dyson, typeof binary!=='undefined'&&binary, typeof remnant!=='undefined'&&remnant, typeof blackhole!=='undefined'&&blackhole, typeof wormhole!=='undefined'&&wormhole, typeof motherStation!=='undefined'&&motherStation, typeof station!=='undefined'&&station, typeof cluster!=='undefined'&&cluster, typeof derelict!=='undefined'&&derelict, typeof lavaWorld!=='undefined'&&lavaWorld, typeof shattered!=='undefined'&&shattered];
+  for(const b of big){ try{ if(b&&b.active){ b.active=false; const r=b.group||b.g||b.mesh||b.root||b.spr||b.sprite; if(r) r.visible=false; } }catch(_){} }
+  try{ for(const p of planets){ if(p&&p.active&&p.isSun){ p.active=false; p.mesh.visible=false; } } }catch(_){}   // spegne i SOLI hero (Planet isSun) che accecherebbero il saluto
+  try{ if(typeof ownedPlanets!=='undefined') for(const p of ownedPlanets){ if(p&&p.active&&p.isSun){ p.active=false; p.mesh.visible=false; } } }catch(_){}
+  try{ sbOp=0; _sbSun=null; if(starburst) starburst.visible=false; }catch(_){}   // via la croce di diffrazione del sole
+  try{ redgiantTimer=Math.max(redgiantTimer||0,22); whitedwarfTimer=Math.max(whitedwarfTimer||0,22); magnetarTimer=Math.max(magnetarTimer||0,22); pulsarTimer=Math.max(pulsarTimer||0,22); dysonTimer=Math.max(dysonTimer||0,22); bhTimer=Math.max(bhTimer||0,22); binaryTimer=Math.max(binaryTimer||0,22); remnantTimer=Math.max(remnantTimer||0,22); stationTimer=Math.max(stationTimer||0,22); motherTimer=Math.max(motherTimer||0,22); lavaTimer=Math.max(lavaTimer||0,22); shatteredTimer=Math.max(shatteredTimer||0,22); }catch(_){}   // niente nuovi grandi spawn per ~22s
+}
+function _lerpAng(a,b,k){ let d=((b-a)%6.283185307+9.42477796)%6.283185307-3.141592653; return a+d*k; }   // lerp angolare per via più corta
+function _playRockIntro(n){ try{ const m=audio&&audio.music;
+    if(!m||!m.library||!m.library.length){ if((n||0)<10) setTimeout(()=>_playRockIntro((n||0)+1),200); return; }   // libreria non ancora pronta → riprova (niente vuoto)
+    m.started=true; m.enabled=true; try{audio.ctx.resume();}catch(_){}
+    // ATTACCO intro seminato per capitolo: pesca tra i brani energici (o taggati intro:true) → ogni episodio apre su un attacco diverso
+    const cand=[]; for(let i=0;i<m.library.length;i++){ const t=m.library[i]; if(t&&(t.intro || /psych|rock|synthwave|neon|quantum|drive/i.test((t.id||'')+' '+(t.title||'')))) cand.push(i); }
+    let idx = cand.length ? (typeof EF!=='undefined'&&EF.cpick?EF.cpick(cand):cand[(Math.random()*cand.length)|0]) : (m.library.findIndex(t=>t&&t.id==='psychedelic-rock-pop'));
+    if(idx==null||idx<0) idx=m.library.length-1; m._playInto(m.active<0?0:1-m.active, m.library[idx], 0.5); }catch(_){}   // 0.5s: entra subito
+}
+function startIntro(){ if(!built) return; introActive=true; introT=0; window.__intro=true;   // flag globale: niente nuovi SOLI durante l'intro (guard in Planet.spawn, no TDZ)
+  try{ EF._updateHUD(); }catch(_){}                                   // sincronizza title-card + brand col capitolo/tema correnti
+  try{ if(audio&&audio.music&&audio.music._refill){ audio.music._refillN=0; audio.music._refill(); } }catch(_){}   // SETLIST del capitolo: azzera il contatore per-capitolo e ri-mescola il bag col seed del capitolo → i brani DOPO l'intro seguono l'ordine dell'episodio
+  try{ _calmForIntro(); }catch(_){}                                   // scena pulita per il saluto
+  _playRockIntro();
+  clearTimeout(_introVoiceT); _introVoiceT=setTimeout(()=>{ try{ if(audio&&audio.speakFile) audio.speakFile('assets/voice/intro.mp3'); }catch(_){} }, 2200);   // voce dopo ~2.2s: prima si sente l'attacco ROCK, poi entra la voce
+  const ic=document.getElementById('introcard'); if(ic) ic.style.opacity='0';
+}
+function endIntro(){ introActive=false; window.__intro=false; introApproach=0; introNodK=0; introTitleK=0;
+  const ic=document.getElementById('introcard'); if(ic) ic.style.opacity='0';
+  try{ if(audio&&audio.music&&audio.music.next) audio.music.next(); }catch(_){}   // esci dalla rock → traccia adatta al tema
+}
+function updateIntro(dt){ if(!introActive) return; introT+=dt; const T=introT;
+  introApproach=_ss(1.0,4.0,T)*(1-_ss(11.5,14.5,T));                  // avvicinamento+giro verso camera: sale, TIENE fino a ~11.5s, poi rientra
+  introNodK=(T>4.0&&T<11.0)?Math.sin((T-4.0)*2.3):0;                  // cenno di saluto (beccheggio dolce) durante la tenuta
+  introTitleK=_ss(0.4,2.0,T)*(1-_ss(6.8,9.4,T));                      // title-card: sfuma ENTRO ~9.4s → rivela l'astronauta che saluta da vicino prima che si rigiri
+  const ic=document.getElementById('introcard'); if(ic) ic.style.opacity=introTitleK.toFixed(3);
+  if(T>=INTRO_DUR) endIntro();
 }
 
 function animate(){
@@ -3061,12 +3362,14 @@ function animate(){
   if(!built || !contextOK) return;
   let _raw=clock.getDelta(); const _stall=_raw>0.25; let dt=Math.min(Math.max(_raw,1/240),0.05);
   if(!started) return;
-  if(_rec4k && renderer.domElement.width!==_recW) _ef4kForce();        // REC 4K: ri-forza la risoluzione ad ogni frame (resta vero 4K qualunque cosa accada)
+  if((_rec4k||_live4k) && renderer.domElement.width!==_recW) _ef4kForce();   // REC 4K / R4K live: ri-forza la risoluzione ad ogni frame (resta vero 4K qualunque cosa accada)
   // NB: si renderizza SEMPRE, anche se document.hidden (OBS può riportare "hidden" anche in onda → mai schermo nero)
   if(_stall){ shaderTime=(shaderTime+dt)%SWRAP; try{ director.step(0.001); composer.render(); telUpdate(dt); _lastFrameTs=Date.now(); }catch(err){ _frameErrs++; _errWindow=8; if(_frameErrs>180){ try{telSave();}catch(_){} safeReload(); } } return; }  // ripresa dopo throttle rAF (orologio vivo, heartbeat solo se il render riesce)
   try {
   shaderTime=(shaderTime+dt)%SWRAP;
   director.step(dt); applyDirector();
+  try{ EF.step(dt); }catch(_){}   // ALMANAC: fenomeno-guida dell'ora + showpiece rari programmati + rollover capitolo/tema (housekeeping ogni ~5s)
+  try{ updateIntro(dt); }catch(_){}   // INTRO di capitolo (envelope: avvicinamento, cenno, title-card)
   // DILATAZIONE TEMPORALE vicino ai buchi neri: il mondo rallenta, l'orologio "sfasa"
   // (il GIORNO resta ancorato al tempo reale → perennità intatta; è un effetto narrativo/visivo).
   let timeScale=1, bhNear=0;
@@ -3088,7 +3391,7 @@ function animate(){
     if(fallPhaseT<=0){ fallFast=!fallFast; fallTarget=fallFast?(20+Math.random()*12):1; fallPhaseT=45+Math.random()*60;   // veloce ancora più spinto (20-32×); fasi più corte (~45-105s)
       if($t.log){ $t.log.textContent=fallFast?'— acceleration. the fall quickens.':'— drifting. the fall slows.'; $t.log.classList.add('on'); setTimeout(()=>$t.log&&$t.log.classList.remove('on'),9000); } } }
   fallMul += (fallTarget-fallMul)*Math.min(1,dt*0.08);                  // rampa graduale (~25-30s) verso il target — fasi più corte ma transizioni morbide
-  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul*zoomWorldMul*1.45;   // ×1.45: CADUTA più VELOCE — tutti gli elementi (stelle, polvere, pianeti) scorrono più in fretta verso l'astronauta (senso di caduta infinita più decisa)
+  const speed=director.cur.speed*director.speedMul*timeScale*(1+slingE*2.4)*fallMul*zoomWorldMul*((typeof EF!=='undefined'&&EF.ready&&EF.fallSig)||1.45);   // ×EF.fallSig (per-capitolo ~1.15-1.75): un episodio contemplativo cade più lento, uno drammatico più veloce (la musica segue via playbackRate)
   const rocketE=THREE.MathUtils.clamp((fallMul-1)/9,0,1);               // 0..1: i cue "RAZZO" crescono (gradualmente) con la velocità di caduta
   if(audio.music && audio.music.setSpeedMul) audio.music.setSpeedMul(1+rocketE*0.6);   // la musica accelera nelle fasi veloci
 
@@ -3123,14 +3426,12 @@ function animate(){
   sky.rotation.x=Math.sin(shaderTime*0.004)*0.05*zoomSkyRotMul+zoomSkyPitch;   // ×zoomSkyRotMul: DEEP ZOOM congela la rotazione con rampa; +zoomSkyPitch: beccheggio di puntamento GC (0 a riposo)
   // campo stellare volumetrico: ogni strato scorre a velocità diversa (parallasse) e ricicla senza pop
   for(const L of starLayers){ L.mat.uniforms.uTime.value=shaderTime;   // le stelle che luccicano restano SEMPRE (anche nel deep zoom — scelta utente; uGDim resta a 1, disponibile per il futuro)
-    if(L.sphere) continue;   // il CIELO SFERICO avvolge tutto e non scorre (twinkle basta): niente re-upload di 22k posizioni per frame
-    const dzL=speed*dt*L.mul, p=L.pos;
-    for(let i=0;i<L.count;i++){ p[i*3+2]+=dzL; if(p[i*3+2]>L.zF){ p[i*3]=(Math.random()*2-1)*L.half; p[i*3+1]=(Math.random()*2-1)*L.half; p[i*3+2]=L.zN; } }
-    L.pts.geometry.attributes.position.needsUpdate=true; }
+    if(L.sphere) continue;   // il CIELO SFERICO avvolge tutto e non scorre (twinkle basta)
+    const bandL=L.zF-L.zN; L.mat.uniforms.uScroll.value=(L.mat.uniforms.uScroll.value+speed*dt*L.mul)%bandL; }   // SCROLL nel vertex shader: 1 op/layer invece di 27.800 iterazioni JS + niente re-upload buffer/frame (era il costo CPU dominante del render — la CPU single-thread e' il collo)
   // lastre di nebulosa profonde che scorrono e riciclano
   for(const s of nebSheets){ s.mat.uniforms.uTime.value=shaderTime; s.m.lookAt(camera.position);   // GUSCIO: billboard verso la camera, posizione FISSA sulla sfera → foschia colorata da ogni angolo (il moto lo dà l'orbita della camera + il churn fbm interno)
     s.mat.uniforms.uColor.value.copy(director.grade).offsetHSL(s.hue,0,0).lerp(_white,0.18);   // offsetHSL: ogni lastra una tonalità vicina → banda di colori, non monocromo
-    s.mat.uniforms.uOp.value=(0.22+director.cur.neb*0.25)*zoomEnvMul;   // opacità col mood, alzata da 0.20+0.22 ma limata da 0.24+0.28 per fill-rate; ×zoomEnvMul: DEEP ZOOM pulisce (1 a riposo) }
+    s.mat.uniforms.uOp.value=(0.22+director.cur.neb*0.25)*zoomEnvMul*((typeof EF!=='undefined'&&EF.nebSig)||1);   // opacità col mood × firma densità nebulosa del capitolo; ×zoomEnvMul: DEEP ZOOM pulisce }
   }
 
   // polvere (+ stiramento in raffica)
@@ -3291,7 +3592,7 @@ function animate(){
   camPhase+=dt*timeScale;
   // ogni ~40-110s una nuova inquadratura: orbita parziale, quota, distanza — planata di ~10s, poi indugia.
   // Mai stacchi (sempre easing) e sempre sull'astronauta (il lookAt non cambia).
-  camMoveNext-=dt; if(camMoveNext<=0){ camMoveNext=40+Math.random()*70;
+  camMoveNext-=dt; if(camMoveNext<=0){ camMoveNext=(40+Math.random()*70)*((typeof EF!=='undefined'&&EF.cam&&EF.cam.reframeMul)||1);   // cadenza reframe per-capitolo
     camMoveAzT=(Math.random()<0.30?0:(Math.random()*2-1)*0.55);          // 30% delle volte torna in asse
     camMoveElT=(Math.random()*2-1)*0.65; camMoveDsT=(Math.random()*2-1)*1.9; }
   camMoveScale+=(((typeof zoomState==='undefined'||zoomState==='idle')?1:0.14)-camMoveScale)*Math.min(1,dt*0.5);   // nel deep zoom i riframe si riducono (il centro dello zoom deve restare in quadro)
@@ -3331,7 +3632,7 @@ function animate(){
   // comunque). I retarget si APPLICANO solo tra le figure (camOrbitP>=1): mai un'inversione che
   // trasformi il giro in corso in un controsterzo (review adversariale).
   camDriftRetarget-=dt; if(camDriftRetarget<=0 && camOrbitP>=1){ camDriftRetarget=25+Math.random()*30;
-    camDriftRateT=(Math.random()<0.10?-1:1)*Math.sign(camDriftRateT||1)*(0.030+Math.random()*0.042)*camRegH; }
+    camDriftRateT=(Math.random()<0.10?-1:1)*Math.sign(camDriftRateT||1)*(0.030+Math.random()*0.042)*camRegH*((typeof EF!=='undefined'&&EF.cam&&EF.cam.dollyGain)||1); }   // ×dollyGain per-capitolo: un episodio orbita più lento/veloce attorno all'astronauta
   camDriftRate+=(camDriftRateT-camDriftRate)*Math.min(1,dt*0.12);
   // QUOTA VERTICALE LIMITATA: a riposo la camera resta sulla BANDA (le scene belle) — la quota plana
   // verso bersagli entro ±0.35 rad (~±20°, un filo di più nel regime verticale); il 360° verticale
@@ -3434,6 +3735,17 @@ function animate(){
   tmpLook.set(camLookX,camLookY,0); camera.lookAt(tmpLook);
   if(!camOrbitOn && _zIdle) camSceneRoll=(camSceneRoll+camSceneRollSpd*dt)%6.283185307;   // ROLL CONTINUO: la scena gira attorno all'astronauta centrato (camera su se stessa → "rotola verso la meta"); SOLO in scena ESO (nel dive lo zoom ruota da sé)
   camera.rotation.z+=Math.sin(camPhase*0.03)*0.010+camRollAng+camSceneRoll*camDriftEase;   // ×camDriftEase: nel dive il roll di scena sfuma a 0 (camera ferma, ruota solo l'immagine zoom)
+  if(introActive && introApproach>0.001){                                       // INTRO: il personaggio si gira VERSO la camera, che si avvicina (primo piano del saluto), poi si rigira e riparte
+    const k=introApproach;
+    manRig.rotation.y=_lerpAng(manRig.rotation.y, _az+Math.PI, k);              // faccia verso camera (greet yaw = azimut+π)
+    manRig.rotation.x=manRig.rotation.x*(1-0.7*k) - introNodK*0.16*k;           // cenno di saluto (beccheggio dolce)
+    manRig.rotation.z*=(1-0.85*k);
+    const cd=camDist*(1-k)+INTRO_DIST*k, ey=(_el)*(1-k)+0.7*k;                  // camera si avvicina, quota verso il volto
+    camera.position.set(Math.sin(_az)*cd*_pc, ey+_psn*cd, Math.cos(_az)*cd*_pc);
+    tmpLook.set(camLookX*(1-0.6*k), camLookY*(1-k)+0.3*k, 0); camera.up.set(0,1,0); camera.lookAt(tmpLook);
+    camera.rotation.z*=(1-0.92*k);                                              // stabilizza il roll di scena durante il saluto
+    if(keyLight){ keyLight.intensity+=1.1*k*(1-Math.min(1,director.cur.skyBright)); }   // riflettore GENTILE e ADATTIVO: schiarisce solo i temi bui, MAI sovraespone (l'astronauta non diventa una nuvola bianca)
+  }
   // ZOOM CONTINUO (scena ESO): il FOV si stringe/allarga dolcemente (±~4°, ~20s) → accenno di ZOOM mentre
   // la scena si muove e ruota, così sembra una caduta che "entra" nell'universo. Nel dive lo spegne (camDriftEase→0).
   const _esoZoom=(camOrbitOn?1:camDriftEase)*(Math.sin(camPhase*0.05)*2.2 - (1-Math.cos(camPhase*0.032))*2.0);   // componente lenta che spinge IN (coseno rialzato: più tempo "dentro" lo zoom)
@@ -3444,9 +3756,9 @@ function animate(){
   eclipseDim=Math.max(0,eclipseDim-dt*0.8);                                           // decadimento morbido (l'eclissi lo ricarica finché è in totalità)
   cinePass.uniforms.uVignette.value=1.0+rocketE*0.22+director.surge*0.08+eclipseDim;  // tunnel in warp + iris-down alla totalità dell'eclissi
   cinePass.uniforms.uGrain.value=Math.min(0.026, 0.020*(1.0+director.surge*0.30))*(0.1+0.9*zoomWorldDimN);    // la camera "sente" la caduta; nero pulito per l'encoder. Nel DEEP ZOOM la grana quasi sparisce: sul nero delle fasi profonde leggeva come un campo di finte stelline ("lo sfondo sotto")
-  bloomPass.strength=Math.min(0.78, 0.36+director.cur.aB*0.30+director.surge*0.20);   // bloom ridotto + cap più basso → il centro non si brucia, dettagli/UI restano leggibili
+  bloomPass.strength=Math.min(0.85, (0.36+director.cur.aB*0.30+director.surge*0.20)*((typeof EF!=='undefined'&&EF.bloomBias)||1))*(introActive?(1-0.6*introApproach):1);   // × firma bloom del capitolo (un episodio più "sognante"/alonato, un altro più asciutto); durante il saluto scende (astronauta leggibile)
   bloomPass.threshold=Math.max(0.86, 0.92-director.cur.neb*0.05-director.surge*0.02); // firma per-mood, pavimento alzato 0.82→0.86: meno 'macchie' luminose sui pianeti (bloom più chirurgico)
-  bloomPass.radius=Math.min(0.85, 0.48+director.cur.aB*0.28+director.surge*0.12+rocketE*0.10);   // alone ampio nei mood luminosi e in warp
+  bloomPass.radius=Math.min(0.62, 0.42+director.cur.aB*0.24+director.surge*0.10+rocketE*0.08);   // cap ridotto 0.85→0.62: col bloom ora a 1/2 risoluzione l'alone è già più fine e definito; raggio più stretto = glow che non vela il dettaglio attorno
 
   composer.render();
   telUpdate(dt); updateAccent(dt); updateSky(dt);   // accento UI + crossfade sfondi col mood
@@ -3497,9 +3809,11 @@ class SampleKit{
 const MUSIC_SCENE_ENERGY={galassia:0.45,vuoto:0.10,nebulosa:0.34,pianeta:0.48,cintura:0.90,brace:0.78,gelo:0.20,abisso:0.05};
 let PRELOADED_MUSIC_LIBRARY=null;
 const LIVE_MUSIC_DECKS=new Set();
-const unlockLiveMusic=()=>{ for(const deck of LIVE_MUSIC_DECKS) deck.unlock(); };
+const unlockLiveMusic=()=>{ try{ if(typeof audio!=='undefined'&&audio&&audio.ctx&&audio.ctx.state==='suspended') audio.ctx.resume(); }catch(_){}   // ogni gesto risveglia il contesto (anche se nessun deck è ancora partito → l'unlock del deck faceva return)
+  for(const deck of LIVE_MUSIC_DECKS) deck.unlock(); };
 document.addEventListener('click',unlockLiveMusic,{passive:true});
 document.addEventListener('keydown',unlockLiveMusic,{passive:true});
+document.addEventListener('pointerdown',unlockLiveMusic,{passive:true});
 const MUSIC_LIBRARY_READY=fetch('assets/music/tracks.json',{cache:'no-store'}).then(r=>{if(!r.ok) throw new Error('HTTP '+r.status);return r.json();}).then(j=>{
   if(!Array.isArray(j)||!j.length) throw new Error('catalogo vuoto'); PRELOADED_MUSIC_LIBRARY=j.filter(x=>x&&x.file&&x.title); return PRELOADED_MUSIC_LIBRARY;
 }).catch(e=>{console.warn('[music] preload catalogo fallito:',e);return [];});
@@ -3547,7 +3861,9 @@ class AdaptiveMusicDeck{
   }
   _refill(){
     this.bag=this.library.slice();
-    for(let i=this.bag.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [this.bag[i],this.bag[j]]=[this.bag[j],this.bag[i]]; }
+    // SETLIST PER-CAPITOLO: shuffle seminato dal capitolo (stream indipendente) → l'ordine dei brani è diverso per ogni episodio e riproducibile; il contatore _refillN varia i giri successivi dentro la stessa ora
+    const rnd=(typeof EF!=='undefined'&&EF.ready&&EF.rng)?EF.rng('music#'+(this._refillN=(this._refillN||0)+1)):Math.random;
+    for(let i=this.bag.length-1;i>0;i--){ const j=(rnd()*(i+1))|0; [this.bag[i],this.bag[j]]=[this.bag[j],this.bag[i]]; }
   }
   _pick(){
     if(!this.bag.length) return null;
@@ -3635,6 +3951,7 @@ const VOICE_CATLABEL={cosmos:'The Cosmos',physics:'Strange Physics',living_plane
 class AmbientEngine{
   constructor(){ this.ready=false; this.useSamples=false; this._organVoices=[]; }
   start(){ if(this.ready) return; const Ctx=window.AudioContext||window.webkitAudioContext; this.ctx=new Ctx(); const ctx=this.ctx;
+    try{ ctx.resume(); }catch(_){}   // CRUCIALE: resume DENTRO il gesto (start() è chiamato dal click su Enter) → niente "AudioContext not allowed to start"
     this.master=ctx.createGain(); this.master.gain.value=0.0001;
     this.comp=ctx.createDynamicsCompressor(); this.comp.threshold.value=-18; this.comp.ratio.value=4; this.comp.attack.value=0.05; this.comp.release.value=0.4;
     this.verb=ctx.createConvolver(); this.verb.buffer=this._imp(9.0,1.9); this.wet=ctx.createGain(); this.wet.gain.value=0.66; this.dry=ctx.createGain(); this.dry.gain.value=0.56;   // coda lunghissima → spazio vasto
@@ -3848,10 +4165,18 @@ class AmbientEngine{
   _cid(i){ const v=this.voiceLib[i]; return v&&v.id!=null?v.id:i; }
   _remember(idx){ this.voiceRecent.push(idx); const cap=Math.max(6,Math.min(28,(this.voiceLib.length*0.45)|0)); while(this.voiceRecent.length>cap) this.voiceRecent.shift(); this.voiceLast=idx;
     if(!this.playCount) this.playCount={}; const id=this._cid(idx); this.playCount[id]=(this.playCount[id]||0)+1; this._saveCounts(); }   // +1 al contatore della riga ascoltata
-  _saveCounts(){ try{ if(typeof localStorage!=='undefined') localStorage.setItem('ce_vcount', JSON.stringify(this.playCount)); }catch(e){} }
+  _saveCounts(){ try{ if(typeof localStorage!=='undefined' && !(typeof EF!=='undefined'&&EF._forceChapter!=null)) localStorage.setItem('ce_vcount', JSON.stringify(this.playCount)); }catch(e){} }   // in registrazione (capitolo forzato) NON avvelena il contatore globale condiviso
   _pickCapsule(){ if(!this.capIdx.length) return this._pickSoul();
     let pool=this.capIdx.filter(i=>!this.voiceBad.has(i)); if(!pool.length) pool=this.capIdx.slice();
     if(this._preferTag){ const m=pool.filter(i=>this.voiceLib[i].tag===this._preferTag); if(m.length){ this._preferTag=null; pool=m; } }   // bias evento: tra le taggate, comunque la MENO ascoltata
+    else if(typeof EF!=='undefined'&&EF.ready&&EF.narrLean&&EF.narrLean.length&&Math.random()<EF.narrP){   // ALMANAC: lean sulle categorie del tema/ora (mantiene la rotazione least-played DENTRO il sottoinsieme; pool tenuto ampio)
+      const m=pool.filter(i=>EF.narrLean.indexOf((this.voiceLib[i]||{}).cat)>=0); if(m.length>8) pool=m; }
+    // FINESTRA PILLOLE PER-CAPITOLO: consuma le capsule in un ORDINE seminato dal capitolo (episodi N e N+1 = ordini diversi → quasi nessuna pillola in comune), niente ripetizioni nell'ora. Least-played come fallback.
+    if(typeof EF!=='undefined'&&EF.ready&&EF.rng){
+      if(this._pillChap!==EF.chapterNum){ this._pillChap=EF.chapterNum; const a=this.capIdx.slice(); const rr=EF.rng('pills'); for(let i=a.length-1;i>0;i--){ const j=(rr()*(i+1))|0; const t=a[i]; a[i]=a[j]; a[j]=t; } this._pillOrder=a; this._pillSeen=new Set(); }
+      const inPool=new Set(pool);
+      for(let k=0;k<this._pillOrder.length;k++){ const cand=this._pillOrder[k]; if(!this._pillSeen.has(cand) && inPool.has(cand) && cand!==this.voiceLast){ this._pillSeen.add(cand); return cand; } }
+    }
     const pc=this.playCount||{}; let min=Infinity; for(const i of pool){ const c=pc[this._cid(i)]||0; if(c<min) min=c; }   // ROTAZIONE: tutte partono una volta prima di ripetersi → scegli random tra quelle col contatore MINIMO
     let tier=pool.filter(i=>(pc[this._cid(i)]||0)===min);
     if(tier.length>1){ const t2=tier.filter(i=>i!==this.voiceLast); if(t2.length) tier=t2; }   // niente ripetizione immediata
@@ -3891,6 +4216,13 @@ class AmbientEngine{
       v=Math.max(v,idle); const h=Math.max(1.5, v*v*H);
       x.globalAlpha=0.4+0.45*v; x.fillRect(i*bw+1, H-h, Math.max(1,bw-2), h); }       // ancorata in basso (EQ)
     x.globalAlpha=1; }
+  speakFile(url){ if(!this.voiceEl) return; const el=this.voiceEl, tok=++this._voiceTok; this.voiceBusy=true;   // voce "one-shot" fuori libreria (intro): duck musica+tappeto come una capsula
+    const restore=()=>{ el.onplaying=el.onended=el.onerror=null; if(this.duckGain) this.duckGain.gain.setTargetAtTime(1.0,this.ctx.currentTime,0.7); this.voiceBusy=false; };
+    clearTimeout(this._voiceTimer); this._voiceTimer=setTimeout(restore,16000);
+    el.onplaying=()=>{ if(tok!==this._voiceTok) return; if(this.duckGain) this.duckGain.gain.setTargetAtTime(0.55,this.ctx.currentTime,0.4); };   // duck più leggero: la ROCK resta presente sotto la voce intro
+    el.onended=()=>{ if(tok===this._voiceTok) restore(); };
+    el.onerror=()=>{ if(tok===this._voiceTok) restore(); };
+    try{ el.src=url; el.load(); const p=el.play(); if(p&&p.catch) p.catch(()=>{ if(tok===this._voiceTok) restore(); }); }catch(e){ restore(); } }
   _speak(idx){ if(this.voiceBusy||!this.voiceLib.length) return; if(idx==null) idx=this._pickCapsule(); if(idx<0||idx>=this.voiceLib.length) return; const line=this.voiceLib[idx],el=this.voiceEl,tok=++this._voiceTok; this.voiceBusy=true; this._remember(idx);
     const restore=()=>{ clearTimeout(this._voiceTimer); el.onplaying=el.onended=el.onerror=null; if(this.duckGain) this.duckGain.gain.setTargetAtTime(1.0,this.ctx.currentTime,0.7); if(typeof $t!=='undefined'&&$t){ if($t.log)$t.log.classList.remove('on'); if($t.genre)$t.genre.classList.remove('on'); } this.voiceBusy=false; };
     this._voiceTimer=setTimeout(restore,30000);   // safety: nulla resta appeso
@@ -4387,7 +4719,7 @@ function _efRecClip(sec,name){ return new Promise(res=>{ try{
       const at=window._recADest.stream.getAudioTracks()[0]; if(at) stream.addTrack(at); } }catch(_){}
     // h264 preferito: encode HARDWARE (VideoToolbox) → 4K60 senza frame persi; vp9 software è il fallback
     const mime=['video/webm;codecs=h264,opus','video/webm;codecs=h264','video/webm;codecs=vp9,opus','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
-    const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:55000000,audioBitsPerSecond:192000}), chunks=[];
+    const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:(ULTRA?120000000:55000000),audioBitsPerSecond:192000}), chunks=[];   // ULTRA: bitrate quasi-lossless per il master intermedio
     rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
     rec.onstop=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(chunks,{type:mime})); a.download=name+'.webm'; document.body.appendChild(a); a.click(); a.remove(); console.log('[clip] scaricata',name); res(); };
     rec.start(); console.log('[clip] REC',name,sec+'s @',renderer.domElement.width+'x'+renderer.domElement.height); setTimeout(()=>{try{rec.stop();}catch(_){res();}}, sec*1000);
@@ -4518,17 +4850,19 @@ setInterval(()=>{ if(started) pollCatalog(); }, 10000);
 
 /* ---------------- resize / fullscreen / avvio ---------------- */
 function onResize(){
-  if(typeof _rec4k!=='undefined' && _rec4k) return;                    // REC 4K in corso → non ribaltare la risoluzione forzata
+  if((typeof _rec4k!=='undefined' && _rec4k) || _live4k) return;       // REC 4K / R4K live in corso → non ribaltare la risoluzione forzata
   WIDTH=window.innerWidth; HEIGHT=window.innerHeight;
   renderer.setSize(WIDTH,HEIGHT); camera.aspect=WIDTH/HEIGHT; baseFov=fovForAspect(); camera.fov=baseFov; camera.updateProjectionMatrix();
   HV_REC=Math.tan(baseFov*Math.PI/360)*DREC_DEPTH; HH_REC=HV_REC*(WIDTH/HEIGHT);   // guscio mondi-lontani: half-extent coerenti con aspect/FOV correnti
-  if(composer){ composer.setSize(WIDTH,HEIGHT); bloomPass.setSize(Math.floor(WIDTH*PIX/bloomDiv),Math.floor(HEIGHT*PIX/bloomDiv)); cinePass.uniforms.uRes.value.set(WIDTH,HEIGHT); cinePass.uniforms.uPix.value=PIX; if(smaaPass) smaaPass.setSize(WIDTH,HEIGHT); }
+  if(composer){ composer.setSize(WIDTH,HEIGHT); bloomPass.setSize(Math.floor(WIDTH*PIX/bloomDiv),Math.floor(HEIGHT*PIX/bloomDiv)); cinePass.uniforms.uRes.value.set(WIDTH,HEIGHT); cinePass.uniforms.uPix.value=PIX; if(smaaPass) smaaPass.setSize(Math.floor(WIDTH*PIX),Math.floor(HEIGHT*PIX)); }
 }
 window.addEventListener('resize', onResize);
 
 const gate=document.getElementById('gate'), hudUi=document.getElementById('hud-ui');
 function begin(){ if(started||!built) return; started=true; audio.start();
+  try{ if(audio&&audio.ctx&&audio.ctx.state!=='running') audio.ctx.resume(); }catch(_){}   // doppia sicurezza: resume nel gesto del click
   gate.classList.add('hidden'); if(hudUi) hudUi.classList.add('show'); setTimeout(()=>gate.style.display='none',2600);
+  if(!/[?&]demo=1/.test(location.search)) setTimeout(()=>{ try{ EF._lastChapKey=EF._chapKey(); startIntro(); }catch(_){} }, 300);   // INTRO di capitolo all'avvio (rock + saluto + title-card) — parte presto così l'attacco musicale è nei primi secondi
   // DEMO TOUR (?demo=1): sfila le novità una dopo l'altra — per rivederle in locale senza aspettare i timer
   if(/[?&]demo=1/.test(location.search)){
     const D=(w)=>()=>window.cadutaDebugEvent(w);
