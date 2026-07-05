@@ -1561,7 +1561,7 @@ function build(){
   lensPass=new ShaderPass(BHLensShader); composer.addPass(lensPass);   // lensing del buco nero (prima del bloom)
   bloomPass=new UnrealBloomPass(new THREE.Vector2(Math.floor(WIDTH*PIX/bloomDiv),Math.floor(HEIGHT*PIX/bloomDiv)),0.6,0.6,0.86); // bloom ridotto + threshold più alto → centro non bruciato
   composer.addPass(bloomPass);
-  flashbackPass=new ShaderPass(FlashbackShader); composer.addPass(flashbackPass);   // FLASHBACK/cutscene: still hi-res SOPRA la scena (passthrough a uAmt=0), prima del grade cine
+  flashbackPass=new ShaderPass(FlashbackShader); flashbackPass.enabled=false; composer.addPass(flashbackPass);   // ★ enabled=false a riposo: la passata nella catena (anche a uAmt=0, tFlash nulla) causava un QUADRATO NERO via ping-pong buffer → attiva SOLO durante una flashback
   try{ Flashback.load(); }catch(_){}                                                // precarica le still (è un video: niente pop-in)
   cinePass=new ShaderPass(CineShader); composer.addPass(cinePass);
   composer.addPass(new OutputPass());
@@ -1901,6 +1901,8 @@ window.caduta360=()=>{ try{ cam360On=true; cam360Ang=0; cam360Dir=Math.random()<
 window.cadutaSlowmo=(s)=>{ try{ bigPlanetNear=(s==null?1:+s); return 'bigPlanetNear='+bigPlanetNear; }catch(e){ return ''+e; } };   // test: forza slow-mo showcase
 window.cadutaTunnel=(dur)=>{ try{ return (starTunnel&&starTunnel.start(+dur||26))?('TUNNEL go ('+(+dur||26)+'s)'):'tunnel non pronto/attivo'; }catch(e){ return ''+e; } };   // test: tunnel di stelle → black hole all'uscita
 window.efCatch=(sec)=>{ try{ window.__catch=(+sec||10); window.__caught=null; if(!window.__cc){ window.__cc=document.createElement('canvas'); window.__cc.width=192; window.__cc.height=108; } return 'CATCHER armato '+(+sec||10)+'s → leggi window.__caught'; }catch(e){ return ''+e; } };   // DIAG quadrati neri: framebuffer + raycast → nome oggetto
+window.efPass=(name,on)=>{ try{ const P={flashback:flashbackPass,lens:lensPass,bloom:bloomPass,cine:cinePass,smaa:smaaPass}; if(!name){ return Object.keys(P).map(k=>k+':'+(P[k]?(P[k].enabled!==false):'n/a')).join(' '); } const p=P[name]; if(!p) return 'no '+name; p.enabled=!!on; return name+'.enabled='+p.enabled; }catch(e){ return ''+e; } };   // toggle passate post per isolare il quadrato nero
+window.efFbInfo=()=>{ try{ const u=flashbackPass&&flashbackPass.uniforms; return u?JSON.stringify({amt:u.uAmt.value,warp:u.uWarp.value,imgAsp:u.uImgAspect.value,hasTex:!!(u.tFlash.value)}):'no'; }catch(e){ return ''+e; } };
 window.cadutaDebugHit=(n)=>{ hitFlipTarget+=6.28318*(n||4); hitFlash=Math.max(hitFlash,0.6); return 'BURST x'+(n||4); };  // test: capriole verticali da impatto (console)
   window.cadutaFall=(m)=>{ if(m===undefined||m==='auto'){ fallAuto=true; return 'fase di caduta: AUTO (cicli 2-5 min)'; } fallAuto=false; fallTarget=fallMul=(+m||1); return 'velocità di caduta ×'+fallMul+' (manuale; cadutaFall("auto") per riattivare le fasi)'; };
   // taratura del SORPASSO dei mondi (si applica ai prossimi spawn; quelli in volo mantengono il loro)
@@ -2739,6 +2741,7 @@ const Flashback={
   update(dt){ if(this.cool>0) this.cool-=dt;
     if(this.pend>0){ this.pend-=dt; if(this.pend<=0) this.start(this.pendReason); }
     const u=flashbackPass&&flashbackPass.uniforms;
+    if(flashbackPass) flashbackPass.enabled = this.active || !!(u&&u.uAmt.value>0.001);   // ★ passata nel composer SOLO durante/dopo una flashback (a riposo disabilitata → niente quadrato nero)
     if(!this.active){ if(u&&u.uAmt.value>0.001) u.uAmt.value=Math.max(0,u.uAmt.value-dt/0.6); return; }
     this.t+=dt;
     const last=(this.idx>=this.shots.length-1); let tgt=1;
@@ -4153,15 +4156,21 @@ function animate(){
   if(window.__catch>0 && !window.__caught){ window.__catch-=dt;
     try{ const cc=window.__cc, x=cc.getContext('2d'), W=cc.width, H=cc.height; x.drawImage(renderer.domElement,0,0,W,H);
       const d=x.getImageData(0,0,W,H).data; let best=null;
-      for(let by=6;by<H-6&&!best;by+=2) for(let bx=6;bx<W-6;bx+=2){
+      const yLo=(H*0.16)|0, yHi=(H*0.84)|0, xLo=(W*0.13)|0, xHi=(W*0.87)|0;   // solo INTERNO (il quadrato è sul pianeta, mai al bordo/spazio)
+      for(let by=yLo;by<yHi&&!best;by+=2) for(let bx=xLo;bx<xHi;bx+=2){
         let blk=0; for(let yy=-4;yy<=4;yy++)for(let xx=-4;xx<=4;xx++){ const i=((by+yy)*W+(bx+xx))*4; if(d[i]<16&&d[i+1]<16&&d[i+2]<16) blk++; }
-        if(blk<77) continue;   // 9x9=81, quasi tutto nero
-        let bs=0,bn=0; for(let a=-9;a<=9;a+=3) for(const p of [[bx+a,by-9],[bx+a,by+9],[bx-9,by+a],[bx+9,by+a]]){ const px=Math.max(0,Math.min(W-1,p[0])),py=Math.max(0,Math.min(H-1,p[1])),i=(py*W+px)*4; bs+=(d[i]+d[i+1]+d[i+2])/3; bn++; }
-        if(bs/bn>42){ best=[bx,by]; break; } }
+        if(blk<79) continue;   // 9x9=81, quasi TUTTO nero (solido)
+        let ok=true; for(const p of [[bx,by-11],[bx,by+11],[bx-11,by],[bx+11,by]]){ const px=Math.max(0,Math.min(W-1,p[0])),py=Math.max(0,Math.min(H-1,p[1])),i=(py*W+px)*4; if((d[i]+d[i+1]+d[i+2])/3<40){ ok=false; break; } }   // luce su TUTTI E 4 i lati (= quadrato circondato, non spazio)
+        if(ok){ best=[bx,by]; break; } }
       if(best){ const ndcx=best[0]/W*2-1, ndcy=-(best[1]/H*2-1);
         const ray=new THREE.Raycaster(); ray.setFromCamera({x:ndcx,y:ndcy},camera); ray.params.Points.threshold=6;
-        const hits=ray.intersectObjects(scene.children,true).slice(0,7).map(h=>({t:h.object.type,n:h.object.name||(h.object.userData&&h.object.userData.tag)||'',ro:h.object.renderOrder,dist:+h.distance.toFixed(1),mat:h.object.material&&h.object.material.type,blend:h.object.material&&h.object.material.blending,vis:h.object.visible}));
-        window.__caught={screen:best,ndc:[+ndcx.toFixed(2),+ndcy.toFixed(2)],hits}; try{console.warn('EFCATCH '+JSON.stringify(window.__caught));}catch(_){} } }catch(e){ window.__caught={err:''+e}; } }
+        const all=ray.intersectObjects(scene.children,true);
+        const seen={}, vishits=[];
+        for(const h of all){ const o=h.object; if(o.visible===false) continue; const m=o.material; if(m&&m.blending===2) continue;   // scarta invisibili e ADDITIVI (nero=invisibile in additivo)
+          const k=o.uuid; if(seen[k]) continue; seen[k]=1;
+          vishits.push({t:o.type,n:o.name||'',ro:o.renderOrder,dist:+h.distance.toFixed(1),mat:m&&m.type,blend:m&&m.blending,col:m&&m.color&&m.color.getHexString&&m.color.getHexString()});
+          if(vishits.length>=6) break; }
+        window.__caught={screen:best,ndc:[+ndcx.toFixed(2),+ndcy.toFixed(2)],OPACHI_VISIBILI:vishits,totHit:all.length}; try{console.warn('EFCATCH '+JSON.stringify(window.__caught));}catch(_){} } }catch(e){ window.__caught={err:''+e}; } }
   telUpdate(dt); updateAccent(dt); updateSky(dt);   // accento UI + crossfade sfondi col mood
   const audioMood={ planet: nearestPlanet?Math.min(nearScore*2,1):0, dread:1-timeScale, nova:supernova.active?1:0 };
   audio.update(dt,director,audioMood);
