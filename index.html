@@ -861,7 +861,10 @@ if(HYBRID){ new RGBELoader().load('assets/hdri/space_env.hdr?v=1', t=>{ t.mappin
   undefined, ()=>{ console.warn('HDRI Blender non caricato → fallback milkyway'); hdriReady=true; try{tryBuild();}catch(_){} }); }   // MODELLO A: environment fotoreale da Blender/Cycles
 if(PLATES){ ASSETS.plateJup=tex('assets/plates/jupiter.png'); ASSETS.plateJup.colorSpace=THREE.SRGBColorSpace; ASSETS.plateJup.anisotropy=MAXANISO;   // billboard-plate dei pianeti-eroe (solo con ?plates=1)
             ASSETS.plateSat=tex('assets/plates/saturn.png'); ASSETS.plateSat.colorSpace=THREE.SRGBColorSpace; ASSETS.plateSat.anisotropy=MAXANISO; }
-if(HYBRID){ ASSETS.craft={}; ['rocket_ascent','rocket_heavy','rocket_steel'].forEach(n=>{ gl.load('assets/craft/'+n+'.glb', g=>{ ASSETS.craft[n]=g.scene; }, undefined, ()=>console.warn('craft GLB KO:',n)); }); }   // MEZZI 3D BLENDER realistici → usati dalle classi visitatori (RocketShip) al posto della geometria procedurale
+if(HYBRID){ ASSETS.craft={}; ASSETS.craftAll={};   // MEZZI 3D BLENDER realistici → usati dalle classi visitatori al posto della geometria procedurale
+  const _rk=['rocket_ascent','rocket_heavy','rocket_steel','shuttle','soyuz'];   // i "razzi" (volano con exhaust): pool RocketShip
+  const _ot=['satellite','probe','lander','capsule','station','debris'];         // altri mezzi (drift/tumble): Sputnik/StationTumble/ecc.
+  _rk.concat(_ot).forEach(n=>{ gl.load('assets/craft/'+n+'.glb', g=>{ ASSETS.craftAll[n]=g.scene; if(_rk.indexOf(n)>=0) ASSETS.craft[n]=g.scene; }, undefined, ()=>console.warn('craft GLB KO:',n)); }); }
 // pianeti reali: {file, hue, ring, sun, gray}
 const PMETA=[
   {f:'4k_jupiter',hue:0.10,bump:1.4}, {f:'4k_saturn',hue:0.12,ring:true,bump:1.4}, {f:'4k_mars',hue:0.05,bump:7.5},
@@ -3531,23 +3534,33 @@ class Sputnik{
   constructor(){
     this.g=new THREE.Group(); this.g.visible=false; scene.add(this.g);
     this.mat=new THREE.MeshStandardMaterial({color:0xcfd6e2,roughness:0.15,metalness:1.0,envMapIntensity:2.2,transparent:true,opacity:0});
-    this.g.add(new THREE.Mesh(new THREE.SphereGeometry(0.5,24,16),this.mat));
+    const _sph=new THREE.Mesh(new THREE.SphereGeometry(0.5,24,16),this.mat); this.g.add(_sph); this._proc=[_sph];
     const ag=new THREE.CylinderGeometry(0.012,0.005,3.0,5); ag.translate(0,-1.5,0);   // perno in punta → l'antenna parte dalla sfera
     for(let k=0;k<4;k++){ const an=new THREE.Mesh(ag,this.mat); const a=k/4*Math.PI*2;
-      an.position.set(Math.sin(a)*0.18,0.12,0.30); an.rotation.order='YXZ'; an.rotation.y=a*0.5-0.8; an.rotation.x=2.5; this.g.add(an); }
+      an.position.set(Math.sin(a)*0.18,0.12,0.30); an.rotation.order='YXZ'; an.rotation.y=a*0.5-0.8; an.rotation.x=2.5; this.g.add(an); this._proc.push(an); }
+    this._glbG=new THREE.Group(); this.g.add(this._glbG); this._craftMats=[]; this._useGlb=false;   // MEZZO 3D Blender (satellite/sonda/lander/capsula/stazione/detriti)
     this.active=false; this.t=0; this.dur=0; this.vel=new THREE.Vector3(); this._counted=false;
   }
   spawn(){ this.active=true; this.t=0; this._counted=false; this.dur=30+Math.random()*12;
     const side=Math.random()<0.5?-1:1; this.g.scale.setScalar(3.5+Math.random()*2);   // ★ round4: sputnik più grande (3.5-5.5) → non più un puntino
     this.g.position.set(side*(45+Math.random()*40),(Math.random()*2-1)*30,-200-Math.random()*120);   // ★ round4: molto più vicino → passaggio a tombola visibile
     this.vel.set(-side*(4+Math.random()*3),(Math.random()*2-1)*1.2, 16+Math.random()*8);
+    if(HYBRID && ASSETS.craftAll){ const pool=['satellite','probe','lander','capsule','station','debris'].filter(n=>ASSETS.craftAll[n]);   // MEZZO 3D Blender random alla deriva
+      if(pool.length){ const k=pool[(Math.random()*pool.length)|0];
+        while(this._glbG.children.length) this._glbG.remove(this._glbG.children[0]); this._craftMats.length=0;
+        const m=ASSETS.craftAll[k].clone(true); m.scale.setScalar(0.5);
+        m.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; o.material=o.material.clone(); o.material.transparent=true; if('envMapIntensity' in o.material) o.material.envMapIntensity=1.6; this._craftMats.push(o.material); } });
+        this._glbG.add(m); this._useGlb=true; for(const p of this._proc) p.visible=false; }
+      else { this._useGlb=false; for(const p of this._proc) p.visible=true; } }
+    else { this._useGlb=false; for(const p of this._proc) p.visible=true; }
     this.g.visible=true;
     if(typeof audio!=='undefined'&&audio._cue) audio._cue('star');
     $t.log.textContent='— a small silver sphere. 1957 still echoes out here.'; $t.log.classList.add('on'); setTimeout(()=>$t.log.classList.remove('on'),12000); }
   update(dt,speed){ if(!this.active) return; this.t+=dt;
     this.g.position.addScaledVector(this.vel,dt); this.g.position.z+=speed*dt*0.3;
     this.g.rotation.x+=dt*0.5; this.g.rotation.y+=dt*0.8;                   // il tumble lento fa lampeggiare i GLINT dell'acciaio (envMap 2.2)
-    const op=Math.max(0,Math.min(this.t/2.5,(this.dur-this.t)/2.5,1)); this.mat.opacity=op;
+    const op=Math.max(0,Math.min(this.t/2.5,(this.dur-this.t)/2.5,1));
+    if(this._useGlb){ for(let i=0;i<this._craftMats.length;i++) this._craftMats[i].opacity=op; } else this.mat.opacity=op;
     if(!this._counted && this.t>this.dur*0.4){ this._counted=true; TEL.companions++; }
     if(this.t>=this.dur){ this.active=false; this.g.visible=false; } }
 }
