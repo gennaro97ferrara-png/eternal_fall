@@ -261,7 +261,8 @@ if(window.obsstudio || /[?&]live=1/.test(location.search)) document.documentElem
 const IS_MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'') || (window.matchMedia && matchMedia('(pointer:coarse)').matches && !matchMedia('(pointer:fine)').matches);
 // ULTRA: macchina potente da REGISTRAZIONE (es. RTX 4090). Massima qualità, NESSUN downgrade (auto-scaler off), 4K nativo implicito. &ss=1.5/2 = supersample (render oltre il 4K → downscale = SSAA).
 const ULTRA = /[?&]ultra=1/.test(location.search);
-const HYBRID = /[?&]hybrid=1/.test(location.search);   // MODELLO A: inietta l'HDRI ambiente Blender (illumina tutto) → dietro flag, default INTATTO
+const CLASSIC = /[?&]classic=1/.test(location.search);   // ?classic=1 → vecchio look (no HDRI/AgX/modelli 3D Blender)
+const HYBRID = !CLASSIC && !/[?&]hybrid=0/.test(location.search);   // ★ ORA DEFAULT: HDRI ambiente Blender + modelli 3D (era opt-in ?hybrid=1). Disattiva con ?classic=1 o ?hybrid=0
 const PLATES = /[?&]plates=1/.test(location.search);   // billboard-plate dei pianeti (Giove/Saturno): OPT-IN separato — l'utente preferisce i pianeti procedurali illuminati dall'HDRI (i plate piatti sembrano meno reali)
 const SS = ULTRA ? (parseFloat((/[?&]ss=(1|1\.25|1\.5|2)/.exec(location.search)||[])[1]||'1')||1) : 1;   // ★ SUPERSAMPLE DI DEFAULT = 1 (4K NATIVO 3840×2160 + SMAA fa l'anti-alias): PRIORITÀ STABILITÀ — meno memoria/carico → niente perdita-di-contesto WebGL che causava i restart (min 4/7). &ss=1.25 o &ss=1.5 per più SSAA (meno stabile).
 const PIX_HI = IS_MOBILE?1.75:2.0;   // mobile: niente 2x (la GPU regge e l'auto-scaler non deve crollare a 1.0 = sfocato)
@@ -270,7 +271,7 @@ renderer.setPixelRatio(PIX);
 const MAXANISO=Math.min(renderer.capabilities.getMaxAnisotropy(), ULTRA?16:4);   // ULTRA: aniso 16 (texel radenti di cielo/pianeti nitidi in un master 4K locale). Non-ULTRA: 4 (GPU-bound + indistinguibile dopo l'encode).
 let WIDTH=window.innerWidth,HEIGHT=window.innerHeight;
 renderer.setSize(WIDTH,HEIGHT);
-const AGX = /[?&]agx=1/.test(location.search);   // grade cinematografico AgX (stesso color-management di Blender) — dietro flag per A/B; ACES resta il default finché non lo approvo
+const AGX = !CLASSIC && !/[?&]agx=0/.test(location.search);   // ★ ORA DEFAULT: grade cinematografico AgX (color-management di Blender). Disattiva con ?classic=1 o ?agx=0
 renderer.toneMapping = AGX ? THREE.AgXToneMapping : THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.0;
 const IS_LIVE = !!(window.obsstudio || /[?&]live=1/.test(location.search));   // live/cattura: l'encode YouTube scurisce (RGB pieno→YUV) → alziamo la luminosità del render per compensare (mobile compreso)
@@ -857,7 +858,7 @@ function retryTex(t,url,n){ if(n<=0){ console.warn('texture non caricata:',url);
 function tex(url){ const t=texL.load(url, ()=>{ if(t===ASSETS.milkyway){ mwReady=true; tryBuild(); } }, undefined, ()=>retryTex(t,url,5)); return t; }
 
 const mw=tex('assets/milkyway_8k.jpg'); mw.colorSpace=THREE.SRGBColorSpace; mw.mapping=THREE.EquirectangularReflectionMapping; mw.anisotropy=MAXANISO; ASSETS.milkyway=mw;
-if(HYBRID){ new RGBELoader().load('assets/hdri/space_env.hdr?v=1', t=>{ t.mapping=THREE.EquirectangularReflectionMapping; ASSETS.hdri=t; hdriReady=true; try{tryBuild();}catch(_){} },
+if(HYBRID){ new RGBELoader().load('assets/hdri/space_env.hdr?v=2', t=>{ t.mapping=THREE.EquirectangularReflectionMapping; ASSETS.hdri=t; hdriReady=true; try{tryBuild();}catch(_){} },
   undefined, ()=>{ console.warn('HDRI Blender non caricato → fallback milkyway'); hdriReady=true; try{tryBuild();}catch(_){} }); }   // MODELLO A: environment fotoreale da Blender/Cycles
 if(PLATES){ ASSETS.plateJup=tex('assets/plates/jupiter.png'); ASSETS.plateJup.colorSpace=THREE.SRGBColorSpace; ASSETS.plateJup.anisotropy=MAXANISO;   // billboard-plate dei pianeti-eroe (solo con ?plates=1)
             ASSETS.plateSat=tex('assets/plates/saturn.png'); ASSETS.plateSat.colorSpace=THREE.SRGBColorSpace; ASSETS.plateSat.anisotropy=MAXANISO; }
@@ -3931,8 +3932,8 @@ function animate(){
   try{ updateIntro(dt); }catch(_){}   // INTRO di capitolo (envelope: avvicinamento, cenno, title-card)
   if(postIntroEarth && !introActive && (typeof zoomState==='undefined'||zoomState==='idle')){ postIntroEarth=false;   // ★ FINE INTRO → spawna la TERRA davanti e forza un GIRO LENTO attorno ad essa (ogni capitolo)
     try{ const _ei=PMETA.findIndex(m=>m&&m.earth); const fp=planets.find(p=>!p.active)||planets[0];
-      if(fp && _ei>=0){ fp.spawn(false,_ei,false); fp.mesh.position.set(0,0,-300); fp.mesh.scale.setScalar(150); if(fp.glow) fp.glow.scale.setScalar(180); fp._heroLit=false; fp._distant=false;
-        orbitShowState=1; orbitShowP=fp; fp._showcase=true; orbitShowT=0; orbitShowDur=10+Math.random()*3; orbitShowRev=1; orbitShowCrane=0;   // ★ giro attorno alla Terra: rivoluzione COMPLETA, niente crane (reset dei parametri di flyby ch2, sennò eredita rev/crane stantii); durata 10-13s
+      if(fp && _ei>=0){ fp.spawn(false,_ei,false); fp.mesh.position.set(0,0,-300); fp.mesh.scale.setScalar(170); if(fp.glow) fp.glow.scale.setScalar(205); fp._heroLit=false; fp._distant=false;
+        orbitShowState=1; orbitShowP=fp; fp._showcase=true; orbitShowT=0; orbitShowDur=28+Math.random()*6; orbitShowRev=1.0; orbitShowCrane=0.4;   // ★ giro alla TERRA LENTO e SPETTACOLARE (richiesta utente): 28-34s, rivoluzione piena + crane verticale dolce (0.4). SEMPRE dopo l'intro di ogni capitolo
         _orbShowPin.copy(fp.mesh.position); orbitShowA0=Math.atan2(camera.position.z-_orbShowPin.z,camera.position.x-_orbShowPin.x); }
     }catch(_){} }
   // DILATAZIONE TEMPORALE vicino ai buchi neri: il mondo rallenta, l'orologio "sfasa"
@@ -4094,8 +4095,8 @@ function animate(){
     if(nearestPlanet && nearestPlanet.mesh.scale.x>75){ const _R=nearestPlanet.mesh.scale.x, _pz=nearestPlanet.mesh.position.z; if(_pz < -_R*1.25 && _pz > -_R*3.6) _sp=nearestPlanet; }   // 1) usa un gigante naturale alla giusta distanza
     if(!_sp && !_CH2){ const fp=planets.find(p=>!p.active); if(fp){ const _sc=110+Math.random()*80; fp.spawn(false,null,false); fp.mesh.scale.setScalar(_sc); if(fp.glow) fp.glow.scale.setScalar(_sc*1.2); fp.mesh.position.set((Math.random()*2-1)*50,4,-_sc*2.3); fp._distant=false; fp._heroLit=false; fp._spawnZ=fp.mesh.position.z-500; fp._spawnT=1; _sp=fp; } }   // ★ ch2: NIENTE spawn-on-demand → il giro-pianeta avviene SOLO su giganti naturali (raro/vario), non forzato ogni volta (richiesta varietà)
     if(_sp){
-      orbitShowState=1; orbitShowP=_sp; orbitShowP._showcase=true; orbitShowT=0; orbitShowDur=_CH2?(14+Math.random()*9):(8+Math.random()*4);   // ★ flyby più LUNGO e maestoso in ch2 (14-23s): orbita lenta e regolare attorno al pianeta
-      orbitShowRev=(Math.random()<0.3)?(0.55+Math.random()*0.25):(0.9+Math.random()*0.4); orbitShowCrane=(Math.random()<0.3?-1:(Math.random()*2-1))*(_CH2?0.8:0.45);   // ★ più VARIETÀ di ripresa nel flyby: ~30% mezzo-giro lento "eroe" dal basso (crane negativo), resto giro pieno; crane più ampio (0.5→0.8 / 0.2→0.45). NB: NON toccare la distanza (bloom), solo altezza/rotazione
+      orbitShowState=1; orbitShowP=_sp; orbitShowP._showcase=true; orbitShowT=0; orbitShowDur=_CH2?(22+Math.random()*12):(17+Math.random()*8);   // ★ orbita LENTA e maestosa attorno al pianeta (richiesta utente): 17-25s (era 8-12), ch2 22-34s
+      orbitShowRev=(Math.random()<0.25)?(0.55+Math.random()*0.25):(0.85+Math.random()*0.35); orbitShowCrane=(Math.random()<0.3?-1:(Math.random()*2-1))*(_CH2?0.8:0.5);   // ★ varietà: ~25% mezzo-giro "eroe" dal basso, resto giro pieno lento; crane dolce (rev più basse = giro più lento a parità di durata)
       _orbShowPin.copy(orbitShowP.mesh.position); orbitShowA0=Math.atan2(camera.position.z-_orbShowPin.z,camera.position.x-_orbShowPin.x);
     } else orbitShowTimer=3;
   }
