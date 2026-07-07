@@ -272,6 +272,7 @@ const MAXANISO=Math.min(renderer.capabilities.getMaxAnisotropy(), ULTRA?16:4);  
 let WIDTH=window.innerWidth,HEIGHT=window.innerHeight;
 renderer.setSize(WIDTH,HEIGHT);
 const AGX = !CLASSIC && !/[?&]agx=0/.test(location.search);   // ★ ORA DEFAULT: grade cinematografico AgX (color-management di Blender). Disattiva con ?classic=1 o ?agx=0
+const AA_FORCE = /[?&]aa=1/.test(location.search);   // ★ SMAA anche in registrazione ULTRA (bordi netti nel master 4K). Opt-in: richiede test fps sulla 4090 (il restart storico era su VM deboli)
 renderer.toneMapping = AGX ? THREE.AgXToneMapping : THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.0;
 const IS_LIVE = !!(window.obsstudio || /[?&]live=1/.test(location.search));   // live/cattura: l'encode YouTube scurisce (RGB pieno→YUV) → alziamo la luminosità del render per compensare (mobile compreso)
@@ -1087,7 +1088,7 @@ let planetVisS=0, densityAz=0, densityAzVel=0, densityAzDir=1, densityFlipT=40; 
 let orbitDrive=0, orbitDriveS=0, orbitSide=1, orbitSlalomFlip=1, orbitBear=0, slalomP=null;             // ★ SLALOM: aggancia UN pianeta per volta (slalomP) e ne segue il bearing (orbitBear) → S fluida che gira intorno e "riprende" il pianeta dopo il sorpasso (orbitDrive/S = intensità)
 let orbitShowTimer=(/[?&]ch2=1/.test(location.search))?(60+Math.random()*70):(10+Math.random()*8), orbitShowState=0, orbitShowP=null, orbitShowT=0, orbitShowDur=0, orbitShowA0=0, orbitShowBlend=0, orbitShowRev=1, orbitShowCrane=0; const _orbShowPin=new THREE.Vector3();   // ★ ch2: primo giro-pianeta tardi/raro (60-130s) → la camera VARIA domina, non il solito giro attorno al pianeta (richiesta varietà). round4: orbitShowRev=rivoluzioni (parziali/eased), orbitShowCrane=crane verticale dolce
 let cam360Timer=240+Math.random()*180, cam360Ang=0, cam360On=false, cam360Dir=1;   // SCENE a 360° PIÙ RARE (primo giro a 240-420s, era 70-140s): meno cambi di camera (richiesta utente)
-let tunnelCamRoll=0, tunnelFovK=0, tunnelTimer=42+Math.random()*40, tunnelDim=1;   // ★ primo tunnel di stelle prima (150-300s → 75-145s: più tunnel, richiesta utente)   // TUNNEL DI STELLE: roll+fov guidati dal tunnel, timer auto, tunnelDim: 1=scena normale → ~0.15 durante il tunnel (il tunnel DOMINA)
+let tunnelCamRoll=0, tunnelFovK=0, tunnelTimer=42+Math.random()*40, tunnelDim=1, tunnelFlash=0, _tunAlt=false;   // ★ _tunAlt: alterna dissolvenza/blackout a tunnel consecutivi   // ★ primo tunnel di stelle prima (150-300s → 75-145s: più tunnel, richiesta utente)   // TUNNEL DI STELLE: roll+fov guidati dal tunnel, timer auto, tunnelDim: 1=scena normale → ~0.15 durante il tunnel (il tunnel DOMINA)
 let fallMul=1, fallTarget=1, fallPhaseT=90, fallAuto=false, fallFast=false;   // CADUTA LENTA di default (niente fasi warp): drift calmo da documentario. cadutaFall('auto') riattiva i cicli veloci, cadutaFall(x) override manuale
 // --- REAZIONE SOBRIA al colpo/sfioramento (solo passaggi NATURALI ravvicinati) ---
 let hitFlash=0, hitTremor=0, hitTumble=0;          // scalari decadenti del colpo meteora (one-shot)
@@ -1616,7 +1617,7 @@ function build(){
   // ANTI-ALIAS: la scena renderizza in una RT offscreen (composer) → il flag antialias del renderer è bypassato e NON fa nulla.
   // Senza una passata AB i bordi di pianeti/geometrie sfarfallano e lo stiramento a 4K li trasforma in "peluria". SMAAPass (già importato)
   // gira come ULTIMA passata sull'immagine sRGB finale (edge-detection ideale lì), ~1-2ms a 1440p. Disattivabile con &noaa=1; saltata in R4K (il 4K nativo antialiasa da sé).
-  if(AA_ON && !(R4K&&SS>1) && !(R4K&&!ULTRA) && !ULTRA){ smaaPass=new SMAAPass(Math.floor(WIDTH*PIX),Math.floor(HEIGHT*PIX)); composer.addPass(smaaPass); }   // ★ FIX-A RESTART: SMAA OFF in ULTRA. A 3840×2160 SMAA = 2 RT RGBA8 (~130MB) + 3 pass full-screen/frame → togliendola si libera testa (headroom) per assorbire i picchi transitori (upload cielo/deep-zoom) che facevano scattare il context-reset del driver → restart a metà registrazione. Il 4K nativo + CineShader uSharp antialiasano già; l'encode YouTube ammorbidisce i bordi. (Attivo solo in non-ULTRA: live/mobile a SS=1.)
+  if(AA_ON && !(R4K&&SS>1) && !(R4K&&!ULTRA) && (!ULTRA || AA_FORCE)){ smaaPass=new SMAAPass(Math.floor(WIDTH*PIX),Math.floor(HEIGHT*PIX)); composer.addPass(smaaPass); if(AA_FORCE&&cinePass) cinePass.uniforms.uSharp.value=0.32; }   // ★ ?aa=1: SMAA anche in ULTRA + sharpen ridotto (0.42→0.32) per non ri-aliasare   // ★ FIX-A RESTART: SMAA OFF in ULTRA. A 3840×2160 SMAA = 2 RT RGBA8 (~130MB) + 3 pass full-screen/frame → togliendola si libera testa (headroom) per assorbire i picchi transitori (upload cielo/deep-zoom) che facevano scattare il context-reset del driver → restart a metà registrazione. Il 4K nativo + CineShader uSharp antialiasano già; l'encode YouTube ammorbidisce i bordi. (Attivo solo in non-ULTRA: live/mobile a SS=1.)
 
   ['log'].forEach(k=>$t[k]=document.getElementById('t-'+k));   // UI Space Radio: solo la caption centrale resta come #t-log
   if($t.log) $t.log.style.display='none';   // MESSAGGI IN SOVRIMPRESSIONE SPENTI (scelta utente 2026-07-02): niente testi al centro della live (sottotitoli voce, frasi eventi, diario di bordo). La voce continua a parlare; cadutaMessages(true) riaccende i testi.
@@ -2167,17 +2168,23 @@ class StarTunnel{
     sz[i]=0.6+Math.random()*2.4; }
   start(dur,type){ if(this.active) return false; this.active=true; this.t=0; this.dur=Math.max(7,dur||12); this._bhFired=false; this.pts.rotation.z=0; this.pts.visible=true; this.black.visible=true;
     const _TP=[[1350,1.9,1.4,1,1,1],[2100,1.1,1.4,1.35,0.7,0.45],[950,3.0,1.1,0.5,1.0,1.15],[1150,0.6,1.2,1.1,0.5,1.2]], _tp=_TP[(((type|0)%4)+4)%4]; this._spd=_tp[0]; this._roll=_tp[1]; this._black=_tp[2]; this.mat.uniforms.uTint.value.setRGB(_tp[3],_tp[4],_tp[5]);   // 4 tipi: 0 classico · 1 warp rosso veloce · 2 hyperspace ciano vortice · 3 viola lento
+    if(window.efTunnelV2===true) this._v2m=true; else if(window.efTunnelV2===false) this._v2m=false; else { _tunAlt=!_tunAlt; this._v2m=_tunAlt; }   // ★ TIENI ENTRAMBE: alterna dissolvenza(V2)/blackout a tunnel consecutivi (override con window.efTunnelV2 true/false)
     try{ if($t&&$t.log){ $t.log.textContent='— the star tunnel. Hold on.'; $t.log.classList.add('on'); setTimeout(()=>{try{$t.log.classList.remove('on');}catch(_){}},9000);} }catch(_){} return true; }
-  update(dt){ if(!this.active){ tunnelFovK=Math.max(0,tunnelFovK-dt*2.0); if(this.black.visible){ this.black.material.opacity=0; this.black.visible=false; } return; } this.t+=dt;
-    const spd=(this._spd||1350), p=this._pos;
+  update(dt){ if(!this.active){ tunnelFovK=Math.max(0,tunnelFovK-dt*2.0); tunnelDim+=(1-tunnelDim)*Math.min(1,dt*3.0); tunnelFlash=0; if(this.black.visible){ this.black.material.opacity=0; this.black.visible=false; } return; } this.t+=dt;
+    const _v2=(this._v2m!==false);   // ★ modalità decisa a start() (alternata): V2 dissolvenza vs classico blackout — entrambe presenti nel video
+    const prog=this.t/this.dur;
+    const accel=_v2?(0.15+1.6*THREE.MathUtils.smoothstep(prog,0,0.32)*(1-THREE.MathUtils.smoothstep(prog,0.62,1.0))):1;   // lento → iperspazio a metà → decelera (ci "deposita" nella scena)
+    const spd=(this._spd||1350)*accel, p=this._pos;
     for(let i=0;i<this.N;i++){ p[i*3+2]+=spd*dt; if(p[i*3+2]>30) this._place(p,this._sz,i,false); }   // rush verso la camera; riciclo dietro
     this.geo.attributes.position.needsUpdate=true;
-    this.pts.rotation.z+=dt*(this._roll||1.9);                                       // il tunnel RUOTA (spirale) — velocità per-tipo
-    const fin=THREE.MathUtils.clamp(this.t/1.1,0,1), fout=THREE.MathUtils.clamp((this.dur-this.t)/1.6,0,1), k=Math.min(fin,fout);   // fade più secco per tunnel BREVI
-    this.mat.uniforms.uOp.value=k; this.mat.uniforms.uPix.value=PIX;
-    this.black.material.opacity=Math.min(1,k*(this._black||1.4));                    // ★ BLACKOUT per-tipo (1.1 soft → 1.4 totale)
-    tunnelFovK+=(k-tunnelFovK)*Math.min(1,dt*2.2);                                   // FOV-warp guidato dal tunnel (ease pulito, niente accumulo)
-    // (relazione INVERTITA su richiesta utente: NON è più "tunnel → buco nero". Ora è "buco nero → all'uscita EMERGI nel tunnel" — vedi BlackHole.update. Il tunnel non spawna più buchi neri: niente loop.)
+    this.pts.rotation.z+=dt*(this._roll||1.9)*(0.5+0.5*accel);                        // la spirale accelera col rush
+    const fin=THREE.MathUtils.clamp(this.t/1.1,0,1), fout=THREE.MathUtils.clamp((this.dur-this.t)/1.6,0,1), k=Math.min(fin,fout);
+    this.mat.uniforms.uOp.value=k*(_v2?1.18:1.0); this.mat.uniforms.uPix.value=PIX;   // V2: streak un filo più brillanti (la scena non è nera dietro)
+    this.black.material.opacity=Math.min(1,k*(this._black||1.4)*(_v2?0.40:1.0));      // V2: blackout PARZIALE; classico: totale
+    tunnelDim = _v2 ? (1-0.74*k) : 1;                                                 // ★ V2: la SCENA si DISSOLVE (exposure/star ×tunnelDim) → integrata, non coperta
+    const _fi=Math.exp(-Math.pow((this.t-0.14)/0.11,2)), _fo=Math.exp(-Math.pow((this.dur-this.t-0.2)/0.13,2));
+    tunnelFlash=(_fi+_fo)*0.55;                                                        // ★ lampo d'ingresso e d'uscita (due scatti cinematografici)
+    tunnelFovK+=(k-tunnelFovK)*Math.min(1,dt*2.2);
     if(this.t>=this.dur){ this.active=false; this.pts.visible=false; this.mat.uniforms.uOp.value=0; }
   }
 }
@@ -2823,9 +2830,9 @@ const Flashback={
   _end(){ this.active=false; this.amt=0; this.warp=0; this.cool=22+Math.random()*22; this.shots=[]; if(flashbackPass) flashbackPass.uniforms.uAmt.value=0; }
 };
 const CineShader={
-  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.020},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeHi:{value:new THREE.Color(0xfff1de)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.7},uHalation:{value:0.4},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)},uSharp:{value:0.42},uPix:{value:1.0},uSat:{value:1.0},uWhite:{value:0},uRocket:{value:0}},
+  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.020},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeHi:{value:new THREE.Color(0xfff1de)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.7},uHalation:{value:0.4},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)},uSharp:{value:0.42},uPix:{value:1.0},uSat:{value:1.0},uWhite:{value:0},uRocket:{value:0},uBars:{value:0}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,1.0);}`,
-  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uHalation,uContrast,uGW,uSharp,uPix,uRocket,uSat,uWhite;uniform vec2 uRes,uGWDir;uniform vec3 uGrade,uGradeHi;varying vec2 vUv;
+  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uHalation,uContrast,uGW,uSharp,uPix,uRocket,uSat,uWhite,uBars;uniform vec2 uRes,uGWDir;uniform vec3 uGrade,uGradeHi;varying vec2 vUv;
     float rnd(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
     void main(){ vec2 uv=vUv;
       if(uGW>0.0){ float ph=dot(uv,uGWDir)*42.0 - uTime*6.0; uv += uGWDir*sin(ph)*uGW; }   // onda gravitazionale: increspa tutto il campo
@@ -2898,6 +2905,8 @@ const CineShader={
       col+=g*uGrain*gMask*gTint;                                       // grana: più nelle ombre, tinta fredda
       col = mix(col, vec3(0.02,0.02,0.025), vec3(notEqual(col, col)));   // ★ RETE DI SICUREZZA FINALE (portabile): qualunque NaN da QUALSIASI sorgente (sole/atmo/anelli/cielo/futuro) → grigio scurissimo, MAI #000 puro (non innesca qdetect). NB: col è HDR-lineare pre-tonemap → NON si clampa a 1 (taglierebbe gli highlight/bloom).
       col = clamp(col, 0.0, 64.0);                                       // ★ +Inf → 64 (impercettibile dopo ACES; non tocca gli highlight legittimi)
+      col += (rnd(uv*uRes+fract(uTime)*vec2(59.7,13.1)) - rnd(uv*uRes+fract(uTime)*vec2(23.1,71.9)))*(1.0/255.0);   // ★ DITHERING TPDF anti-banding (gradienti scuri/nebulose)
+      if(uBars>0.001){ float _bh=uBars*0.13; float _in=smoothstep(_bh-0.004,_bh,vUv.y)*smoothstep(_bh-0.004,_bh,1.0-vUv.y); col*=_in; }   // ★ LETTERBOX 2.39:1 DINAMICO: barre nere nei momenti-eroe
       gl_FragColor=vec4(col,1.0); }`};
 
 function applyDirector(){
@@ -3165,11 +3174,13 @@ class LightEcho{
     if(this.t>this.life || z>140){ this.active=false; this.mesh.visible=false; } }
 }
 class BolideSplit{
-  constructor(){ this.N=14; this.pos=new Float32Array(this.N*3); this.vel=new Float32Array(this.N*3);   // 7→14 frammenti: airburst più spettacolare (Points, costo trascurabile)
+  constructor(){ this.N=30; this.pos=new Float32Array(this.N*3); this.vel=new Float32Array(this.N*3);   // ★ 14→30 frammenti: airburst più spettacolare
     this.geo=new THREE.BufferGeometry(); this.geo.setAttribute('position',new THREE.BufferAttribute(this.pos,3));
     this.mat=new THREE.PointsMaterial({map:starGlow,size:9,sizeAttenuation:true,transparent:true,opacity:0,
-      depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xcfe6ff)});
+      depthWrite:false,blending:THREE.AdditiveBlending,color:new THREE.Color(0xffd0a0)});
     this.pts=new THREE.Points(this.geo,this.mat); this.pts.visible=false; this.pts.frustumCulled=false; scene.add(this.pts);
+    this.flash=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(2.4,2.1,1.7),opacity:0}));   // ★ FLASH bianco-caldo allo split (buca il bloom)
+    this.flash.scale.setScalar(26); this.flash.visible=false; this.flash.frustumCulled=false; scene.add(this.flash); this._flashK=0;
     this.active=false; this._counted=false; this.t=0; this.life=4.0; this.split=false; this.hvx=0; this.hvy=0; }
   spawn(){ this.active=true; this._counted=false; this.t=0; this.split=false;
     const ang=Math.random()*Math.PI*2,dist=70+Math.random()*60;
@@ -3180,15 +3191,18 @@ class BolideSplit{
   update(dt,speed){ if(!this.active) return; this.t+=dt;
     this.pts.position.z+=speed*dt;
     this.pos[0]+=this.hvx*dt; this.pos[1]+=this.hvy*dt;
-    if(!this.split && this.t>this.life*0.4){ this.split=true;
+    if(!this.split && this.t>this.life*0.4){ this.split=true; this._flashK=1.0;   // ★ FLASH allo split
       for(let i=1;i<this.N;i++){ this.pos[i*3]=this.pos[0]; this.pos[i*3+1]=this.pos[1]; this.pos[i*3+2]=this.pos[2];
-        const a=Math.random()*Math.PI*2, sp=6+Math.random()*14;
+        const a=Math.random()*Math.PI*2, sp=5+Math.random()*20;                    // velocità più varie (5-25) → frammenti sparsi
         this.vel[i*3]=Math.cos(a)*sp+this.hvx*0.6; this.vel[i*3+1]=Math.sin(a)*sp+this.hvy*0.6; } }
     if(this.split){ for(let i=1;i<this.N;i++){ this.vel[i*3+1]-=4*dt;
       this.pos[i*3]+=this.vel[i*3]*dt; this.pos[i*3+1]+=this.vel[i*3+1]*dt; } }
     this.geo.attributes.position.needsUpdate=true;
     const env=Math.min(THREE.MathUtils.clamp(this.t/0.3,0,1),THREE.MathUtils.clamp((this.life-this.t)/1.2,0,1));
-    this.mat.opacity=env*0.6; this.mat.color.copy(_white).lerp(director.key,0.25);
+    this.mat.opacity=env*0.6;
+    const _cool=this.split?THREE.MathUtils.clamp((this.t-this.life*0.4)/(this.life*0.5),0,1):0;   // raffreddamento dopo lo split
+    this.mat.color.setRGB(1.0,0.58-0.38*_cool,0.28-0.24*_cool).lerp(director.key,0.10);            // bianco-arancio → rosso cupo
+    if(this._flashK>0.01){ this._flashK=Math.max(0,this._flashK-dt*3.4); this.flash.material.opacity=this._flashK; this.flash.position.set(this.pts.position.x+this.pos[0],this.pts.position.y+this.pos[1],this.pts.position.z+this.pos[2]); this.flash.scale.setScalar(26*(1+ (1-this._flashK)*1.4)); this.flash.visible=true; } else if(this.flash.visible){ this.flash.visible=false; this.flash.material.opacity=0; }
     if(!this._counted && this.t>this.life*0.5){ this._counted=true; TEL.meteors++; }
     if(this.t>this.life){ this.active=false; this.pts.visible=false; } }
 }
@@ -3286,6 +3300,12 @@ class ShootingStar{
     this.head.scale.setScalar(1.6); this.g.add(this.head);
     this.trail=new THREE.Sprite(new THREE.SpriteMaterial({map:cometTail,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xcfe2ff),opacity:0}));
     this.trail.center.set(0.0,0.5); this.g.add(this.trail);
+    this.trail2=new THREE.Sprite(new THREE.SpriteMaterial({map:cometTail,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0x9fbfff),opacity:0}));
+    this.trail2.center.set(0.0,0.5); this.g.add(this.trail2);                                   // scia esterna soffusa (halo)
+    this.core=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(2.4,2.1,1.7),opacity:0}));
+    this.core.scale.setScalar(0.8); this.g.add(this.core);                                       // ★ CORE HDR (>1 → buca la soglia bloom = testa incandescente)
+    this.bow=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xfff0e0),opacity:0}));
+    this.g.add(this.bow);                                                                        // bow-shock / bagliore frontale
     this.active=false; this.t=0; this.dur=0; this.vel=new THREE.Vector3(); this._v1=new THREE.Vector3(); this._v2=new THREE.Vector3();
   }
   spawn(){ this.active=true; this.t=0;
@@ -3306,13 +3326,17 @@ class ShootingStar{
     this.trail.material.color.setHSL(_h,_sat,_lig);
     this.head.material.color.setHSL(_h,Math.min(1,_sat*0.5),Math.min(1,_lig+0.2));           // testa intonata al colore
     this.head.scale.setScalar(this._fire?2.8:1.6);                                           // fireball: testa più grossa
+    this.core.scale.setScalar(this._fire?1.5:0.85);                                          // core HDR (blooma): fireball più grosso
+    this.bow.material.color.setHSL(_h,Math.min(1,_sat*0.4),0.85); this.bow.scale.set(this._fire?2.4:1.4,this._fire?1.2:0.8,1);   // bagliore frontale intonato
+    this.trail2.scale.set(_len*1.25,5.0,1); this.trail2.material.color.setHSL(_h,_sat*0.8,_lig);   // halo esterno più largo e soffuso
     this.g.visible=true; }
   update(dt,speed){ if(!this.active) return; this.t+=dt;
     this.g.position.addScaledVector(this.vel,dt); this.g.position.z+=speed*dt*0.4;
     const cs=this._v1.copy(this.g.position).project(camera), ps=this._v2.copy(this.g.position).addScaledVector(this.vel,-0.1).project(camera);
-    this.trail.material.rotation=Math.atan2((ps.y-cs.y)*HEIGHT,(ps.x-cs.x)*WIDTH);   // coda DIETRO la testa (scratch, zero alloc)
+    this.trail.material.rotation=this.trail2.material.rotation=Math.atan2((ps.y-cs.y)*HEIGHT,(ps.x-cs.x)*WIDTH);   // coda DIETRO la testa (scratch, zero alloc)
     const f=Math.max(0,Math.min(this.t/0.15,(this.dur-this.t)/0.4,1));               // fade a due lati veloce
     this.head.material.opacity=f*0.95; this.trail.material.opacity=f*0.7;
+    this.core.material.opacity=f; this.bow.material.opacity=f*0.55; this.trail2.material.opacity=f*0.32;   // ★ core HDR pieno (blooma), bow-shock, halo esterno
     if(this.t>=this.dur){ this.active=false; this.g.visible=false; } }
 }
 /* ---------------- NAVICELLA: passaggio maestoso, luci di via lampeggianti, scia dei motori ---------------- */
@@ -3950,6 +3974,7 @@ function animate(){
   // ★ SLOW-MOTION vicino ai GIGANTI (momento "low motion") + durante le scene 360°: rallenta l'intera scena (caduta+animazioni via timeScale)
   const _slowTgt=(1-0.52*THREE.MathUtils.clamp((bigPlanetNear-0.85)/0.6,0,1))*(cam360On?0.72:1);
   slowMo+=(_slowTgt-slowMo)*Math.min(1,dt*1.4); timeScale*=slowMo;
+  timeScale*=(1-0.5*impactHold*(window.efBullet==null?1:window.efBullet));   // ★ BULLET-TIME sul momento-eroe (impatto): slow-mo che rientra morbido col decadere di impactHold (~1.2s); window.efBullet=0 per spegnerlo
   // ★ SCENE a 360°: ogni tanto la camera fa un GIRO COMPLETO attorno all'astronauta (giro ~9s), poi torna ferma
   cam360Timer-=dt;
   if(cam360Timer<=0 && !cam360On && (typeof zoomState==='undefined'||zoomState==='idle') && !(typeof introActive!=='undefined'&&introActive)){
@@ -4015,7 +4040,7 @@ function animate(){
   // esposizione adattiva (morbida) + BREATHING da DP: due sinusoidi incommensurabili ±2.5% → il quadro è "vivo", mai periodico
   exposureCur += (director.cur.exposure - exposureCur)*Math.min(1,dt*0.6);
   const breathe=1.0+Math.sin(shaderTime*0.131)*0.014+Math.sin(shaderTime*0.048+1.3)*0.011;
-  renderer.toneMappingExposure=Math.max(IS_LIVE?1.03:0.90,exposureCur*(IS_LIVE?1.08:0.95)*breathe)*(1-orbitShowBlend*0.30);   // ★ ×(1-orbitShowBlend*0.30): durante l'orbita-showcase la scena si SCURISCE → la superficie del pianeta si vede meglio (richiesta utente). breathe DENTRO il max: il PAVIMENTO resta garantito (mai troppo scura; su LIVE pavimento più alto, lo stream YouTube scurisce)
+  renderer.toneMappingExposure=Math.max(IS_LIVE?1.03:0.90,exposureCur*(IS_LIVE?1.08:0.95)*breathe)*(1-orbitShowBlend*0.30)*tunnelDim;   // ★ ×tunnelDim: nel TUNNEL V2 la scena si DISSOLVE (integrazione morbida). ×(1-orbitShowBlend*0.30): showcase più scuro → la superficie del pianeta si vede meglio (richiesta utente). breathe DENTRO il max: il PAVIMENTO resta garantito (mai troppo scura; su LIVE pavimento più alto, lo stream YouTube scurisce)
 
   // SEMPRE IL BULGE INQUADRATO: orienta il cielo perché il centro galattico (la parte più bella/luminosa
   // di ogni sfondo) resti dietro l'astronauta. Usa la posizione GC già mappata in sky-gc.json.
@@ -4029,7 +4054,7 @@ function animate(){
   sky.rotation.x=Math.sin(shaderTime*0.004)*0.05*zoomSkyRotMul+zoomSkyPitch;   // ×zoomSkyRotMul: DEEP ZOOM congela la rotazione con rampa; +zoomSkyPitch: beccheggio di puntamento GC (0 a riposo)
   // campo stellare volumetrico: ogni strato scorre a velocità diversa (parallasse) e ricicla senza pop
   for(const L of starLayers){ L.mat.uniforms.uTime.value=shaderTime;
-    L.mat.uniforms.uGDim.value=zoomWorldDimN;   // ★ le mini-stelline SI SPENGONO nel deep zoom (richiesta utente): il loro scroll lineare sopra l'immagine-zoom sembrava "una seconda immagine sovrapposta"
+    L.mat.uniforms.uGDim.value=zoomWorldDimN*tunnelDim;   // ×tunnelDim: le stelline si dissolvono anche nel TUNNEL V2   // ★ le mini-stelline SI SPENGONO nel deep zoom (richiesta utente): il loro scroll lineare sopra l'immagine-zoom sembrava "una seconda immagine sovrapposta"
     if(L.sphere) continue;   // il CIELO SFERICO avvolge tutto e non scorre (twinkle basta)
     const bandL=L.zF-L.zN; L.mat.uniforms.uScroll.value=(L.mat.uniforms.uScroll.value+speed*dt*L.mul*(1-orbitShowBlend*0.9))%bandL; }   // ×(1-orbitShowBlend): niente scie di stelle durante lo showcase (una delle "strisce di luminosità")
   // lastre di nebulosa profonde che scorrono e riciclano
@@ -4376,7 +4401,7 @@ function animate(){
   manRig.position.z = -slingE*1.6 - rocketE*1.5 + _hitImp.z*0.5;                    // scaraventato in avanti (fionda + spinta razzo)
 
   // --- CAMERA: fissa dietro l'uomo, respiro lievissimo di quota/distanza ---
-  const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*2.0 + camMoveDs*camMoveScale;   // + riframe di distanza
+  const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*3.5 + camMoveDs*camMoveScale;   // ★ push-in più marcato sul surge (2.0→3.5): dolly-in psicologico verso il picco   // + riframe di distanza
   camDist += (baseDist-camDist)*Math.min(1,dt*0.1);
   const _el=1.0 + Math.sin(camPhase*0.045)*0.22 + camMoveEl*camMoveScale + _orbEl;   // quota che respira + riframe + arco di quota del giro
   const _pitch=camOrbitOn ? (camDriftVAng+_orbPitch) : 0;   // giri OFF → nessun pitch (la scena gira via roll, non spostando la camera)
@@ -4417,14 +4442,15 @@ function animate(){
   // ZOOM CONTINUO (scena ESO): il FOV si stringe/allarga dolcemente (±~4°, ~20s) → accenno di ZOOM mentre
   // la scena si muove e ruota, così sembra una caduta che "entra" nell'universo. Nel dive lo spegne (camDriftEase→0).
   const _esoZoom=(camOrbitOn?1:camDriftEase)*(Math.sin(camPhase*0.05)*2.2 - (1-Math.cos(camPhase*0.032))*2.0);   // componente lenta che spinge IN (coseno rialzato: più tempo "dentro" lo zoom)
-  camera.fov=baseFov + _esoZoom + slingE*3.0 + rocketE*7.0 + zoomFovKick + tunnelFovK*15.0; camera.updateProjectionMatrix();   // + FOV-warp del TUNNEL DI STELLE (0 a riposo)
+  camera.fov=baseFov + _esoZoom + slingE*3.0 + rocketE*7.0 + zoomFovKick + tunnelFovK*15.0 - (typeof Arc!=='undefined'?Arc.tension*Arc.brace:0)*5.0; camera.updateProjectionMatrix();   // ★ PUSH-IN d'anticipazione: il campo si stringe salendo la tensione dell'Arc (0 a riposo)   // + FOV-warp TUNNEL (0 a riposo)
   deepZoomUpdate(dt);   // DEEP ZOOM (zoom infinito): no-op totale se spento
 
   cinePass.uniforms.uTime.value=shaderTime; cinePass.uniforms.uRocket.value=rocketE;
+  { const _lk=Math.max((typeof Arc!=='undefined'?Arc.crest:0), orbitShowBlend, introApproach*0.9)*(window.efBars==null?1:window.efBars); cinePass.uniforms.uBars.value += (_lk-cinePass.uniforms.uBars.value)*Math.min(1,dt*1.6); }   // ★ LETTERBOX 2.39 dinamico: barre nei momenti-eroe (CREST/showcase/intro), ease morbido; window.efBars=0 per spegnerle
   eclipseDim=Math.max(0,eclipseDim-dt*0.8);                                           // decadimento morbido (l'eclissi lo ricarica finché è in totalità)
   cinePass.uniforms.uVignette.value=1.0+rocketE*0.22+director.surge*0.08+eclipseDim;  // tunnel in warp + iris-down alla totalità dell'eclissi
   cinePass.uniforms.uGrain.value=Math.min(0.026, 0.020*(1.0+director.surge*0.30))*(0.1+0.9*zoomWorldDimN);    // la camera "sente" la caduta; nero pulito per l'encoder. Nel DEEP ZOOM la grana quasi sparisce: sul nero delle fasi profonde leggeva come un campo di finte stelline ("lo sfondo sotto")
-  bloomPass.strength=Math.min(ULTRA?0.95:0.85, (0.36+director.cur.aB*0.30+director.surge*(ULTRA?0.25:0.20))*((typeof EF!=='undefined'&&EF.bloomBias)||1)*_aesBloom)*(introActive?(1-0.6*introApproach):1)*(1-orbitShowBlend*0.60);   // ×_aesBloom (1 se non-ch2): bloom per-episodio   // bloom contenuto; ×(1-orbitShowBlend*0.60): MENO bloom/glow durante lo showcase (0.45→0.60) → superficie pianeta più nitida (richiesta utente)
+  bloomPass.strength=Math.min(ULTRA?0.95:0.85, (0.36+director.cur.aB*0.30+director.surge*(ULTRA?0.25:0.20))*((typeof EF!=='undefined'&&EF.bloomBias)||1)*_aesBloom)*(introActive?(1-0.6*introApproach):1)*(1-orbitShowBlend*0.60) + tunnelFlash*0.5;   // + tunnelFlash: lampo bloom d'ingresso/uscita tunnel   // ×_aesBloom (1 se non-ch2): bloom per-episodio   // bloom contenuto; ×(1-orbitShowBlend*0.60): MENO bloom/glow durante lo showcase (0.45→0.60) → superficie pianeta più nitida (richiesta utente)
   bloomPass.threshold=Math.max(0.90, 0.94-director.cur.neb*0.05-director.surge*(ULTRA?0.08:0.02))+orbitShowBlend*0.9; // soglia ALZATA (0.86→0.90): fa alone solo la luce MOLTO forte, non la foschia/Via Lattea → niente washout   // ★ +orbitShowBlend*0.9: durante lo SHOWCASE alzo MOLTO la soglia → la superficie luminosa del pianeta ravvicinato NON entra nel bloom (niente washout/quadrato); solo un sole/core molto forte fa ancora alone
   bloomPass.radius=Math.min(ULTRA?0.66:0.62, 0.42+director.cur.aB*0.24+director.surge*(ULTRA?0.12:0.10)+rocketE*0.08);   // raggio ridotto: l'alone non si allarga a tutto schermo
 
