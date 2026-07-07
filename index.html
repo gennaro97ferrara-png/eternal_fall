@@ -3362,6 +3362,15 @@ class RocketShip{
     this.flame.position.y=-1.75; this.g.add(this.flame);
     this.glow=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xffd9a8),opacity:0}));
     this.glow.position.y=-1.75; this.glow.scale.setScalar(3.4); this.g.add(this.glow);
+    // ★ EXHAUST alta qualità: core caldo blu-bianco + scia stirata; luci di navigazione lampeggianti rosso/verde
+    this.core=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xcfe6ff),opacity:0}));
+    this.core.position.y=-1.55; this.g.add(this.core);
+    this.trail=new THREE.Sprite(new THREE.SpriteMaterial({map:cometTail||starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xff8a3a),opacity:0}));
+    this.trail.position.y=-2.7; this.g.add(this.trail);
+    this.navR=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0xff2a2a),opacity:0}));
+    this.navR.position.set(0.44,0.15,0); this.navR.scale.setScalar(0.16); this.g.add(this.navR);
+    this.navG=new THREE.Sprite(new THREE.SpriteMaterial({map:starGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color:new THREE.Color(0x2aff55),opacity:0}));
+    this.navG.position.set(-0.44,0.15,0); this.navG.scale.setScalar(0.16); this.g.add(this.navG);
     this.active=false; this.t=0; this.dur=0; this.vel=new THREE.Vector3(); this._vn=new THREE.Vector3(); this._up=new THREE.Vector3(0,1,0); this._counted=false;
   }
   spawn(){ this.active=true; this.t=0; this._counted=false; this.dur=22+Math.random()*10;
@@ -3386,7 +3395,10 @@ class RocketShip{
     const op=Math.max(0,Math.min(this.t/2.5,(this.dur-this.t)/3,1));
     if(this._useGlb){ for(let i=0;i<this._craftMats.length;i++) this._craftMats[i].opacity=op; } else { this.bodyMat.opacity=op; this.noseMat.opacity=op; }
     const fl=1.15+0.45*Math.sin(this.t*23.0)+0.2*Math.sin(this.t*7.3);               // fiamma che sfarfalla
-    this.flame.scale.set(0.9*fl,1.6*fl,1); this.flame.material.opacity=op*0.95; this.glow.material.opacity=op*0.3*fl;
+    this.flame.scale.set(0.95*fl,2.0*fl,1); this.flame.material.opacity=op*0.95; this.glow.material.opacity=op*0.3*fl;   // plume più lungo
+    this.core.scale.set(0.55*fl,1.05*fl,1); this.core.material.opacity=op*0.85;                                          // core caldo blu-bianco
+    this.trail.scale.set(0.8*fl,3.6*fl,1); this.trail.material.opacity=op*0.42;                                          // scia stirata
+    const _blink=(Math.sin(this.t*7.0)>0.35)?1:0; this.navR.material.opacity=op*_blink; this.navG.material.opacity=op*_blink;   // beacon nav lampeggiante
     if(!this._counted && this.t>this.dur*0.4){ this._counted=true; TEL.companions++; }
     if(this.t>=this.dur || this.g.position.z>90){ this.active=false; this.g.visible=false; } }   // ★ round4: despawn anche quando ha superato la camera (z>90) → non resta gigante dietro
 }
