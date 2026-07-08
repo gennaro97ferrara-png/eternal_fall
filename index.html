@@ -126,6 +126,15 @@
   #introcard .ic-tag{ font-family:var(--hmono,var(--disp)); font-size:clamp(11px,1.4vw,26px); letter-spacing:0.55em; text-transform:uppercase; color:var(--red); margin-bottom:0.9em; text-shadow:0 2px 18px rgba(0,0,0,0.95); }
   #introcard .ic-k{ font-family:var(--disp); font-weight:200; font-size:clamp(34px,8.5vw,148px); line-height:0.98; letter-spacing:0.12em; text-transform:uppercase; color:#fbfbff; text-shadow:0 3px 40px rgba(0,0,0,0.9),0 0 60px rgba(0,0,0,0.5); }
   #introcard .ic-n{ font-family:var(--disp); font-weight:400; font-size:clamp(18px,3.6vw,64px); letter-spacing:0.2em; text-transform:uppercase; color:var(--red); margin-top:0.35em; text-shadow:0 2px 22px rgba(0,0,0,0.92); }
+  /* ★ CARTELLO-CAPITOLO stile Tarantino (Kill Bill / Inglourious): slab Bebas Neue che SLAMMA su un freeze-frame, filetto rosso, scrim. Attivo via classe .slam in startIntro; window.efCards=0 → torna al fade morbido di prima. */
+  #introcard .ic-rule{ display:none; width:clamp(120px,16vw,300px); height:2px; margin:0.5em auto 0.12em; background:var(--red); opacity:0.92; box-shadow:0 0 16px 1px var(--red-soft); }
+  #introcard.slam{ background:radial-gradient(ellipse 82% 58% at center, rgba(0,0,0,0.32), transparent 72%); }
+  #introcard.slam .ic-rule{ display:block; animation:icRule 0.6s ease-out both; }
+  #introcard.slam .ic-tag{ font-family:var(--hmono); letter-spacing:0.62em; color:var(--red); }
+  #introcard.slam .ic-k{ font-family:'Bebas Neue',var(--disp); font-weight:800; letter-spacing:0.03em; font-size:clamp(48px,11.5vw,196px); color:#fbfbff; text-shadow:0 4px 0 rgba(0,0,0,0.55),0 0 70px rgba(0,0,0,0.6); animation:icSlam 0.52s cubic-bezier(.18,.9,.2,1) both; }
+  #introcard.slam .ic-n{ font-family:'Bebas Neue',var(--disp); font-weight:500; letter-spacing:0.10em; font-size:clamp(22px,4.6vw,80px); color:var(--red); }
+  @keyframes icSlam{ 0%{ transform:scale(1.10); opacity:0; letter-spacing:0.20em; } 55%{ opacity:1; } 100%{ transform:scale(1.0); letter-spacing:0.03em; } }
+  @keyframes icRule{ 0%{ transform:scaleX(0); opacity:0; } 100%{ transform:scaleX(1); opacity:0.92; } }
   .rdot{ width:0.62em; height:0.62em; border-radius:50%; background:var(--red); box-shadow:0 0 8px 1px var(--red-soft); animation:rpulse 2.4s ease-in-out infinite; flex:none; }
   @keyframes rpulse{ 0%,100%{ opacity:1 } 50%{ opacity:0.35 } }
   /* panels */
@@ -202,6 +211,7 @@
   <div id="introcard">
     <div class="ic-tag">— NEW CHAPTER —</div>
     <div class="ic-k" id="ic-num">CHAPTER 1</div>
+    <div class="ic-rule"></div>
     <div class="ic-n" id="ic-name">Eternal Fall</div>
   </div>
 
@@ -264,6 +274,7 @@ const ULTRA = /[?&]ultra=1/.test(location.search);
 const CLASSIC = /[?&]classic=1/.test(location.search);   // ?classic=1 → vecchio look (no HDRI/AgX/modelli 3D Blender)
 const HYBRID = !CLASSIC && !/[?&]hybrid=0/.test(location.search);   // ★ ORA DEFAULT: HDRI ambiente Blender + modelli 3D (era opt-in ?hybrid=1). Disattiva con ?classic=1 o ?hybrid=0
 const PLATES = /[?&]plates=1/.test(location.search);   // billboard-plate dei pianeti (Giove/Saturno): OPT-IN separato — l'utente preferisce i pianeti procedurali illuminati dall'HDRI (i plate piatti sembrano meno reali)
+const PBR = /[?&]pbr=1/.test(location.search) || (typeof window!=='undefined' && window.efPBR===true) || (ULTRA && (typeof window==='undefined'||window.efPBR!==false));   // ★ efPBR: normal+roughness map bakate (assets/pbr/) al posto del bump in-shader. ORA DEFAULT nei master ?ultra=1 (registrazione) — richiede assets/pbr/ deployato, altrimenti fallback flat (no relief, no crash). Live/OBS (ULTRA=false) INTATTO. Kill switch: window.efPBR=false. Opt-in altrove: ?pbr=1.
 const SS = ULTRA ? (parseFloat((/[?&]ss=(1|1\.25|1\.5|2)/.exec(location.search)||[])[1]||'1')||1) : 1;   // ★ SUPERSAMPLE DI DEFAULT = 1 (4K NATIVO 3840×2160 + SMAA fa l'anti-alias): PRIORITÀ STABILITÀ — meno memoria/carico → niente perdita-di-contesto WebGL che causava i restart (min 4/7). &ss=1.25 o &ss=1.5 per più SSAA (meno stabile).
 const PIX_HI = IS_MOBILE?1.75:2.0;   // mobile: niente 2x (la GPU regge e l'auto-scaler non deve crollare a 1.0 = sfocato)
 let PIX=Math.min(window.devicePixelRatio||1,PIX_HI);
@@ -534,7 +545,9 @@ const Arc={
     if(ph==='GATHER'){ this.dur=11+Math.random()*11; this.kind=this._pickKind(); this.label=this._label(this.kind);
       this.satPeak=(typeof EF!=='undefined'&&EF.arc&&EF.arc.satPeak)||1.38; }
     else if(ph==='SURGE'){ this.dur=10+Math.random()*8; }
-    else if(ph==='CREST'){ this.dur=12+Math.random()*18; if(!this.kind){ this.kind=this._pickKind(); this.label=this._label(this.kind); } this._armed=false; try{ this.arm(this.kind); }catch(_){} }
+    else if(ph==='CREST'){ this.dur=12+Math.random()*18;
+      if(window.efClimax!==false && (this._epT||0)>420 && !this._climaxDone){ this._climaxDone=true; this.kind='impact'; this.dur*=1.6; this.satPeak=(this.satPeak||1.38)+0.12; }   // ★ efClimax: UN climax crescente per episodio (dopo ~7min) → l'episodio ha una FORMA, non una fila di picchi uguali (anti-ripetitività)
+      if(!this.kind){ this.kind=this._pickKind(); } this.label=this._label(this.kind); this._armed=false; try{ this.arm(this.kind); }catch(_){} }
     else if(ph==='RELEASE'){ this.dur=12+Math.random()*8; try{ this.disarm(); }catch(_){} }
     else { this.phase='CALM'; this.dur=0; this.kind=null; this.label='';
       this.budgetT=(typeof EF!=='undefined'&&EF.arc&&EF.arc.crestEvery)||(50+Math.random()*60); } },
@@ -543,7 +556,7 @@ const Arc={
       && !(typeof introActive!=='undefined'&&introActive); },
   update(dt){
     if(!this.on || !(dt>0)) return;
-    this.t+=dt;
+    this.t+=dt; this._epT=(this._epT||0)+dt;   // ★ efClimax: tempo trascorso nell'episodio (resettato in endIntro)
     let ten=0.06;
     if(this.phase==='CALM'){ this.budgetT-=dt; if(this.ready()) this._enter('GATHER'); }
     else if(this.phase==='GATHER'){ const p=this.t/this.dur; ten=0.06+0.34*this._ease(p); if(p>=1) this._enter('SURGE'); }
@@ -554,6 +567,10 @@ const Arc={
     this.sat=1.02+this._ease((ten-0.45)/0.55)*(this.satPeak-1.02);   // base vivida ma sobria (1.02): niente eccesso che, col bloom, sbianca
     this.brace=this._ease((ten-0.20)/0.80);
     this.crest=this._ease((ten-0.80)/0.20);
+    if(window.efSnap!==0){ if(this.crest>0.5 && !this._crestArmed){ this._crestArmed=true; window._crestSnap=0.32;   // ★ RISING-EDGE del CREST: arma lo SNAP (fov punch + micro slow-mo) → il "long-take→SNAP" alla Tarantino
+        if(window.efCrestFreeze!==false) window._crestFreeze=0.14;                                                  // ★ efCrestFreeze: freeze-frame VERO ~0.14s sul picco (beat trattenuto)
+        if(window._epTrunk && window.efTrunk!==false) window._trunkFire=1; }                                        // + in episodi contemplativi arma un trunk-shot
+      if(this.crest<0.2) this._crestArmed=false; }
     // OUTPUT — sempre max/additivo, mai overwrite. In CALM tutto torna a riposo → nessuna regressione.
     if(typeof cinePass!=='undefined'&&cinePass) cinePass.uniforms.uSat.value=this.sat;
     if(typeof director!=='undefined') director.surge=Math.max(director.surge, this._ease((this.tension-0.10)/0.90));
@@ -885,6 +902,10 @@ const PMETA=[
   {f:'4k_sun',hue:0.08,sun:true,bump:0},
 ];
 { const _texByFile={}; ASSETS.pt=PMETA.map(m=>{ if(_texByFile[m.f]) return _texByFile[m.f]; const t=tex('assets/'+m.f+'.jpg'); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=MAXANISO; return _texByFile[m.f]=t; }); }   // DE-DUP: una sola THREE.Texture per file (le voci PMETA ri-tinte condividono la texture, hue/bump via uniform) → niente 2ª texture per URL già in cache (causava shader 'uvundefined' → crash)
+if(PBR){ ASSETS.pbr={}; const _pbf=[...new Set(PMETA.filter(m=>!m.sun).map(m=>m.f))];   // ★ efPBR: normal/roughness bakate per OGNI texture pianeta di PMETA (assets/pbr/<file>_n|_r.png), dati lineari → NoColorSpace
+  _pbf.forEach(f=>{ const n=tex('assets/pbr/'+f+'_n.png'); n.colorSpace=THREE.NoColorSpace; n.anisotropy=MAXANISO; const r=tex('assets/pbr/'+f+'_r.png'); r.colorSpace=THREE.NoColorSpace; r.anisotropy=MAXANISO; ASSETS.pbr[f]={n,r}; });
+  const _fn=new THREE.DataTexture(new Uint8Array([128,128,255,255]),1,1,THREE.RGBAFormat); _fn.needsUpdate=true; ASSETS.pbrFlat=_fn;    // normale piatta (compila il branch una volta → niente recompile per-spawn)
+  const _fr=new THREE.DataTexture(new Uint8Array([210,210,210,255]),1,1,THREE.RGBAFormat); _fr.needsUpdate=true; ASSETS.pbrFlatR=_fr; }  // roughness neutra per i corpi senza mappa
 // WARM-UP di TUTTE le texture della scena: upload GPU (una volta, quando l'immagine è pronta) → il primo bind non è mai NERO.
 // "quadrati neri" = causa C: un oggetto resta NERO per 1-2 frame mentre una texture sale in GPU durante il gioco (raffica montaggio,
 // impatto/detriti, prima flashback). Su un VIDEO precarichiamo TUTTO al boot dietro il "Loading" → niente stall texImage2D in scena.
@@ -1083,7 +1104,7 @@ let spinRateCur=0.03, spinRateTarget=0.03, spinRetargetT=22, manSpinT=0;   // ma
 let manTumble=0, tumbleRateCur=0.04, tumbleRateTarget=0.04, tumbleRetargetT=16, manTumbleT=0;   // manTumbleT = piccolo angolo bersaglio di beccheggio (capovolta continua RIMOSSA: caduta stabile in una direzione)
 let sling=0, bhClose=false, flythruCD=0;    // fionda gravitazionale (buco nero); flythruCD: cooldown attraversamento pianeti
 let flythruWarp=0; const flythruWarpPos=new THREE.Vector3();   // WARP tipo buco nero quando l'astronauta SFONDA un pianeta (lensing transitorio)
-let bigPlanetNear=0, slowMo=1;                                 // SLOW-MOTION vicino ai giganti (momento "low motion")
+let bigPlanetNear=0, slowMo=1, heroK=0;                        // SLOW-MOTION vicino ai giganti (momento "low motion")   // ★ heroK = smoothstep(bigPlanetNear) CLAMPATO in [0,1]: NB bigPlanetNear (=nearScore) può superare 1 (fino a ~3.3) → usare SEMPRE heroK nei driver hero-grade, mai bigPlanetNear grezzo (sennò esposizione/uOp/envMap negativi)
 let planetVisS=0, densityAz=0, densityAzVel=0, densityAzDir=1, densityFlipT=40;   // ★ GIRO-DENSITÀ: giro orizzontale lento attorno all'astronauta quando ci sono parecchi pianeti in quadro
 let orbitDrive=0, orbitDriveS=0, orbitSide=1, orbitSlalomFlip=1, orbitBear=0, slalomP=null;             // ★ SLALOM: aggancia UN pianeta per volta (slalomP) e ne segue il bearing (orbitBear) → S fluida che gira intorno e "riprende" il pianeta dopo il sorpasso (orbitDrive/S = intensità)
 let orbitShowTimer=(/[?&]ch2=1/.test(location.search))?(60+Math.random()*70):(10+Math.random()*8), orbitShowState=0, orbitShowP=null, orbitShowT=0, orbitShowDur=0, orbitShowA0=0, orbitShowBlend=0, orbitShowRev=1, orbitShowCrane=0; const _orbShowPin=new THREE.Vector3();   // ★ ch2: primo giro-pianeta tardi/raro (60-130s) → la camera VARIA domina, non il solito giro attorno al pianeta (richiesta varietà). round4: orbitShowRev=rivoluzioni (parziali/eased), orbitShowCrane=crane verticale dolce
@@ -1098,6 +1119,8 @@ const _hitImp=new THREE.Vector3();                  // impulso direzionale RIUSA
 let planetBuffet=0;                                 // buffeting continuo dalla ghiera d'atmosfera del pianeta (0..1)
 let grazeNext=false;                               // il PROSSIMO spawn di pianeta sarà un raro flyby ravvicinato
 let impactArmed=false, impactHold=0, impactWhip=0, impactWhipK=0;   // AZIONE: stato del payload Arc 'impact' (astronauta che distrugge un pianeta)
+let crashZoom=0, crashZoomT=0, crashK=0, trunkT=0, trunkK=0;   // ★ SHOT Tarantino: crash-zoom (contra-zoom Vertigo) + trunk-shot (envelope 0..1, landano a 0 → niente stacchi)
+let standoffBlend=0, standoffA=0, standoffK=0;   // ★ MEXICAN-STANDOFF opt-in (efStandoff): vortice telefoto stretto attorno all'eroe che rilascia sull'impatto
 let hitFlip=0, hitFlipTarget=0, grazeFired=false;  // BURST all'impatto: 3-4 capriole verticali veloci su se stesso, poi atterra dritto
 let manMixer=null;
 let built=false, exposureCur=1.0;
@@ -1658,7 +1681,7 @@ function planetOnBeforeCompile(uni){
         '#include <begin_vertex>\n vLPos=position;\n vWPos=(modelMatrix*vec4(transformed,1.0)).xyz;\n vWNrm=normalize(mat3(modelMatrix)*objectNormal);');
     sh.fragmentShader = NOISE_GLSL +
       'varying vec3 vWPos; varying vec3 vWNrm; varying vec3 vLPos;\n' +
-      'uniform vec3 uSunDir,uNight,uRim; uniform float uTime,uIsEarth,uIsSun,uAirless,uHasAtmo,uBump,uShow; uniform vec2 uTexel;\n' +
+      'uniform vec3 uSunDir,uNight,uRim; uniform float uTime,uIsEarth,uIsSun,uAirless,uHasAtmo,uBump,uShow,uSun2,uGlint; uniform vec2 uTexel;\n' +
       sh.fragmentShader
         .replace('#include <roughnessmap_fragment>',
           `#include <roughnessmap_fragment>
@@ -1698,10 +1721,18 @@ function planetOnBeforeCompile(uni){
            // LUMINOSITÀ migliorata: lato illuminato più brillante + glint speculare del sole (non sul Sole)
            outgoingLight*=1.0+smoothstep(-0.05,0.55,_ndl)*0.16*(1.0-uIsSun);   // ★ ILLUMINAZIONE PIANETI −(richiesta utente "troppa luce"): boost lato-giorno 0.30→0.16 → il lato illuminato non si BRUCIA, la superficie (texture/terminatore) resta leggibile
            vec3 _Hh=normalize(normalize(uSunDir)+_V); float _spc=pow(max(dot(_N,_Hh),0.0),22.0);
-           outgoingLight+=vec3(1.0,0.96,0.88)*_spc*smoothstep(0.0,0.30,_ndl)*0.15*(1.0-uIsSun)*(0.45+0.55*uHasAtmo);   // ★ glint speculare 0.22→0.15: hotspot solare meno accecante sui pianeti
+           if(uGlint>0.5 && uIsEarth>0.5){ float _oc=1.0-smoothstep(0.0,0.13,diffuseColor.r-diffuseColor.b);   // ★ SOLE SUL MARE: sull'oceano il riflesso solare si STIRA (anisotropo, glitter trascinato), non un punto tondo
+             vec3 _tg=normalize(cross(_N,vec3(0.0,1.0,0.0))); vec3 _Ha=normalize(_Hh-_tg*dot(_Hh,_tg)*0.7);
+             float _glit=pow(max(dot(_N,_Ha),0.0),40.0); _spc=mix(_spc,_glit,_oc); }
+           outgoingLight+=vec3(1.0,0.96,0.88)*_spc*smoothstep(0.0,0.30,_ndl)*0.15*(uIsEarth>0.5?max(1.0,uGlint):1.0)*(1.0-uIsSun)*(0.45+0.55*uHasAtmo);   // ★ glint speculare 0.15 · ★ efGlint-ramp: sull'oceano della Terra ravvicinata il glint diventa un beat cinematografico (×uGlint), altrove invariato
            if(uIsSun>0.5){ float _limb=1.0-0.55*(1.0-_mu)-0.20*(1.0-_mu*_mu);
              float _gran=0.85+0.15*fbm(vLPos*9.0+vec3(uTime*0.05)); outgoingLight*=clamp(_limb,0.0,1.0)*_gran;
-             outgoingLight+=vec3(1.0,0.85,0.6)*pow(1.0-_mu,6.0)*0.4; }
+             outgoingLight+=vec3(1.0,0.85,0.6)*pow(1.0-_mu,6.0)*0.4;
+             if(uSun2>0.5){ float _boil=0.80+0.20*fbm(vLPos*3.2+vec3(0.0,uTime*0.06,0.0));   // ★ CORONA: plasma che ribolle (granulazione a 2 scale) + protuberanze al bordo + flare radente
+               float _prom=smoothstep(0.5,0.0,_mu)*(0.4+0.6*fbm(vLPos*6.0-uTime*0.08));
+               outgoingLight*=mix(1.0,_boil,0.6);
+               outgoingLight+=vec3(1.0,0.55,0.22)*_prom*0.30;
+               outgoingLight+=vec3(1.0,0.82,0.55)*pow(1.0-_mu,5.0)*0.35; } }
            outgoingLight*=mix(1.0,smoothstep(0.0,0.22,_mu),uAirless);
            outgoingLight = mix(outgoingLight, vec3(0.0), vec3(notEqual(outgoingLight, outgoingLight)));   // ★ SCRUB NaN (portabile: x!=x è vero SOLO per NaN) → il max() sotto NON sanifica i NaN (max(NaN,x) è undefined in GLSL). NaN→0, poi il floor lo porta al colore-pavimento (grigio), mai #000.
            outgoingLight = clamp(outgoingLight, vec3(0.0), vec3(64.0));                                   // ★ SCRUB +Inf (il max() non lo tocca): valori giganti → 64, ben sopra ogni radianza legittima pre-tonemap
@@ -1713,16 +1744,17 @@ class Planet{
   constructor(){
     this.mat=new THREE.MeshStandardMaterial({roughness:0.95,metalness:0,envMapIntensity:0.55,transparent:true,opacity:1});
     this.mat.map=this.mat.emissiveMap=ASSETS.pt[0]; this.mat.emissive=new THREE.Color(0xffffff); this.mat.emissiveIntensity=0;  // emissiveMap sempre presente → niente ricompilazione shader per spawn
+    if(PBR){ this.mat.normalMap=ASSETS.pbrFlat; this.mat.roughnessMap=ASSETS.pbrFlatR; this.mat.normalScale=new THREE.Vector2(0.85,0.85); }   // ★ efPBR: slot normal/roughness (default flat) → il branch compila UNA volta, poi si scambia la texture per-corpo senza recompile
     this.pUni={ uSunDir:{value:new THREE.Vector3(0,1,0)}, uTime:{value:0}, uIsEarth:{value:0}, uIsSun:{value:0},
       uAirless:{value:0}, uHasAtmo:{value:1}, uBump:{value:3.0}, uTexel:{value:new THREE.Vector2(1/2048,1/1024)},
-      uNight:{value:new THREE.Color(0x0a1020)}, uRim:{value:new THREE.Color(0x88bbff)}, uShow:{value:0} };
+      uNight:{value:new THREE.Color(0x0a1020)}, uRim:{value:new THREE.Color(0x88bbff)}, uShow:{value:0}, uSun2:{value:1}, uGlint:{value:1} };
     this.mat.onBeforeCompile=planetOnBeforeCompile(this.pUni);
     this.mesh=new THREE.Mesh(new THREE.SphereGeometry(1,96,64),this.mat);
     this.mesh.visible=false; this.mesh.frustumCulled=false; scene.add(this.mesh);
     this.atmoMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
-      uniforms:{uColor:{value:new THREE.Color(0x88bbff)},uColor2:{value:new THREE.Color(0xbfe0ff)},uLight:{value:sunDir.clone()},uOp:{value:1}},
+      uniforms:{uColor:{value:new THREE.Color(0x88bbff)},uColor2:{value:new THREE.Color(0xbfe0ff)},uLight:{value:sunDir.clone()},uOp:{value:1},uAtmo2:{value:1}},
       vertexShader:`varying vec3 vN;varying vec3 vW;void main(){vec4 wp=modelMatrix*vec4(position,1.0);vW=wp.xyz;vN=normalize(mat3(modelMatrix)*normal);gl_Position=projectionMatrix*viewMatrix*wp;}`,
-      fragmentShader:`varying vec3 vN;varying vec3 vW;uniform vec3 uColor,uColor2,uLight;uniform float uOp;
+      fragmentShader:`varying vec3 vN;varying vec3 vW;uniform vec3 uColor,uColor2,uLight;uniform float uOp,uAtmo2;
         void main(){ vec3 N=normalize(vN); vec3 V=normalize(cameraPosition-vW);
           float vd=max(dot(V,N),0.0); float ndl=dot(N,normalize(uLight));
           float limb=pow(1.0-vd,2.0);
@@ -1733,22 +1765,33 @@ class Planet{
           float dayHaze=pow(1.0-vd,4.0)*smoothstep(-0.1,0.6,ndl)*0.28;     // foschia lato giorno (prospettiva aerea)
           float term=smoothstep(-0.32,0.06,ndl)*(1.0-smoothstep(0.06,0.5,ndl)); // anello sottile al confine giorno/notte
           float a=(limb*smoothstep(-0.35,0.2,ndl)+dayHaze+term*0.18)*uOp;
-          gl_FragColor=vec4(col*(limb+dayHaze+term*0.22)*1.5, a); }`});
+          vec3 _ac=col*(limb+dayHaze+term*0.22)*1.5; float _aa=a;
+          if(uAtmo2>0.5){ float mu=max(dot(V,normalize(uLight)),0.0); float mie=pow(mu,8.0)*smoothstep(-0.1,0.35,ndl);   // ★ GUSCIO D'ARIA: forward-scatter Mie (bagliore del Sole "attraverso" l'aria) + velo blu al limbo alto (ozono)
+            _ac+=vec3(0.05,0.10,0.32)*pow(1.0-vd,6.0)*smoothstep(-0.2,0.4,ndl);
+            _ac+=vec3(1.0,0.85,0.6)*mie*0.5;
+            _aa+=mie*0.30*uOp; }
+          gl_FragColor=vec4(uAtmo2>0.5?min(_ac,vec3(6.0)):_ac, _aa); }`});   // uAtmo2=0 → byte-identico al guscio di prima
     this.atmo=new THREE.Mesh(new THREE.SphereGeometry(1.025,48,32),this.atmoMat); this.mesh.add(this.atmo);
     // strato nuvole (per la Terra) — ruota più veloce → parallasse e profondità
     this.cloudMat=new THREE.MeshStandardMaterial({map:ASSETS.clouds,alphaMap:ASSETS.clouds,transparent:true,depthWrite:false,roughness:1,metalness:0,envMapIntensity:0.3,opacity:1});
     this.clouds=new THREE.Mesh(new THREE.SphereGeometry(1.012,48,32),this.cloudMat); this.clouds.visible=false; this.mesh.add(this.clouds);
     this.ringMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,
-      uniforms:{uTex:{value:ASSETS.ring},uInner:{value:1.3},uOuter:{value:2.3},uOp:{value:1},uLightL:{value:new THREE.Vector3(0,0,1)}},
-      vertexShader:`varying vec3 vL;void main(){vL=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-      fragmentShader:`varying vec3 vL;uniform sampler2D uTex;uniform float uInner,uOuter,uOp;uniform vec3 uLightL;
+      uniforms:{uTex:{value:ASSETS.ring},uInner:{value:1.3},uOuter:{value:2.3},uOp:{value:1},uLightL:{value:new THREE.Vector3(0,0,1)},uRings2:{value:1},uSunW:{value:new THREE.Vector3(0,0,1)}},
+      vertexShader:`varying vec3 vL;varying vec3 vWp;void main(){vL=position;vWp=(modelMatrix*vec4(position,1.0)).xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:`varying vec3 vL;varying vec3 vWp;uniform sampler2D uTex;uniform float uInner,uOuter,uOp,uRings2;uniform vec3 uLightL,uSunW;
         void main(){float r=length(vL.xy);float t=clamp((r-uInner)/(uOuter-uInner),0.0,1.0);vec4 c=texture2D(uTex,vec2(t,0.5));
           // ombra morbida del pianeta sugli anelli: il pianeta (raggio 1 in spazio-anello) occlude il lato opposto al Sole.
           vec3 L=normalize(uLightL); vec2 d=vL.xy/max(r,1e-4);
           float back=clamp(-dot(vec3(d,0.0),L),0.0,1.0);                 // 1 dietro al pianeta rispetto al Sole
           float occ=back*(1.0-smoothstep(1.0,1.55,r));                   // svanisce oltre l'ombra geometrica del disco
           float lit=0.78+0.22*clamp(dot(vec3(d,0.0),L)*0.5+0.5,0.0,1.0); // lato Sole appena più luminoso
-          gl_FragColor=vec4(c.rgb*lit*(1.0-0.62*occ), c.a*uOp);}`});
+          vec3 _rc=c.rgb*lit*(1.0-0.62*occ); float _ra=c.a*uOp;
+          if(uRings2>0.5){ vec3 Vf=normalize(vWp-cameraPosition); float fwd=pow(clamp(dot(Vf,normalize(uSunW)),0.0,1.0),3.0);   // ★ ANELLI CASSINI: retroilluminazione (fwd=1 guardando verso il Sole ATTRAVERSO gli anelli) + brillii di densità (×c.a → i vuoti restano vuoti)
+            float dens=0.82+0.18*sin(r*150.0+sin(r*37.0)*3.0);
+            _rc*=mix(1.0,dens,0.6);
+            _rc+=c.rgb*fwd*vec3(1.0,0.93,0.78)*1.5*c.a;
+            _ra=c.a*uOp*mix(1.0,1.35,fwd); }
+          gl_FragColor=vec4(uRings2>0.5?min(_rc,vec3(6.0)):_rc, _ra);}`});   // uRings2=0 → byte-identico agli anelli di prima
     this.ring=new THREE.Mesh(new THREE.RingGeometry(1.3,2.3,128,1),this.ringMat); this.ring.visible=false; this.mesh.add(this.ring);
     this.moons=[]; for(let i=0;i<3;i++){ const mm=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),new THREE.MeshStandardMaterial({map:ASSETS.pt[MOON_IDX],roughness:1,metalness:0,envMapIntensity:0.2,transparent:true,opacity:1})); mm.visible=false; this.mesh.add(mm); this.moons.push({mesh:mm,orb:0,rad:0,sp:0,ph:0}); }   // pool lune 2→3 (sistemi satellitari più densi)
     this.active=false; this.spin=0; this.isSun=false; this.nMoons=0; this.counted=false; this._graze=false;
@@ -1813,6 +1856,9 @@ class Planet{
     pu.uHasAtmo.value=(this.isSun||meta.gray)?0:1; pu.uBump.value=this.isSun?0:(meta.bump!=null?meta.bump:3.0);
     pu.uRim.value.setHSL(meta.hue,0.6,0.62);
     const _im=ASSETS.pt[idx]&&ASSETS.pt[idx].image; if(_im&&_im.width&&_im.height) pu.uTexel.value.set(1/_im.width,1/_im.height); else pu.uTexel.value.set(1/2048,1/1024);  // passo del rilievo = texel reale della texture
+    if(PBR && ASSETS.pbr){ const _pm=(!this.isSun && ASSETS.pbr[meta.f])?ASSETS.pbr[meta.f]:null;   // ★ efPBR: OGNI pianeta (non-Sole) usa la SUA normal+roughness bakata e SPEGNE il bump in-shader (uBump=0); il Sole resta flat + emissivo
+      if(_pm){ this.mat.normalMap=_pm.n; this.mat.roughnessMap=_pm.r; pu.uBump.value=0; this.mat.normalScale.set(meta.gray?1.35:(meta.earth?0.9:1.0),meta.gray?1.35:(meta.earth?0.9:1.0)); }   // ★ relief PIÙ forte sui rocciosi/senz'aria (terminatore radente), più tenue su Terra/gassosi
+      else { this.mat.normalMap=ASSETS.pbrFlat; this.mat.roughnessMap=ASSETS.pbrFlatR; } }
     this.atmo.visible=!this.isSun && !_distant;
     // varietà cromatica: la saturazione/luce dello strato d'aria oscilla per spawn, il colore-2 segue la regione
     const _atmS=0.42+Math.random()*0.32, _atmL=0.54+Math.random()*0.12, _atmH=(meta.hue+(Math.random()*2-1)*0.045+1)%1;
@@ -1864,7 +1910,7 @@ class Planet{
       if(!this._showcase) op*=_clr*_clr*(3-2*_clr); }   // durante lo SHOWCASE non dissolvere il pianeta (la camera gli orbita intorno restando comunque fuori dal raggio)
     if(!(op>=0)) op=0;   // anti-NaN: qualunque NaN a monte non deve mai diventare un quadro nero opaco
     { const _tm=this.mat.map; if(_tm&&(!_tm.image||!(_tm.image.width||_tm.image.complete))) op=0; }   // ★ 3ª guardia: texture non pronta → pianeta INVISIBILE (mai un disco NERO da texture non caricata)
-    this.mat.opacity=op; this.atmoMat.uniforms.uOp.value=op*(this._showcase?(1.0-orbitShowBlend*0.88):1.0); this.ringMat.uniforms.uOp.value=op;   // ★ durante l'orbita-showcase smorzo il GUSCIO-GLOW dell'atmosfera (le "fasce luminose") → superficie del pianeta ben visibile
+    this.mat.opacity=op; this.atmoMat.uniforms.uOp.value=op*(this._showcase?(1.0-orbitShowBlend*0.88):1.0)*(1.0-((window.efHeroGrade!==0 && this.mesh.scale.x>110)?heroK*0.45:0)); this.ringMat.uniforms.uOp.value=op;   // ★ durante l'orbita-showcase smorzo il GUSCIO-GLOW dell'atmosfera (le "fasce luminose") → superficie del pianeta ben visibile   // ★ HERO-GRADE: e ANCHE quando un gigante riempie il quadro (bigPlanetNear) → niente velo lattiginoso
     if(this.clouds.visible){ this.clouds.rotation.y+=dt*0.018; this.cloudMat.opacity=op; }
     // ★ luce EFFICACE (fix "quadrati neri SUI PIANETI"): un pianeta che RIEMPIE il quadro (gigante vicino) mostrerebbe il
     // suo emisfero NOTTURNO = grande disco NERO grande quanto il pianeta. Quindi più riempie il quadro, più la luce ruota
@@ -1873,12 +1919,14 @@ class Planet{
     _s.copy(camera.position).sub(this.mesh.position); const _dc=_s.length()||1; _s.multiplyScalar(1/_dc);   // dir pianeta→camera
     const _kL=this._heroLit?1:Math.max(this._distant?0.30:0.0, THREE.MathUtils.clamp((this.mesh.scale.x/_dc-0.14)/0.20,0,1)*0.82);          // 0 lontano/piccolo → 0.82 quando riempie il quadro   // ★ FLOOR 0.30 sui LONTANI: ruotano sempre un filo di luce verso la camera → mai il disco tutto-notte "pianeta nero" (i piccoli di sfondo mostrano sempre una porzione illuminata)
     _p.copy(sunDir).lerp(_s,_kL); { const _pl=_p.length(); if(_pl>1e-4) _p.multiplyScalar(1/_pl); else _p.copy(_s); }
-    this.atmoMat.uniforms.uLight.value.copy(_p);
+    this.atmoMat.uniforms.uLight.value.copy(_p); this.atmoMat.uniforms.uAtmo2.value=(window.efAtmo2===false?0:1)*(1.0-((window.efHeroGrade!==0 && this.mesh.scale.x>110)?heroK*0.5:0));   // ★ efAtmo2: guscio d'aria Rayleigh/Mie   // ★ HERO-GRADE: il forward-scatter Mie recede quando il gigante riempie il quadro (ultima fonte del velo lattiginoso)
     if(this.ring.visible){ // direzione della luce in spazio-anello (per l'ombra del pianeta sugli anelli) — niente alloc
       _s.copy(_p).applyQuaternion(_q.copy(this.ring.quaternion).invert());
-      this.ringMat.uniforms.uLightL.value.copy(_s); }
+      this.ringMat.uniforms.uLightL.value.copy(_s);
+      this.ringMat.uniforms.uSunW.value.copy(_p); this.ringMat.uniforms.uRings2.value=(window.efRings2===false?0:1); }   // ★ efRings2: retroilluminazione anelli (uSunW = dir Sole in mondo)
     this.pUni.uSunDir.value.copy(_p); this.pUni.uTime.value=shaderTime; this.pUni.uNight.value.copy(director.grade); this.pUni.uShow.value=this._showcase?orbitShowBlend:0;   // uShow: attenua il rim atmosferico durante l'orbita   // shaderTime è già wrappato (niente drift di precisione 24/7)
-    this.mat.envMapIntensity=0.55*(1-(this._showcase?orbitShowBlend:0)*(HYBRID?0.55:0.30));   // ★ meno luce ambientale (IBL/HDRI) durante l'orbita-showcase → il pianeta non si "slava", superficie leggibile (richiesta utente)
+    this.pUni.uSun2.value=(window.efSun2===false?0:1); this.pUni.uGlint.value=(window.efGlint===false)?0:(1+((this.pUni.uIsEarth.value>0.5 && this.mesh.scale.x>110)?heroK*1.6:0));   // ★ efSun2: corona solare · efGlint: glint anisotropo oceano, che CRESCE (ramp) quando la Terra riempie il quadro (beat-eroe economico)
+    this.mat.envMapIntensity=0.55*(1-(this._showcase?orbitShowBlend:0)*(HYBRID?0.55:0.30))*(1-((window.efHeroGrade!==0 && this.mesh.scale.x>110)?heroK*0.45:0));   // ★ meno luce ambientale (IBL/HDRI) durante l'orbita-showcase → il pianeta non si "slava", superficie leggibile (richiesta utente)   // ★ HERO-GRADE: taglia l'IBL anche quando il gigante riempie il quadro (bigPlanetNear) → contrasto
     for(let i=0;i<this.nMoons;i++){ const mo=this.moons[i]; mo.ph+=mo.sp*dt; mo.mesh.material.opacity=op; mo.mesh.position.set(Math.cos(mo.ph)*mo.rad,Math.sin(mo.ph*0.6)*0.4,Math.sin(mo.ph)*mo.rad); }
     if(!this.counted && !this._distant && z>-30){ this.counted=true; TEL.planets++; TEL.moons+=this.nMoons; }   // i mondi lontani di sfondo non contano nella telemetria
     if(!this._distant && z>340+this.mesh.scale.x*2.0){
@@ -1945,6 +1993,8 @@ function detonatePlanet(p){ try{
   try{ if(bolide&&!bolide.active){ bolide.spawn(); if(bolide.pts) bolide.pts.position.copy(pos); } }catch(_){}   // (3) schegge extra
   try{ hitFlash=Math.max(hitFlash,1.0); hitTremor=Math.max(hitTremor,0.32); hitTumble=Math.max(hitTumble,0.25); hitFlipTarget+=6.28318*(4+Math.random()*2); _hitImp.set((Math.random()*2-1)*0.3,(Math.random()*2-1)*0.3,0.6); }catch(_){}   // (4) l'astronauta viene SCARAVENTATO indietro + capriole + flash visore
   impactHold=1.0; impactWhipK=1.0; impactArmed=false;   // (5) dramma: freno camera + whip post-urto (consumati dalla camera)
+  if(window.efCrashZoom!==false){ crashZoom=1; crashZoomT=0; }   // ★ CRASH-ZOOM sull'impatto
+  standoffK=0;   // ★ MEXICAN-STANDOFF: l'impatto RILASCIA il vortice (se era armato via cadutaStandoff) (lo spazio dietro l'eroe si dilata)
   try{ if(typeof Arc!=='undefined') Arc._white=Math.max(Arc._white,0.55); }catch(_){}   // dip-to-white maschera lo stacco (ADDOLCITO 0.9→0.55)
   try{ fallTarget=1; }catch(_){}                          // fine del RUSH
   try{ if(typeof Flashback!=='undefined' && Math.random()<0.35) Flashback.arm('impact',1.2); }catch(_){}   // ~35% degli impatti → FLASHBACK: rara/speciale, non ad ogni urto
@@ -1968,6 +2018,10 @@ window.cadutaSlowmo=(s)=>{ try{ bigPlanetNear=(s==null?1:+s); return 'bigPlanetN
 window.cadutaOrbit=(test)=>{ try{ if(test){ const fp=planets.find(p=>!p.active)||planets[0]; fp.spawn(false,null,false); fp.mesh.scale.setScalar(160); fp.mesh.position.set((test<0?-1:1)*90,4,-200); fp._heroLit=true; fp._distant=false; } return {drive:+orbitDrive.toFixed(3),bear:+orbitBear.toFixed(2),sl:!!slalomP,rz:+manRig.rotation.z.toFixed(3),ry:+manRig.rotation.y.toFixed(3),manx:+manRig.position.x.toFixed(2),camx:+camera.position.x.toFixed(2),camz:+camera.position.z.toFixed(2),show:orbitShowState,blend:+orbitShowBlend.toFixed(2)}; }catch(e){ return ''+e; } };   // test/tuning ORBITA: cadutaOrbit(1)/cadutaOrbit(-1) spawna un gigante a dx/sx per vedere lo slalom; cadutaOrbit() legge lo stato
 window.cadutaShowcase=()=>{ try{ const fp=planets.find(p=>!p.active)||planets[0]; fp.spawn(false,null,false); fp.mesh.scale.setScalar(190); if(fp.glow) fp.glow.scale.setScalar(190*1.2); fp.mesh.position.set(44,4,-300); fp._distant=false; fp._heroLit=false; orbitShowTimer=0; return 'SHOWCASE: gigante spawnato a -300 → il giro completo parte a breve (cadutaOrbit() per lo stato: show/blend)'; }catch(e){ return ''+e; } };   // test/tuning SHOWCASE-ORBIT: forza un giro completo attorno a un pianeta grande
 window.cadutaTunnel=(dur,type)=>{ try{ return (starTunnel&&starTunnel.start(+dur||11,type|0))?('TUNNEL go ('+(+dur||11)+'s, tipo '+((type|0)%4)+')'):'tunnel non pronto/attivo'; }catch(e){ return ''+e; } };   // test: cadutaTunnel(durata,tipo0-3)
+window.cadutaCrash=()=>{ if(window.efCrashZoom===false) return 'crash OFF (window.efCrashZoom=true per riattivare)'; crashZoom=1; crashZoomT=0; return 'CRASH-ZOOM'; };   // ★ test: contra-zoom su un soggetto davanti
+window.cadutaTrunk=()=>{ if(window.efTrunk===false) return 'trunk OFF (window.efTrunk=true per riattivare)'; trunkT=0.0001; return 'TRUNK-SHOT'; };   // ★ test: ripresa bassa che guarda in su verso l'eroe
+window.cadutaWhip=(bx,by)=>{ if(window.efWhip!==true) return 'whip OFF (window.efWhip=true per abilitare l\'A/B)'; whipK=1; whipT=0; whipDirX=(bx==null?0.9:+bx); whipDirY=+by||0; return 'WHIP-PAN'; };   // ★ opt-in: panoramica-frusta (default OFF, rischio nausea)
+window.cadutaStandoff=(d)=>{ if(window.efStandoff!==true) return 'standoff OFF (window.efStandoff=true per abilitare l\'A/B)'; standoffK=(d===0?0:1); return 'STANDOFF '+standoffK; };   // ★ opt-in: vortice-standoff; cadutaStandoff(1) parte, cadutaStandoff(0) rilascia (default OFF)
 window.efPass=(name,on)=>{ try{ const P={flashback:flashbackPass,lens:lensPass,bloom:bloomPass,cine:cinePass,smaa:smaaPass}; if(!name){ return Object.keys(P).map(k=>k+':'+(P[k]?(P[k].enabled!==false):'n/a')).join(' '); } const p=P[name]; if(!p) return 'no '+name; p.enabled=!!on; return name+'.enabled='+p.enabled; }catch(e){ return ''+e; } };   // toggle passate post (debug)
 window.cadutaDebugHit=(n)=>{ hitFlipTarget+=6.28318*(n||4); hitFlash=Math.max(hitFlash,0.6); return 'BURST x'+(n||4); };  // test: capriole verticali da impatto (console)
   window.cadutaFall=(m)=>{ if(m===undefined||m==='auto'){ fallAuto=true; return 'fase di caduta: AUTO (cicli 2-5 min)'; } fallAuto=false; fallTarget=fallMul=(+m||1); return 'velocità di caduta ×'+fallMul+' (manuale; cadutaFall("auto") per riattivare le fasi)'; };
@@ -2830,9 +2884,9 @@ const Flashback={
   _end(){ this.active=false; this.amt=0; this.warp=0; this.cool=22+Math.random()*22; this.shots=[]; if(flashbackPass) flashbackPass.uniforms.uAmt.value=0; }
 };
 const CineShader={
-  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.020},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeHi:{value:new THREE.Color(0xfff1de)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.7},uHalation:{value:0.4},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)},uSharp:{value:0.42},uPix:{value:1.0},uSat:{value:1.0},uWhite:{value:0},uRocket:{value:0},uBars:{value:0}},
+  uniforms:{tDiffuse:{value:null},uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)},uVignette:{value:1.0},uGrain:{value:0.020},uAberr:{value:0.85},uGrade:{value:new THREE.Color(0x223a6b)},uGradeHi:{value:new THREE.Color(0xfff1de)},uGradeAmt:{value:0.10},uDof:{value:1.0},uStreak:{value:0.7},uHalation:{value:0.4},uContrast:{value:1.0},uGW:{value:0},uGWDir:{value:new THREE.Vector2(1,0)},uSharp:{value:0.42},uPix:{value:1.0},uSat:{value:1.0},uWhite:{value:0},uRocket:{value:0},uBars:{value:0},uHalCol:{value:new THREE.Color(1.0,0.52,0.26)},uHalW:{value:1.0},uAnimGrain:{value:1},uTechni:{value:0},uInk:{value:1},uDitherLo:{value:1},uFxaa:{value:0}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,1.0);}`,
-  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uHalation,uContrast,uGW,uSharp,uPix,uRocket,uSat,uWhite,uBars;uniform vec2 uRes,uGWDir;uniform vec3 uGrade,uGradeHi;varying vec2 vUv;
+  fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uVignette,uGrain,uAberr,uGradeAmt,uDof,uStreak,uHalation,uContrast,uGW,uSharp,uPix,uRocket,uSat,uWhite,uBars,uHalW,uAnimGrain,uTechni,uInk,uDitherLo,uFxaa;uniform vec2 uRes,uGWDir;uniform vec3 uGrade,uGradeHi,uHalCol;varying vec2 vUv;
     float rnd(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
     void main(){ vec2 uv=vUv;
       if(uGW>0.0){ float ph=dot(uv,uGWDir)*42.0 - uTime*6.0; uv += uGWDir*sin(ph)*uGW; }   // onda gravitazionale: increspa tutto il campo
@@ -2845,6 +2899,8 @@ const CineShader={
         vec3 hi=c0-(cn+cs+ce+cw)*0.25; float Ls=dot(c0,vec3(0.2126,0.7152,0.0722));
         float hiAtt=1.0-smoothstep(0.78,1.25,Ls);                      // non ri-anella i core già bloomati
         float ramp=smoothstep(0.02,0.05,Ls);                          // sharpen anche sul fondale fioco (luma ~0.07-0.30) → Via Lattea più definita; resta zero nel near-black
+        if(uFxaa>0.5){ float _gx=dot(ce-cw,vec3(0.3333)),_gy=dot(cn-cs,vec3(0.3333)); float _edge=clamp((abs(_gx)+abs(_gy))*5.0,0.0,1.0);   // ★ efFxaa (solo ULTRA): AA edge-adaptive che RIUSA i 4 tap (niente RT extra → nessun rischio context-loss come SMAA) → limbo/silhouette meno "peluria" in 4K
+          c0=mix(c0,(cn+cs+ce+cw)*0.25,_edge*0.45); hiAtt*=(1.0-_edge*0.6); }                                                              // ammorbidisce i bordi + ferma l'unsharp che amplificava l'alias
         c0=clamp(c0+clamp(hi,-0.12,0.12)*uSharp*hiAtt*ramp,0.0,8.0); }
       vec2 off=d*r2*r2*0.020*uAberr;                                   // aberrazione cromatica concentrata ai bordi
       vec3 col=vec3(texture2D(tDiffuse,uv+off).r,c0.g,texture2D(tDiffuse,uv-off).b);
@@ -2873,16 +2929,28 @@ const CineShader={
       float L=dot(col,vec3(0.2126,0.7152,0.0722));
       float satHi=1.0-smoothstep(0.6,1.4,L)*0.4;                       // alte luci desaturate (i core bloomati restano luce)
       col=mix(vec3(L),col,mix(1.0,1.14,ga)*satHi*uSat);                // saturazione contenuta (×uSat: leva-master pilotata dall'ArcConductor, 1.0 a riposo)
+      if(uTechni>0.001){ float Lt=dot(col,vec3(0.2126,0.7152,0.0722));   // ★ TECHNICOLOR 2-strip per-episodio (Tarantino/grindhouse): ombre→tinta regione satura, alte luci→key satura, saturazione su; solo se efTechnicolor, fiorisce sul CREST
+        vec3 shd=mix(vec3(1.0), normalize(uGrade+vec3(0.001))*1.9, 0.6);
+        vec3 hil=mix(vec3(1.0), normalize(uGradeHi+vec3(0.001))*1.9, 0.6);
+        vec3 tw=mix(shd,hil,smoothstep(0.12,0.72,Lt));
+        col=mix(col, col*tw, uTechni);
+        col=mix(vec3(Lt),col,1.0+uTechni*0.30); }                       // uTechni=0 → identico
       // HALATION da pellicola: alone caldo d'emulsione attorno ai core (prima della spalla → mai clipping)
-      if(uHalation>0.001){ vec2 hx=(1.0/uRes)*7.0;
+      if(uHalation>0.001){ vec2 hx=(1.0/uRes)*7.0*uHalW;
         vec3 hs=max(texture2D(tDiffuse,uv+hx).rgb-0.6,vec3(0.0))
               + max(texture2D(tDiffuse,uv-hx).rgb-0.6,vec3(0.0));
+        vec2 hd=hx*0.66;                                                 // ★ HALATION a anello 6-tap (era 2): alone d'emulsione più tondo/ricco, allargabile su crest (uHalW)
+        hs+=(max(texture2D(tDiffuse,uv+vec2(hd.x,hd.y)).rgb-0.6,vec3(0.0))
+            +max(texture2D(tDiffuse,uv+vec2(-hd.x,hd.y)).rgb-0.6,vec3(0.0))
+            +max(texture2D(tDiffuse,uv+vec2(hd.x,-hd.y)).rgb-0.6,vec3(0.0))
+            +max(texture2D(tDiffuse,uv+vec2(-hd.x,-hd.y)).rgb-0.6,vec3(0.0)))*0.62;
         float hL=dot(hs,vec3(0.3333));
-        col+=hL*vec3(1.0,0.52,0.26)*0.07*uHalation; }
+        col+=hL*uHalCol*0.055*uHalation; }                              // ★ tinta halation pilotabile (uHalCol): caldo dorato a riposo, si intiepidisce sul crest
       // curva filmica gentile: contrasto nei toni medi, spalla che PROTEGGE i core bloomati (restano luce)
       vec3 contr=clamp((col-0.42)*mix(1.0,1.16,uContrast)+0.42,0.0,4.0);
       float shoulder=1.0-smoothstep(0.85,1.6,L)*0.6;                   // sopra ~0.85 (highlight) il contrasto si annulla
       col=mix(col,contr,shoulder);                                    // contrasto solo dove non sono highlight
+      if(uInk>0.0001){ float _Lk=dot(col,vec3(0.2126,0.7152,0.0722)); col=max(col-uInk*0.012*(1.0-smoothstep(0.0,0.22,_Lk)),vec3(0.0)); }   // ★ efInk: toe filmica SOLO sui near-black → vuoto più "inchiostro", stelle più staccate (mid/highlight protetti dalla maschera)
       col*=0.945;                                                      // deep-space: appena meno acceso (era 0.94)
       col=max(col,0.0);
       if(uWhite>0.0001) col=mix(col,vec3(1.0,0.965,0.92),uWhite);      // DIP-TO-WHITE caldo (raffica-montaggio): 0 a riposo = identico
@@ -2894,18 +2962,28 @@ const CineShader={
         for(int i=1;i<=3;i++){ float fi=float(i); vec2 o=sx*(fi*fi*5.0*jd);
           acc+=(max(texture2D(tDiffuse,uv+o).rgb-0.72,vec3(0.0))
               + max(texture2D(tDiffuse,uv-o).rgb-0.72,vec3(0.0)))*(1.0/(fi*fi)); }
+        vec2 sy=vec2(0.0,1.0/uRes.y); vec3 accV=vec3(0.0);                          // ★ CROCE ANAMORFICA a due colori (Panavision/Kill Bill): + passata VERTICALE calda sui core molto forti
+        for(int i=1;i<=2;i++){ float fi=float(i); vec2 o=sy*(fi*fi*4.0*jd);
+          accV+=(max(texture2D(tDiffuse,uv+o).rgb-0.80,vec3(0.0))
+              + max(texture2D(tDiffuse,uv-o).rgb-0.80,vec3(0.0)))*(1.0/(fi*fi)); }
         vec3 anam=mix(vec3(0.55,0.72,1.05), mix(uGrade*2.0,vec3(1.0),0.6), 0.35);  // blu-freddo con 35% di tinta regione
-        col+=acc*uStreak*0.09*anam; }
+        vec3 warmTip=vec3(1.0,0.82,0.5);
+        col+=acc*uStreak*0.09*anam + accV*uStreak*0.05*mix(warmTip,anam,0.4); }    // lama blu orizzontale + punta calda verticale = flare a croce
       float vig=smoothstep(1.18,0.10,r2*2.05);                         // caduta più morbida e leggermente più ampia
       vig=vig*vig*(3.0-2.0*vig);                                       // smoothstep^2: spalla del vignette più dolce
       vec3 edgeTint=mix(uGrade,vec3(1.0),0.58);
       col*=mix(vec3(1.0), mix(edgeTint,vec3(1.0),vig), uVignette);     // bordi scuri tinti verso la regione
-      float g=rnd(uv*uRes+fract(uTime)*vec2(91.7,47.3))-0.5;
       float gMask=mix(1.3,0.12,smoothstep(0.0,0.5,L)); vec3 gTint=mix(vec3(0.82,0.86,1.05),vec3(1.0),L);
-      col+=g*uGrain*gMask*gTint;                                       // grana: più nelle ombre, tinta fredda
+      if(uAnimGrain>0.5){ float t0=floor(uTime*24.0); vec2 gs=uv*uRes;             // ★ GRANA 35mm: hash ri-seminato a scatti di 1/24s (cadenza da pellicola, non crawl video) + 2 ottave + canali decorrelati = grana d'emulsione a colori
+        float gA=rnd(gs+t0*vec2(91.7,47.3)); float gB=rnd(gs*0.5+t0*vec2(13.1,71.9)); float g=(gA*0.7+gB*0.3)-0.5;
+        col.r+=g*uGrain*gMask*gTint.r;
+        col.g+=(g*0.85+(rnd(gs+t0*vec2(37.0,5.0))-0.5)*0.15)*uGrain*gMask*gTint.g;
+        col.b+=g*uGrain*gMask*gTint.b; }
+      else { float g=rnd(uv*uRes+fract(uTime)*vec2(91.7,47.3))-0.5; col+=g*uGrain*gMask*gTint; }  // grana: più nelle ombre, tinta fredda
       col = mix(col, vec3(0.02,0.02,0.025), vec3(notEqual(col, col)));   // ★ RETE DI SICUREZZA FINALE (portabile): qualunque NaN da QUALSIASI sorgente (sole/atmo/anelli/cielo/futuro) → grigio scurissimo, MAI #000 puro (non innesca qdetect). NB: col è HDR-lineare pre-tonemap → NON si clampa a 1 (taglierebbe gli highlight/bloom).
       col = clamp(col, 0.0, 64.0);                                       // ★ +Inf → 64 (impercettibile dopo ACES; non tocca gli highlight legittimi)
-      col += (rnd(uv*uRes+fract(uTime)*vec2(59.7,13.1)) - rnd(uv*uRes+fract(uTime)*vec2(23.1,71.9)))*(1.0/255.0);   // ★ DITHERING TPDF anti-banding (gradienti scuri/nebulose)
+      float _Ld=dot(col,vec3(0.2126,0.7152,0.0722)); float _dA=(1.0/255.0)*(1.0+uDitherLo*mix(5.0,0.0,smoothstep(0.0,0.05,_Ld)));   // ★ efDither2: ampiezza dither CRESCE nel near-black (~6/255 = ~1 LSB dopo AgX+sRGB) → niente banding sui gradienti scuri/nebulose
+      col += (rnd(uv*uRes+fract(uTime)*vec2(59.7,13.1)) - rnd(uv*uRes+fract(uTime)*vec2(23.1,71.9)))*_dA;   // ★ DITHERING TPDF anti-banding (gradienti scuri/nebulose)
       if(uBars>0.001){ float _bh=uBars*0.13; float _in=smoothstep(_bh-0.004,_bh,vUv.y)*smoothstep(_bh-0.004,_bh,1.0-vUv.y); col*=_in; }   // ★ LETTERBOX 2.39:1 DINAMICO: barre nere nei momenti-eroe
       gl_FragColor=vec4(col,1.0); }`};
 
@@ -2923,6 +3001,7 @@ function applyDirector(){
     cinePass.uniforms.uStreak.value=(0.30+c.aB*0.55)*_aesStreak;                             // streak anamorfica: quasi zero in abisso, canta in lampo/oro
     const _warmth=THREE.MathUtils.clamp((director.key.r-director.key.b)*1.5+0.5,0,1);
     cinePass.uniforms.uHalation.value=_warmth*0.7*_aesHal;                                   // halation piena nei mood caldi, micro-presenza nei freddi
+    cinePass.uniforms.uHalCol.value.setRGB(1.0, THREE.MathUtils.lerp(0.70,0.52,_warmth), THREE.MathUtils.lerp(0.66,0.26,_warmth));   // ★ tinta halation: bianco-caldo nei mood freddi → ambra nei caldi
     if(_CH2){ cinePass.uniforms.uSat.value=_aesSat; cinePass.uniforms.uGradeAmt.value=_aesGradeAmt; cinePass.uniforms.uContrast.value=_aesContrast; } }   // ★ ch2: saturazione/forza-tinta/contrasto per-episodio (episodi esteticamente più diversi)
 }
 // leva-master saturazione: 1.0 = look di oggi (nessuna regressione); ~1.3-1.45 = picco "space-edit". La pilota l'ArcConductor al CREST; da console per A/B.
@@ -3704,7 +3783,8 @@ class OwnedPlanet{
     this.g=new THREE.Group(); this.g.visible=false; this.g.frustumCulled=false; scene.add(this.g);
     this.mat=new THREE.MeshStandardMaterial({roughness:0.95,metalness:0,envMapIntensity:0.55,transparent:true,opacity:1});
     this.mat.map=this.mat.emissiveMap=ASSETS.pt[0]; this.mat.emissive=new THREE.Color(0xffffff); this.mat.emissiveIntensity=0;
-    this.pUni={ uSunDir:{value:new THREE.Vector3(0,1,0)}, uTime:{value:0}, uIsEarth:{value:0}, uIsSun:{value:0}, uAirless:{value:0}, uHasAtmo:{value:1}, uBump:{value:3.0}, uTexel:{value:new THREE.Vector2(1/2048,1/1024)}, uNight:{value:new THREE.Color(0x0a1020)}, uRim:{value:new THREE.Color(0x88bbff)}, uShow:{value:0} };
+    if(PBR){ this.mat.normalMap=ASSETS.pbrFlat; this.mat.roughnessMap=ASSETS.pbrFlatR; this.mat.normalScale=new THREE.Vector2(0.85,0.85); }   // ★ efPBR: slot normal/roughness (branch compilato una volta)
+    this.pUni={ uSunDir:{value:new THREE.Vector3(0,1,0)}, uTime:{value:0}, uIsEarth:{value:0}, uIsSun:{value:0}, uAirless:{value:0}, uHasAtmo:{value:1}, uBump:{value:3.0}, uTexel:{value:new THREE.Vector2(1/2048,1/1024)}, uNight:{value:new THREE.Color(0x0a1020)}, uRim:{value:new THREE.Color(0x88bbff)}, uShow:{value:0}, uSun2:{value:1}, uGlint:{value:1} };
     this.mat.onBeforeCompile=planetOnBeforeCompile(this.pUni);
     this.mesh=new THREE.Mesh(new THREE.SphereGeometry(1,64,48),this.mat); this.g.add(this.mesh);
     this.label=null;
@@ -3720,6 +3800,7 @@ class OwnedPlanet{
     pu.uHasAtmo.value=(meta&&meta.gray)?0:1; pu.uBump.value=(meta&&meta.bump!=null)?meta.bump:3.0;
     pu.uRim.value.setHSL(meta?meta.hue:0.6,0.6,0.62);
     const _im=ASSETS.pt[skin]&&ASSETS.pt[skin].image; if(_im&&_im.width) pu.uTexel.value.set(1/_im.width,1/_im.height); else pu.uTexel.value.set(1/2048,1/1024);
+    if(PBR && ASSETS.pbr){ const _pm=ASSETS.pbr[meta&&meta.f]; if(_pm){ this.mat.normalMap=_pm.n; this.mat.roughnessMap=_pm.r; pu.uBump.value=0; this.mat.normalScale.set((meta&&meta.gray)?1.35:((meta&&meta.earth)?0.9:1.0),(meta&&meta.gray)?1.35:((meta&&meta.earth)?0.9:1.0)); } else { this.mat.normalMap=ASSETS.pbrFlat; this.mat.roughnessMap=ASSETS.pbrFlatR; } }   // ★ efPBR: normal+roughness bakata anche sui pianeti degli iscritti
     const ang=Math.random()*Math.PI*2, dist=r*1.45+70+Math.random()*110;
     this.g.position.set(Math.cos(ang)*dist,(Math.random()*2-1)*45,SPAWN_Z-Math.random()*380); this.z0=this.g.position.z;
     this.mesh.rotation.set(Math.random()*0.4-0.2,Math.random()*6.28,0); this.spin=(Math.random()*2-1)*0.006;
@@ -3766,6 +3847,7 @@ let camRollAng=0,camRollRate=0,camRollRateT=0,camRollRetarget=40;               
 let camSceneRoll=0,camSceneRollSpd=0.12;                                                      // ROLL CONTINUO della scena (giri OFF) PIÙ CALMO (0.19→0.12, ~52s/giro): meno rotazione di camera (richiesta utente)
 let camEvHold=0;                                                                              // REGIA EVENTI: eclissi in totalità o buco nero VICINO → le camere si fermano (quasi) per riprendere la scena
 let camLookX=0, camLookY=0.15;   // bersaglio lookAt smussato → niente stacchi d'inquadratura quando cambia il pianeta a fuoco
+let whipK=0, whipT=0, whipDirX=0, whipDirY=0;   // ★ WHIP-PAN opt-in (efWhip): panoramica-frusta con smear laterale
 let planetTimer=6,wispTimer=4,starTimer=2,mysteryTimer=28,parallelTimer=42,bhTimer=_CH2?14:45;   // ★ primo buco nero ANCORA prima (ch2: 14s) — più buchi neri (richiesta utente)
 let cometTimer=3,clusterTimer=32,derelictTimer=45,montageTimer=150+Math.random()*120;   // ★ prima raffica-montaggio molto più tardi (era 30-60s → 150-270s): niente stacchi nei primi minuti
 let pulsarTimer=26,redgiantTimer=45,binaryTimer=55,remnantTimer=70;
@@ -3916,6 +3998,7 @@ function _epDispatch(){ if(!_CH2 || window._epDispatched) return; window._epDisp
   }catch(_){}
 }
 function startIntro(){ if(!built) return; introActive=true; introT=0; window.__intro=true;   // flag globale: niente nuovi SOLI durante l'intro (guard in Planet.spawn, no TDZ)
+  try{ const ic=document.getElementById('introcard'); if(ic && window.efCards!==0){ ic.classList.add('slam'); } window._cardHold=(window.efCards===0?0:0.9); window._epTrunk=!!(typeof EF!=='undefined'&&EF.cam&&EF.cam.regimeBias>0.55); }catch(_){}   // ★ CARTELLO-CAPITOLO Tarantino (slam su freeze-frame) + arma il trunk-shot per episodi contemplativi
   try{ _epDispatch(); }catch(_){}                                    // ★ regia/elementi per-episodio (ch2)
   try{ EF._updateHUD(); }catch(_){}                                   // sincronizza title-card + brand col capitolo/tema correnti
   try{ if(audio&&audio.music&&audio.music._refill){ audio.music._refillN=0; audio.music._refill(); } }catch(_){}   // SETLIST del capitolo: azzera il contatore per-capitolo e ri-mescola il bag col seed del capitolo → i brani DOPO l'intro seguono l'ordine dell'episodio
@@ -3925,6 +4008,8 @@ function startIntro(){ if(!built) return; introActive=true; introT=0; window.__i
   const ic=document.getElementById('introcard'); if(ic) ic.style.opacity='0';
 }
 function endIntro(){ introActive=false; window.__intro=false; introApproach=0; introNodK=0; introTitleK=0;
+  try{ const ic=document.getElementById('introcard'); if(ic) ic.classList.remove('slam'); }catch(_){} window._cardHold=0;   // ★ fine cartello-capitolo
+  try{ if(typeof Arc!=='undefined'&&Arc){ Arc._epT=0; Arc._climaxDone=false; } }catch(_){}   // ★ efClimax: nuovo episodio → azzera il timer e riabilita l'unico climax
   postIntroEarth=true;   // ★ arma il giro lento attorno alla Terra (per OGNI capitolo)
   const ic=document.getElementById('introcard'); if(ic) ic.style.opacity='0';
   // la ROCK d'intro RESTA la prima traccia (richiesta utente: "la canzone intro e la prima devono essere sempre quella rock") → NIENTE cambio canzone a fine intro.
@@ -3975,6 +4060,9 @@ function animate(){
   const _slowTgt=(1-0.52*THREE.MathUtils.clamp((bigPlanetNear-0.85)/0.6,0,1))*(cam360On?0.72:1);
   slowMo+=(_slowTgt-slowMo)*Math.min(1,dt*1.4); timeScale*=slowMo;
   timeScale*=(1-0.5*impactHold*(window.efBullet==null?1:window.efBullet));   // ★ BULLET-TIME sul momento-eroe (impatto): slow-mo che rientra morbido col decadere di impactHold (~1.2s); window.efBullet=0 per spegnerlo
+  if(window._cardHold>0){ window._cardHold=Math.max(0,window._cardHold-dt); timeScale*=(window._cardHold>0.15?0.045:1); }   // ★ FREEZE-FRAME cartello-capitolo: quasi-fermo ~0.75s all'ingresso, poi riprende pulito
+  if(window._crestSnap>0){ window._crestSnap=Math.max(0,window._crestSnap-dt); timeScale*=(1-0.45*Math.min(1,window._crestSnap/0.32)); }   // ★ SNAP crest beat: micro bullet-time sul picco (~0.32s)
+  if(window._crestFreeze>0){ window._crestFreeze=Math.max(0,window._crestFreeze-dt); timeScale*=0.06; }   // ★ efCrestFreeze: quasi-fermo ~0.14s sul picco → beat trattenuto stile Tarantino
   // ★ SCENE a 360°: ogni tanto la camera fa un GIRO COMPLETO attorno all'astronauta (giro ~9s), poi torna ferma
   cam360Timer-=dt;
   if(cam360Timer<=0 && !cam360On && (typeof zoomState==='undefined'||zoomState==='idle') && !(typeof introActive!=='undefined'&&introActive)){
@@ -4040,7 +4128,7 @@ function animate(){
   // esposizione adattiva (morbida) + BREATHING da DP: due sinusoidi incommensurabili ±2.5% → il quadro è "vivo", mai periodico
   exposureCur += (director.cur.exposure - exposureCur)*Math.min(1,dt*0.6);
   const breathe=1.0+Math.sin(shaderTime*0.131)*0.014+Math.sin(shaderTime*0.048+1.3)*0.011;
-  renderer.toneMappingExposure=Math.max(IS_LIVE?1.03:0.90,exposureCur*(IS_LIVE?1.08:0.95)*breathe)*(1-orbitShowBlend*0.30)*tunnelDim;   // ★ ×tunnelDim: nel TUNNEL V2 la scena si DISSOLVE (integrazione morbida). ×(1-orbitShowBlend*0.30): showcase più scuro → la superficie del pianeta si vede meglio (richiesta utente). breathe DENTRO il max: il PAVIMENTO resta garantito (mai troppo scura; su LIVE pavimento più alto, lo stream YouTube scurisce)
+  renderer.toneMappingExposure=Math.max(IS_LIVE?1.03:0.90,exposureCur*(IS_LIVE?1.08:0.95)*breathe)*(1-orbitShowBlend*0.30)*(1-(window.efHeroGrade===0?0:heroK*0.16))*tunnelDim;   // ★ HERO-GRADE anti-velatura: quando un pianeta RIEMPIE il quadro (bigPlanetNear) esposizione un filo giù → recupera contrasto (il floor Math.max protegge dal troppo scuro); window.efHeroGrade=0 lo spegne   // ★ ×tunnelDim: nel TUNNEL V2 la scena si DISSOLVE (integrazione morbida). ×(1-orbitShowBlend*0.30): showcase più scuro → la superficie del pianeta si vede meglio (richiesta utente). breathe DENTRO il max: il PAVIMENTO resta garantito (mai troppo scura; su LIVE pavimento più alto, lo stream YouTube scurisce)
 
   // SEMPRE IL BULGE INQUADRATO: orienta il cielo perché il centro galattico (la parte più bella/luminosa
   // di ogni sfondo) resti dietro l'astronauta. Usa la posizione GC già mappata in sky-gc.json.
@@ -4095,6 +4183,7 @@ function animate(){
     else if(z>-900&&z<60){ const sc=p.mesh.scale.x/Math.max(40,-z+120); if(sc>nearScore){nearScore=sc;nearestPlanet=p;} }
     if(!p.isSun && z>-1500 && z<40){ const _ap=p.mesh.scale.x/Math.max(40,-z+120); if(_ap>0.10){ _pv.copy(p.mesh.position).project(camera); if(Math.abs(_pv.x)<1.3&&Math.abs(_pv.y)<1.3&&_pv.z<1) planetVis++; } } }   // conta pianeti VISIBILI e sizable (per il giro-densità)
   bigPlanetNear=(nearestPlanet&&nearestPlanet.mesh.scale.x>110)?nearScore:0;   // per lo slow-mo/showcase: 1 quando un GIGANTE riempie il quadro (usato il frame dopo)
+  heroK=THREE.MathUtils.smoothstep(bigPlanetNear,0.35,1.15);   // ★ HERO-GRADE driver clampato [0,1]: nullo su pianeti distanti, pieno quando il gigante riempie il quadro (onset morbido)
   // ★ ORBITA/SLALOM attorno ai pianeti: quando un pianeta sizable si avvicina, l'astronauta ci curva intorno "man mano" e la camera lo asseconda. Slalom: il verso della curva segue il lato del pianeta → pianeti su lati diversi = zig-zag nello spazio.
   // AGGANCIA un solo pianeta alla volta (niente scatti dal cambio nearestPlanet) e seguilo dall'avvicinamento fino a DOPO il sorpasso.
   if(slalomP && (!slalomP.active || slalomP._distant || slalomP._showcase || slalomP.mesh.position.z>170)) slalomP=null;   // rilascia quando è passato/sparito/in showcase
@@ -4123,6 +4212,8 @@ function animate(){
       orbitShowState=1; orbitShowP=_sp; orbitShowP._showcase=true; orbitShowT=0; orbitShowDur=_CH2?(22+Math.random()*12):(17+Math.random()*8);   // ★ orbita LENTA e maestosa attorno al pianeta (richiesta utente): 17-25s (era 8-12), ch2 22-34s
       orbitShowRev=(Math.random()<0.25)?(0.55+Math.random()*0.25):(0.85+Math.random()*0.35); orbitShowCrane=(Math.random()<0.3?-1:(Math.random()*2-1))*(_CH2?0.8:0.5);   // ★ varietà: ~25% mezzo-giro "eroe" dal basso, resto giro pieno lento; crane dolce (rev più basse = giro più lento a parità di durata)
       _orbShowPin.copy(orbitShowP.mesh.position); orbitShowA0=Math.atan2(camera.position.z-_orbShowPin.z,camera.position.x-_orbShowPin.x);
+      window._heroSign=(Math.random()<0.5?-1:1);   // ★ efThirds: segno FISSO per tutto il beat (composizione, mai oscillazione)
+      if(window.efBacklit!==false && nearSun){ const _sA=Math.atan2(nearSun.mesh.position.z-_orbShowPin.z, nearSun.mesh.position.x-_orbShowPin.x); const _term=_sA+(Math.random()<0.5?-1:1)*1.15; orbitShowA0=orbitShowA0*0.45+_term*0.55; }   // ★ efBacklit: la rivelazione si APRE sul CRESCENTE/terminatore retroilluminato (il look meglio votato) invece che sulla faccia frontale slavata → più contrasto, più cinema (nessun moto nuovo, solo DOVE inizia il giro a velocità costante)
     } else orbitShowTimer=3;
   }
   if(orbitShowState===1){ orbitShowT+=dt;
@@ -4358,6 +4449,9 @@ function animate(){
   if(astHitCD>0) astHitCD-=dt;
   hitFlash =Math.max(0,hitFlash -dt*2.2);   // ~0.45s di flash
   impactHold=Math.max(0,impactHold-dt*0.85);   // AZIONE: freno drammatico post-impatto ~1.2s (auto-recupera, mai freno permanente)
+  crashZoom=Math.max(0,crashZoom-dt*0.65); crashZoomT+=dt; crashK=crashZoom*Math.min(1,crashZoomT*8.0);   // ★ CRASH-ZOOM (contra-zoom Vertigo): fov si stringe + dolly-out → l'eroe tiene la taglia, lo spazio dietro si dilata
+  if(window._trunkFire){ window._trunkFire=0; if(trunkT<=0) trunkT=0.0001; }                              // consuma l'arm del trunk-shot dal CREST
+  if(trunkT>0){ trunkT+=dt; trunkK=Math.min(1,trunkT/1.2)*Math.max(0,1-Math.max(0,trunkT-2.4)/1.2); if(trunkT>4.8){ trunkT=0; trunkK=0; } }   // ★ TRUNK-SHOT envelope: 1.2s in / 2.4s hold / 1.2s out
   hitTremor=Math.max(0,hitTremor-dt*1.4);   // ~0.7s di tremore
   hitTumble=Math.max(0,hitTumble-dt*0.9);   // ~1.1s di micro-capriola extra
   _hitImp.multiplyScalar(Math.max(0,1-dt*1.6));   // l'impulso direzionale rientra in ~0.6s (drift fuori asse)
@@ -4401,7 +4495,7 @@ function animate(){
   manRig.position.z = -slingE*1.6 - rocketE*1.5 + _hitImp.z*0.5;                    // scaraventato in avanti (fionda + spinta razzo)
 
   // --- CAMERA: fissa dietro l'uomo, respiro lievissimo di quota/distanza ---
-  const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*3.5 + camMoveDs*camMoveScale;   // ★ push-in più marcato sul surge (2.0→3.5): dolly-in psicologico verso il picco   // + riframe di distanza
+  const baseDist=9.5+(1.0-director.cur.aB)*3.5 - director.surge*3.5 + camMoveDs*camMoveScale + crashK*4.2;   // ★ push-in più marcato sul surge (2.0→3.5): dolly-in psicologico verso il picco   // + riframe di distanza   // + crashK: dolly-OUT che compensa il fov del crash-zoom (contra-zoom)
   camDist += (baseDist-camDist)*Math.min(1,dt*0.1);
   const _el=1.0 + Math.sin(camPhase*0.045)*0.22 + camMoveEl*camMoveScale + _orbEl;   // quota che respira + riframe + arco di quota del giro
   const _pitch=camOrbitOn ? (camDriftVAng+_orbPitch) : 0;   // giri OFF → nessun pitch (la scena gira via roll, non spostando la camera)
@@ -4410,9 +4504,19 @@ function animate(){
   camera.up.set(-Math.sin(_az)*_psn, _pc, -Math.cos(_az)*_psn); // up = TANGENTE dell'orbita verticale: il lookAt non si ribalta MAI ai poli (niente gimbal-flip) → oltre lo zenit si prosegue fluidi e "lo sfondo ruota sotto" (a pitch 0 è l'up classico (0,1,0))
   let lx=manRig.position.x*0.4, ly2=manRig.position.y*0.5+0.15;
   // NIENTE panoramica verso i pianeti: la camera resta SEMPRE sull'astronauta → nessun cambio d'inquadratura (richiesta utente)
-  camLookX += (lx-camLookX)*Math.min(1,dt*2.2);
-  camLookY += (ly2-camLookY)*Math.min(1,dt*2.2);
+  whipK=Math.max(0,whipK-dt*3.2); whipT+=dt; const _whip=whipK*Math.min(1,whipT*10.0); const _slew=2.2+_whip*14.0;   // ★ WHIP-PAN (opt-in): slew rapido + offset laterale, poi si riassesta sull'astronauta
+  camLookX += ((lx+whipDirX*_whip*1.2)-camLookX)*Math.min(1,dt*_slew);
+  camLookY += ((ly2+whipDirY*_whip)-camLookY)*Math.min(1,dt*_slew);
   tmpLook.set(camLookX,camLookY,0); camera.lookAt(tmpLook);
+  if(trunkK>0.001){ const _tp2=-0.55*trunkK; const _tc2=Math.cos(_pitch+_tp2), _ts2=Math.sin(_pitch+_tp2); const _td2=camDist*(1-0.28*trunkK);   // ★ TRUNK-SHOT (Pulp Fiction): camera BASSA che guarda IN SU verso l'eroe incombente, poi rientra alla posa normale (envelope trunkK)
+    const _tx=Math.sin(_az)*_td2*_tc2, _ty=(_el-1.4*trunkK)+_ts2*_td2, _tz=Math.cos(_az)*_td2*_tc2;
+    camera.position.x+=(_tx-camera.position.x)*trunkK; camera.position.y+=(_ty-camera.position.y)*trunkK; camera.position.z+=(_tz-camera.position.z)*trunkK;
+    camera.up.set(-Math.sin(_az)*_ts2,_tc2,-Math.cos(_az)*_ts2); tmpLook.set(camLookX,camLookY,0); camera.lookAt(tmpLook); }
+  standoffBlend+=((window.efStandoff===true?standoffK:0)-standoffBlend)*Math.min(1,dt*0.9); standoffA+=dt*2.4*(1+standoffK);   // ★ MEXICAN-STANDOFF (opt-in): blend + angolo che gira, mutuamente esclusivo con lo showcase
+  if(standoffBlend>0.002 && orbitShowBlend<0.05){ const _sca=Math.cos(standoffA),_ssn=Math.sin(standoffA), _sRc=6.2;
+    const _scx=manRig.position.x+_ssn*_sRc, _scz=manRig.position.z+_sca*_sRc, _scy=manRig.position.y+1.0;
+    camera.position.x+=(_scx-camera.position.x)*standoffBlend; camera.position.y+=(_scy-camera.position.y)*standoffBlend; camera.position.z+=(_scz-camera.position.z)*standoffBlend;
+    camera.up.set(0,1,0); tmpLook.copy(manRig.position); tmpLook.y+=0.3; camera.lookAt(tmpLook); }
   if(orbitShowBlend>0.002 && orbitShowP){   // ★★ SHOWCASE: astronauta + camera orbitano il PIANETA (giro completo) per mostrarlo tutto; blend dolce da/verso la posa normale
     const _P=orbitShowP.mesh.position, _R=orbitShowP.mesh.scale.x;
     const _prog=THREE.MathUtils.clamp(orbitShowT/orbitShowDur,0,1);   // progresso LINEARE nel tempo
@@ -4423,7 +4527,8 @@ function animate(){
     const _mx=_P.x+_ca*_Rm, _my=0, _mz=_P.z+_sn*_Rm, _cx=_P.x+_ca*_Rc, _cy=1.0+_crane, _cz=_P.z+_sn*_Rc;   // orbita orizzontale + crane: l'astronauta resta a y=0, la camera gira e si alza/abbassa dolcemente (mai un tuffo brusco)
     manRig.position.x+=(_mx-manRig.position.x)*_bl; manRig.position.y+=(_my-manRig.position.y)*_bl; manRig.position.z+=(_mz-manRig.position.z)*_bl;
     camera.position.x+=(_cx-camera.position.x)*_bl; camera.position.y+=(_cy-camera.position.y)*_bl; camera.position.z+=(_cz-camera.position.z)*_bl;
-    camera.up.set(0,1,0); tmpLook.copy(manRig.position); tmpLook.y+=0.3; camera.lookAt(tmpLook);   // guarda l'astronauta → il pianeta riempie lo sfondo dietro di lui
+    const _rgt=(window._heroSign||1)*(window.efThirds===false?0:1)*_Rm*0.13*orbitShowBlend;   // ★ efThirds: offset FISSO (scala via orbitShowBlend, non oscilla) → il soggetto scivola dolce su un terzo, il pianeta domina dietro; nessun moto aggiunto → niente nausea
+    camera.up.set(0,1,0); tmpLook.copy(manRig.position); tmpLook.x+=(-_sn)*_rgt; tmpLook.z+=(_ca)*_rgt; tmpLook.y+=0.3-0.9*orbitShowBlend*(window.efThirds===false?0:1); camera.lookAt(tmpLook);   // guarda l'astronauta → il pianeta riempie lo sfondo dietro di lui
     try{ if(orbitShowP.ring) orbitShowP.ring.visible=(orbitShowBlend<0.4); }catch(_){}   // NASCONDE il RINGHIO durante lo showcase (era la "striscia"). NB: NON dimmare uOp — nel shader moltiplica il COLORE → rendeva il ringhio NERO (quadrato nero!). Nasconderlo è pulito.
   }
   if(!camOrbitOn && _zIdle) camSceneRoll=(camSceneRoll+camSceneRollSpd*dt)%6.283185307;   // ROLL CONTINUO: la scena gira attorno all'astronauta centrato (camera su se stessa → "rotola verso la meta"); SOLO in scena ESO (nel dive lo zoom ruota da sé)
@@ -4442,16 +4547,30 @@ function animate(){
   // ZOOM CONTINUO (scena ESO): il FOV si stringe/allarga dolcemente (±~4°, ~20s) → accenno di ZOOM mentre
   // la scena si muove e ruota, così sembra una caduta che "entra" nell'universo. Nel dive lo spegne (camDriftEase→0).
   const _esoZoom=(camOrbitOn?1:camDriftEase)*(Math.sin(camPhase*0.05)*2.2 - (1-Math.cos(camPhase*0.032))*2.0);   // componente lenta che spinge IN (coseno rialzato: più tempo "dentro" lo zoom)
-  camera.fov=baseFov + _esoZoom + slingE*3.0 + rocketE*7.0 + zoomFovKick + tunnelFovK*15.0 - (typeof Arc!=='undefined'?Arc.tension*Arc.brace:0)*5.0; camera.updateProjectionMatrix();   // ★ PUSH-IN d'anticipazione: il campo si stringe salendo la tensione dell'Arc (0 a riposo)   // + FOV-warp TUNNEL (0 a riposo)
+  camera.fov=baseFov + _esoZoom + slingE*3.0 + rocketE*7.0 + zoomFovKick + tunnelFovK*15.0 - (typeof Arc!=='undefined'?Arc.tension*Arc.brace:0)*5.0 - (window._crestSnap?window._crestSnap*8.0:0) - crashK*14.0 + trunkK*6.0 - standoffBlend*12.0; camera.updateProjectionMatrix();   // ★ PUSH-IN d'anticipazione + SNAP crest (fov punch) + CRASH-ZOOM (stringe, compensato dal dolly-out) + TRUNK (campo più largo dal basso) + STANDOFF (telefoto compresso)
   deepZoomUpdate(dt);   // DEEP ZOOM (zoom infinito): no-op totale se spento
 
   cinePass.uniforms.uTime.value=shaderTime; cinePass.uniforms.uRocket.value=rocketE;
-  { const _lk=Math.max((typeof Arc!=='undefined'?Arc.crest:0), orbitShowBlend, introApproach*0.9)*(window.efBars==null?1:window.efBars); cinePass.uniforms.uBars.value += (_lk-cinePass.uniforms.uBars.value)*Math.min(1,dt*1.6); }   // ★ LETTERBOX 2.39 dinamico: barre nei momenti-eroe (CREST/showcase/intro), ease morbido; window.efBars=0 per spegnerle
+  { const _cr=(typeof Arc!=='undefined'?Arc.crest:0)||0;                                                     // ★ FILM-LOOK pilotato dal CREST
+    cinePass.uniforms.uHalW.value=1.0+_cr*1.4;                                                               // alone d'emulsione più largo sul picco
+    cinePass.uniforms.uHalation.value*=(window.efHalation==null?1:+window.efHalation)*(1.0+_cr*0.8);         // + più caldo sul picco; window.efHalation=0 lo spegne
+    cinePass.uniforms.uStreak.value*=(window.efAnamorph==null?1:+window.efAnamorph)*(1.0+_cr*0.7);           // croce anamorfica si allunga sul crest; window.efAnamorph=0 → niente streak
+    cinePass.uniforms.uAnimGrain.value=(window.efGrain===0?0:1);                                             // grana 35mm animata on/off
+    cinePass.uniforms.uTechni.value=(window.efTechnicolor?(0.12+_cr*0.6):0);                                 // ★ Technicolor per-tema: sottile a riposo, fiorisce sul crest (solo se efTechnicolor)
+    cinePass.uniforms.uInk.value=(window.efInk===false?0:1); cinePass.uniforms.uDitherLo.value=(window.efDither2===false?0:1);   // ★ efInk: neri più inchiostro · efDither2: dither shadow-weighted (banding-free)
+    cinePass.uniforms.uFxaa.value=(ULTRA && window.efFxaa!==false)?1:0;   // ★ efFxaa: AA del limbo SOLO nei master ULTRA (4K, SMAA spenta) — altrove no-op
+    if(whipK>0){ cinePass.uniforms.uStreak.value+=whipK*0.8; cinePass.uniforms.uAberr.value=0.85+whipK*0.6; } else cinePass.uniforms.uAberr.value=0.85; }   // ★ whip: smear transitorio (streak+aberrazione)
+  { const _cardBars=(window._cardHold>0.15)?1:0, _snapB=(window._crestSnap>0)?1:0;
+    const _bigBars=(window.efBarsBig===false)?0:THREE.MathUtils.clamp((bigPlanetNear-0.6)/0.4,0,1)*0.8;   // ★ efBarsBig: letterbox 2.39 sui giganti vicini (scala monumentale), sotto lo slam pieno del crest per gerarchia
+    const _lk=Math.max((typeof Arc!=='undefined'?Arc.crest:0), orbitShowBlend, introApproach*0.9, _cardBars, _snapB, _bigBars)*(window.efBars==null?1:window.efBars);
+    const _rate=_cardBars?1:(_snapB?Math.min(1,dt*6):Math.min(1,dt*1.6));   // ★ SLAM secco per il cartello-capitolo e il beat-crest; ease morbido altrimenti
+    cinePass.uniforms.uBars.value += (_lk-cinePass.uniforms.uBars.value)*_rate; }   // ★ LETTERBOX 2.39 dinamico: barre nei momenti-eroe (CREST/showcase/intro/cartello); window.efBars=0 per spegnerle
   eclipseDim=Math.max(0,eclipseDim-dt*0.8);                                           // decadimento morbido (l'eclissi lo ricarica finché è in totalità)
-  cinePass.uniforms.uVignette.value=1.0+rocketE*0.22+director.surge*0.08+eclipseDim;  // tunnel in warp + iris-down alla totalità dell'eclissi
+  cinePass.uniforms.uVignette.value=1.0+rocketE*0.22+director.surge*0.08+eclipseDim+(window.efHeroGrade===0?0:heroK*0.12);  // tunnel in warp + iris-down alla totalità dell'eclissi   // ★ HERO-GRADE: vignetta un filo più marcata sul pianeta ravvicinato → lo stacca dal fondo
+  if(cinePass) cinePass.uniforms.uContrast.value=(_CH2?_aesContrast:1.0)+(window.efHeroGrade===0?0:heroK*0.42);   // ★ HERO-GRADE: lift di contrasto locale sul pianeta ravvicinato → superficie leggibile invece del velo piatto (base assoluta ogni frame → niente accumulo)
   cinePass.uniforms.uGrain.value=Math.min(0.026, 0.020*(1.0+director.surge*0.30))*(0.1+0.9*zoomWorldDimN);    // la camera "sente" la caduta; nero pulito per l'encoder. Nel DEEP ZOOM la grana quasi sparisce: sul nero delle fasi profonde leggeva come un campo di finte stelline ("lo sfondo sotto")
-  bloomPass.strength=Math.min(ULTRA?0.95:0.85, (0.36+director.cur.aB*0.30+director.surge*(ULTRA?0.25:0.20))*((typeof EF!=='undefined'&&EF.bloomBias)||1)*_aesBloom)*(introActive?(1-0.6*introApproach):1)*(1-orbitShowBlend*0.60) + tunnelFlash*0.5;   // + tunnelFlash: lampo bloom d'ingresso/uscita tunnel   // ×_aesBloom (1 se non-ch2): bloom per-episodio   // bloom contenuto; ×(1-orbitShowBlend*0.60): MENO bloom/glow durante lo showcase (0.45→0.60) → superficie pianeta più nitida (richiesta utente)
-  bloomPass.threshold=Math.max(0.90, 0.94-director.cur.neb*0.05-director.surge*(ULTRA?0.08:0.02))+orbitShowBlend*0.9; // soglia ALZATA (0.86→0.90): fa alone solo la luce MOLTO forte, non la foschia/Via Lattea → niente washout   // ★ +orbitShowBlend*0.9: durante lo SHOWCASE alzo MOLTO la soglia → la superficie luminosa del pianeta ravvicinato NON entra nel bloom (niente washout/quadrato); solo un sole/core molto forte fa ancora alone
+  bloomPass.strength=Math.min(ULTRA?0.95:0.85, (0.36+director.cur.aB*0.30+director.surge*(ULTRA?0.25:0.20))*((typeof EF!=='undefined'&&EF.bloomBias)||1)*_aesBloom)*(introActive?(1-0.6*introApproach):1)*(1-orbitShowBlend*0.60)*(1-(window.efHeroGrade===0?0:heroK*0.40)) + tunnelFlash*0.5;   // + tunnelFlash: lampo bloom d'ingresso/uscita tunnel   // ★ HERO-GRADE: meno bleed di bloom sul pianeta ravvicinato   // ×_aesBloom (1 se non-ch2): bloom per-episodio   // bloom contenuto; ×(1-orbitShowBlend*0.60): MENO bloom/glow durante lo showcase (0.45→0.60) → superficie pianeta più nitida (richiesta utente)
+  bloomPass.threshold=Math.max(0.90, 0.94-director.cur.neb*0.05-director.surge*(ULTRA?0.08:0.02))+orbitShowBlend*0.9+(window.efHeroGrade===0?0:heroK*0.5); // soglia ALZATA (0.86→0.90): fa alone solo la luce MOLTO forte, non la foschia/Via Lattea → niente washout   // ★ HERO-GRADE: soglia più alta sul pianeta ravvicinato → la sua superficie non fiorisce (niente washout lattiginoso)   // ★ +orbitShowBlend*0.9: durante lo SHOWCASE alzo MOLTO la soglia → la superficie luminosa del pianeta ravvicinato NON entra nel bloom (niente washout/quadrato); solo un sole/core molto forte fa ancora alone
   bloomPass.radius=Math.min(ULTRA?0.66:0.62, 0.42+director.cur.aB*0.24+director.surge*(ULTRA?0.12:0.10)+rocketE*0.08);   // raggio ridotto: l'alone non si allarga a tutto schermo
 
   composer.render();
